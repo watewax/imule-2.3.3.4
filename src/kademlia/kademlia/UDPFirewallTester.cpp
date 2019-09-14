@@ -81,6 +81,9 @@ bool CUDPFirewallTester::IsFirewalledUDP(bool lastStateIfTesting)
 	}
 }
 
+#ifndef _IMULE_IS_FIREWALLED_NONSENSE_
+void CUDPFirewallTester::SetUDPFWCheckResult(bool WXUNUSED(succeeded), bool WXUNUSED(testCancelled), uint32_t WXUNUSED(fromIP), uint16_t WXUNUSED(incomingPort)) {}
+#else
 void CUDPFirewallTester::SetUDPFWCheckResult(bool succeeded, bool testCancelled, uint32_t fromIP, uint16_t incomingPort)
 {
 	// can be called on shutdown after KAD has been stopped
@@ -91,7 +94,7 @@ void CUDPFirewallTester::SetUDPFWCheckResult(bool succeeded, bool testCancelled,
 	// check if we actually requested a firewallcheck from this client
 	bool requested = false;
 	for (UsedClientList::iterator it = m_usedTestClients.begin(); it != m_usedTestClients.end(); ++it) {
-		if (it->contact.GetIPAddress() == fromIP) {
+		if (it->contact.GetIPAddress().hashCode() == fromIP) {
 			if (!IsFWCheckUDPRunning() && !m_firewalledUDP && m_isFWVerifiedUDP && m_lastSucceededTime + SEC2MS(10) > ::GetTickCount()
 			    && incomingPort == CKademlia::GetPrefs()->GetInternKadPort() && CKademlia::GetPrefs()->GetUseExternKadPort()) {
 				// our test finished already in the last 10 seconds with being open because we received a proper result packet before
@@ -170,6 +173,7 @@ void CUDPFirewallTester::SetUDPFWCheckResult(bool succeeded, bool testCancelled,
 	}
 	QueryNextClient();
 }
+#endif
 
 void CUDPFirewallTester::ReCheckFirewallUDP(bool setUnverified)
 {
@@ -209,12 +213,14 @@ void CUDPFirewallTester::Reset()
 	m_lastSucceededTime = 0;
 	CSearchManager::CancelNodeFWCheckUDPSearch(); // cancel firewallnode searches if any are still active
 	m_possibleTestClients.clear();
-	CKademlia::GetPrefs()->SetUseExternKadPort(true);
+// 	CKademlia::GetPrefs()->SetUseExternKadPort(true);
 	// keep the list of used clients
 }
 
 void CUDPFirewallTester::QueryNextClient()
-{	// try the next available client for the firewallcheck
+{
+#ifdef _IMULE_IS_FIREWALLED_NONSENSE_
+        // try the next available client for the firewallcheck
 	if (!IsFWCheckUDPRunning() || !GetUDPCheckClientsNeeded() || CKademlia::GetPrefs()->FindExternKadPort(false)) {
 		return; // check if more tests are needed and wait till we know our extern port
 	}
@@ -257,4 +263,5 @@ void CUDPFirewallTester::QueryNextClient()
 			}
 		}
 	}
+#endif
 }

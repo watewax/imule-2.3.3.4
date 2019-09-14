@@ -30,6 +30,7 @@
 #include <wx/filename.h>			// Needed for wxFileName
 #include <common/MuleDebug.h>			// Needef for CMuleException
 #include "Tag.h"
+#include "i2p/CI2PAddress.h"
 
 namespace Kademlia {
 	class CUInt128;
@@ -136,6 +137,7 @@ public:
 	virtual CMD4Hash	ReadHash() const;
 	virtual float		ReadFloat() const;
 	virtual unsigned char*	ReadBsob(uint8* size) const;
+        virtual CI2PAddress	ReadAddress() const;
 	//@}
 
 	/**
@@ -200,10 +202,10 @@ public:
 /* Warning: Special Kad functions, needs documentation */
 
 	CTag*		ReadTag(bool bOptACP = false) const;
-	void		ReadTagPtrList(TagPtrList* taglist, bool bOptACP = false) const;
+        void		ReadTagList(TagList* taglist, bool bOptACP = false) const;
 
 	void		WriteTag(const CTag& tag);
-	void		WriteTagPtrList(const TagPtrList& tagList);
+        void		WriteTagList(const TagList& tagList);
 
 /* Special ED2Kv2 function */
 	uint64		GetIntTagValue() const;

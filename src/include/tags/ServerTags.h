@@ -49,7 +49,10 @@ enum Server_tags {
 	ST_UDPKEY		= 0x95,	// <uint32>
 	ST_UDPKEYIP		= 0x96,	// <uint32>
 	ST_TCPPORTOBFUSCATION	= 0x97,	// <uint16>
-	ST_UDPPORTOBFUSCATION	= 0x98	// <uint16>
+        ST_UDPPORTOBFUSCATION	= 0x98,	// <uint16>
+        // old tags (aMule 1.3.5)
+        ST_USERS,
+        ST_FILES,
 };
 
 #endif // SERVERTAGS_H

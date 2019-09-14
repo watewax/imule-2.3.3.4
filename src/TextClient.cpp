@@ -126,7 +126,7 @@ IMPLEMENT_APP (CamulecmdApp)
 
 void CamulecmdApp::OnInitCmdLine(wxCmdLineParser& parser)
 {
-	CaMuleExternalConnector::OnInitCmdLine(parser, "amulecmd");
+	CaMuleExternalConnector::OnInitCmdLine(parser, "imulecmd");
 	parser.AddOption(wxT("c"), wxT("command"),
 		_("Execute <str> and exit."),
 		wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
@@ -472,13 +472,12 @@ int CamulecmdApp::ProcessCommand(int CmdId)
 			tmp_int = EC_TAG_CONN_MAX_UL - EC_TAG_CONN_MAX_DL;
 		/* fall through */
 		case CMD_ID_SET_BWLIMIT_DOWN:
-			tmp_int += EC_TAG_CONN_MAX_DL;
 			{
 				unsigned long int limit;
 				if (args.ToULong(&limit)) {
 					request = new CECPacket(EC_OP_SET_PREFERENCES);
 					CECEmptyTag prefs(EC_TAG_PREFS_CONNECTIONS);
-					prefs.AddTag(CECTag(tmp_int, (uint16)limit));
+                                prefs.AddTag(CECTag(CmdId==CMD_ID_SET_BWLIMIT_UP ? EC_TAG_CONN_MAX_UL : EC_TAG_CONN_MAX_DL, (uint16)limit));
 					request->AddTag(prefs);
 					request_list.push_back(request);
 				} else {
@@ -711,10 +710,9 @@ void CamulecmdApp::Process_Answer_v2(const CECPacket *response)
 					const CECTag *server = connState->GetTagByName(EC_TAG_SERVER);
 					const CECTag *serverName = server ? server->GetTagByName(EC_TAG_SERVER_NAME) : NULL;
 					if (server && serverName) {
-						s << CFormat(_("Connected to %s %s %s")) %
+                                        s << CFormat(_("Connected to %s %s")) %
 						 serverName->GetStringData() %
-						 server->GetIPv4Data().StringIP() %
-						 (connState->HasLowID() ? _("with LowID") : _("with HighID"));
+                                          server->GetAddressData().humanReadable();
 					}
 				} else if (connState->IsConnectingED2K()) {
 					s << _("Now connecting");
@@ -899,8 +897,8 @@ void CamulecmdApp::OnInitCommandSet()
 	m_commands.AddCommand(wxT("Statistics"), CMD_ID_STATTREE, wxTRANSLATE("Show full statistics tree."),
 			      wxTRANSLATE("Optionally, a number in the range 0-255 can be passed as an argument to this\ncommand, which tells how many entries of the client version subtrees should be\nshown. Passing 0 or omitting it means 'unlimited'.\n\nExample: 'statistics 5' will show only the top 5 versions for each client type.\n"));
 
-	m_commands.AddCommand(wxT("Shutdown"), CMD_ID_SHUTDOWN, wxTRANSLATE("Shut down aMule."),
-			      wxTRANSLATE("Shut down the remote running core (amule/amuled).\nThis will also shut down the text client, since it is unusable without a\nrunning core.\n"), CMD_PARAM_NEVER);
+	m_commands.AddCommand(wxT("Shutdown"), CMD_ID_SHUTDOWN, wxTRANSLATE("Shut down iMule."),
+			      wxTRANSLATE("Shut down the remote running core (imule/imuled).\nThis will also shut down the text client, since it is unusable without a\nrunning core.\n"), CMD_PARAM_NEVER);
 
 	tmp = m_commands.AddCommand(wxT("Reload"), CMD_ERR_INCOMPLETE, wxTRANSLATE("Reload the given object."), wxEmptyString, CMD_PARAM_NEVER);
 	tmp->AddCommand(wxT("Shared"), CMD_ID_RELOAD_SHARED, wxTRANSLATE("Reload shared files list."), wxEmptyString, CMD_PARAM_NEVER);
@@ -1023,7 +1021,7 @@ void CamulecmdApp::OnInitCommandSet()
 
 int CamulecmdApp::OnRun()
 {
-	ConnectAndRun(wxT("aMulecmd"), wxT(VERSION));
+	ConnectAndRun(wxT("iMulecmd"), wxT(VERSION));
 	return 0;
 }
 

@@ -62,7 +62,7 @@ BEGIN_EVENT_TABLE(CSearchDlg, wxPanel)
 	EVT_CHECKBOX(IDC_FILTERCHECK,CSearchDlg::OnFilterCheckChange)
 
 	EVT_MULENOTEBOOK_PAGE_CLOSING(ID_NOTEBOOK, CSearchDlg::OnSearchClosing)
-	EVT_NOTEBOOK_PAGE_CHANGED(ID_NOTEBOOK, CSearchDlg::OnSearchPageChanged)
+        EVT_AUINOTEBOOK_PAGE_CHANGED(ID_NOTEBOOK, CSearchDlg::OnSearchPageChanged)
 
 	// Event handlers for the parameter fields getting changed
 	EVT_CUSTOM( wxEVT_COMMAND_TEXT_UPDATED,     IDC_SEARCHNAME, CSearchDlg::OnFieldChanged)
@@ -92,15 +92,6 @@ CSearchDlg::CSearchDlg(wxWindow* pParent)
 
 	m_notebook = CastChild( ID_NOTEBOOK, CMuleNotebook );
 
-#ifdef __WXMAC__
-	//#warning TODO: restore the image list if/when wxMac supports locating the image
-#else
-	// Initialise the image list
-	wxImageList* m_ImageList = new wxImageList(16,16);
-	m_ImageList->Add(amuleSpecial(3));
-	m_ImageList->Add(amuleSpecial(4));
-	m_notebook->AssignImageList(m_ImageList);
-#endif
 
 	// Sanity sanity
 	wxChoice* searchchoice = CastChild( ID_SEARCHTYPE, wxChoice );
@@ -227,9 +218,12 @@ void CSearchDlg::OnFilterCheckChange(wxCommandEvent& event)
 	}
 }
 
+#include <wx/aui/auibook.h>
 
-void CSearchDlg::OnSearchClosing(wxBookCtrlEvent& evt)
+void CSearchDlg::OnSearchClosing(wxAuiNotebookEvent& evt)
 {
+        AddDebugLogLineN(logSearch, CFormat ( wxT ( "OnSearchClosed : selection =  %d, evt.selection = %d, pageCount = %d" ) )
+                           %  m_notebook->GetSelection() % evt.GetSelection() % m_notebook->GetPageCount() );
 	// Abort global search if it was last tab that was closed.
 	if ( evt.GetSelection() == ((int)m_notebook->GetPageCount() - 1 ) ) {
 		OnBnClickedStop(nullEvent);
@@ -249,7 +243,7 @@ void CSearchDlg::OnSearchClosing(wxBookCtrlEvent& evt)
 }
 
 
-void CSearchDlg::OnSearchPageChanged(wxBookCtrlEvent& WXUNUSED(evt))
+void CSearchDlg::OnSearchPageChanged(wxAuiNotebookEvent& WXUNUSED(evt))
 {
 	int selection = m_notebook->GetSelection();
 
@@ -264,8 +258,9 @@ void CSearchDlg::OnSearchPageChanged(wxBookCtrlEvent& WXUNUSED(evt))
 	if ( selection != -1 ) {
 		CSearchListCtrl *ctrl = dynamic_cast<CSearchListCtrl*>(m_notebook->GetPage(selection));
 
-		bool enable = (ctrl->GetSelectedItemCount() > 0);
-		FindWindow(IDC_SDOWNLOAD)->Enable( enable );
+                FindWindow(IDC_SDOWNLOAD)->Enable( ctrl->GetSelectedItemCount() > 0 );
+                FindWindow(IDC_STARTS)->Enable( ! ctrl->GetStopable() );
+                FindWindow(IDC_CANCELS)->Enable( ctrl->GetStopable() );
 	}
 }
 
@@ -305,7 +300,7 @@ void CSearchDlg::OnBnClickedStart(wxCommandEvent& WXUNUSED(evt))
 			if ((GetTickCount() - m_last_search_time) > 2000) {
 				m_last_search_time = GetTickCount();
 
-				OnBnClickedStop(nullEvent);
+                        // OnBnClickedStop(nullEvent);
 
 				StartNewSearch();
 			}
@@ -391,10 +386,11 @@ bool CSearchDlg::CheckTabNameExists(const wxString& searchString)
 }
 
 
-void CSearchDlg::CreateNewTab(const wxString& searchString, wxUIntPtr nSearchID)
+void CSearchDlg::CreateNewTab(const wxString& searchString, wxUIntPtr nSearchID, bool stopable)
 {
-	CSearchListCtrl* list = new CSearchListCtrl(m_notebook, ID_SEARCHLISTCTRL, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxNO_BORDER);
-	m_notebook->AddPage(list, searchString, true, 0);
+        CSearchListCtrl* list = new CSearchListCtrl( (wxWindow*)m_notebook, stopable, ID_SEARCHLISTCTRL, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxNO_BORDER);
+        wxString tabname = (stopable ? wxT("!") : wxEmptyString) + searchString + wxT(" (0)");
+        m_notebook->AddPage(list, tabname, true, 0);
 
 	// Ensure that new results are filtered
 	bool     enable = CastChild(IDC_FILTERCHECK, wxCheckBox)->GetValue();
@@ -413,8 +409,14 @@ void CSearchDlg::CreateNewTab(const wxString& searchString, wxUIntPtr nSearchID)
 
 void CSearchDlg::OnBnClickedStop(wxCommandEvent& WXUNUSED(evt))
 {
-	theApp->searchlist->StopSearch();
+        int current_page = m_notebook->GetSelection();
+        if (current_page!=-1) {
+                CSearchListCtrl* list =  dynamic_cast<CSearchListCtrl*>(m_notebook->GetPage(current_page));
+                wxUIntPtr searchID = list->GetSearchId();
+                theApp->searchlist->StopSearch(searchID!=0);
+                list->SetStopable(false);
 	ResetControls();
+        }
 }
 
 
@@ -570,9 +572,10 @@ void CSearchDlg::StartNewSearch()
 		FindWindow(IDC_CANCELS)->Disable();
 	} else {
 		CreateNewTab(
-			((search_type == KadSearch) ? wxT("!") : wxEmptyString) +
-				params.searchString + wxT(" (0)"),
-			real_id);
+                        params.searchString,
+                        real_id,
+                        search_type == KadSearch
+                );
 	}
 }
 
@@ -588,9 +591,9 @@ void CSearchDlg::UpdateHitCount(CSearchListCtrl* page)
 				size_t hidden = page->GetHiddenItemCount();
 
 				if (hidden) {
-					searchtxt += CFormat(wxT(" (%u/%u)")) % shown % (shown + hidden);
+                                        searchtxt += CFormat(wxT(" (%" PRIu64 "/%" PRIu64 ")")) % (uint64)shown % (uint64)(shown + hidden);
 				} else {
-					searchtxt += CFormat(wxT(" (%u)")) % shown;
+                                        searchtxt += CFormat(wxT(" (%" PRIu64 ")")) % (uint64)shown;
 				}
 
 				m_notebook->SetPageText(i, searchtxt);

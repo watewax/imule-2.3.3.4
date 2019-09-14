@@ -124,10 +124,14 @@ public:
 	bool AddNotes(const CUInt128& keyID, const CUInt128& sourceID, Kademlia::CEntry* entry, uint8_t& load);
 	bool AddLoad(const CUInt128& keyID, uint32_t time);
 	size_t GetFileKeyCount() const throw() { return m_Keyword_map.size(); }
-	void SendValidKeywordResult(const CUInt128& keyID, const SSearchTerm* pSearchTerms, uint32_t ip, uint16_t port, bool oldClient, uint16_t startPosition, const CKadUDPKey& senderKey);
-	void SendValidSourceResult(const CUInt128& keyID, uint32_t ip, uint16_t port, uint16_t startPosition, uint64_t fileSize, const CKadUDPKey& senderKey);
-	void SendValidNoteResult(const CUInt128& keyID, uint32_t ip, uint16_t port, uint64_t fileSize, const CKadUDPKey& senderKey);
+        void SendValidKeywordResult(const CUInt128& keyID, const SSearchTerm* pSearchTerms, const CI2PAddress & dest, bool kad2, uint16_t startPosition, const CKadUDPKey& senderKey);
+        void SendValidSourceResult(const CUInt128& keyID, const CI2PAddress & dest, bool kad2, uint16_t startPosition, uint64_t fileSize, const CKadUDPKey& senderKey);
+        void SendValidNoteResult(const CUInt128& keyID, const CI2PAddress & dest, bool kad2, uint64_t fileSize, const CKadUDPKey& senderKey);
+        /// factorization on the 3 preceeding types of results to send
+        void SendResults ( const CUInt128& keyID, std::list<CEntry*> results, const CI2PAddress & dest, bool kad2, const CKadUDPKey& senderKey ) ;
 	bool SendStoreRequest(const CUInt128& keyID);
+        uint32_t GetSourceCount(const CUInt128& keyID) const;
+        uint32_t GetCompleteSourceCount(const CUInt128& keyID) const;
 	uint32_t m_totalIndexSource;
 	uint32_t m_totalIndexKeyword;
 	uint32_t m_totalIndexNotes;

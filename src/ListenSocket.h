@@ -31,18 +31,24 @@
 #define LISTENSOCKET_H
 
 #include "Proxy.h"		// Needed fot CProxyData, CSocketServerProxy
+#include "Types.h"
 
 #include <set>
+#include "i2p/wxI2PSocketServer.h"
 
 class CClientTCPSocket;
 
 // CListenSocket command target
-class CListenSocket : public CSocketServerProxy
+class CListenSocket : public wxI2PSocketServer
 {
 public:
-	CListenSocket(amuleIPV4Address &addr, const CProxyData *ProxyData = NULL);
+	//CListenSocket(amuleIPV4Address &addr, const CProxyData *ProxyData = NULL);
+	CListenSocket( const wxString & key ); //imule
 	~CListenSocket();
-	void	OnAccept();
+        virtual bool Destroy() ;
+        bool	StartListening();
+        void	StopListening();
+        void	OnAccept(int nErrorCode);
 	void	Process();
 	void	RemoveSocket(CClientTCPSocket* todel);
 	void	AddSocket(CClientTCPSocket* toadd);
@@ -52,6 +58,7 @@ public:
 	bool    IsValidSocket(CClientTCPSocket* totest);
 	void	AddConnection();
 	void	RecalculateStats();
+        void	ReStartListening();
 	void	UpdateConnectionsStatus();
 
 	float	GetMaxConperFiveModifier();
@@ -65,11 +72,12 @@ private:
 	typedef std::set<CClientTCPSocket *> SocketSet;
 	SocketSet socket_list;
 
+        bool bListening;
 	bool shutdown;
-	bool m_pending;
 
 	uint16	m_OpenSocketsInterval;
 	uint16	m_ConnectionStates[3];
+        uint16	m_nPendingConnections;
 	uint32	totalconnectionchecks;
 	float	averageconnections;
 };

@@ -37,6 +37,7 @@
 #include "Friend.h"		// Needed for CFriend
 #include "muuli_wdr.h"
 #include "SafeFile.h"
+#include "Logger.h"
 #include "FriendList.h"		// Needed for the friends list
 
 BEGIN_EVENT_TABLE(CFriendListCtrl, CMuleListCtrl)

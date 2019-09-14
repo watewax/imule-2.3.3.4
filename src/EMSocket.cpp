@@ -33,28 +33,22 @@
 #include "amule.h"
 #include "GetTickCount.h"
 #include "UploadBandwidthThrottler.h"
+#include <common/Format.h>
 #include "Logger.h"
 #include "Preferences.h"
-#include "ScopedPtr.h"
+#include <memory>
 
 
 const uint32 MAX_PACKET_SIZE = 2000000;
 
 // cppcheck-suppress uninitMemberVar CEMSocket::pendingHeader
-CEMSocket::CEMSocket(const CProxyData *ProxyData)
-	: CEncryptedStreamSocket(MULE_SOCKET_NOWAIT, ProxyData)
+CEMSocket::CEMSocket()
+        : CEncryptedStreamSocket(wxSOCKET_NOWAIT)
 {
 	// If an interface has been specified,
 	// then we need to bind to it.
-	if (!thePrefs::GetAddress().IsEmpty()) {
-		amuleIPV4Address host;
-
-		// No need to warn here, in case of failure to
-		// assign the hostname. That is already done
-		// in amule.cpp when starting ...
-		if (host.Hostname(thePrefs::GetAddress())) {
-			SetLocal(host);
-		}
+        if (!thePrefs::GetTcpPrivKey().IsEmpty()) {
+                SetLocal(thePrefs::GetTcpPrivKey());
 	}
 
 	byConnected = ES_NOTCONNECTED;
@@ -103,7 +97,7 @@ CEMSocket::~CEMSocket()
     // need to be locked here to know that the other methods
     // won't be in the middle of things
     {
-	wxMutexLocker lock(m_sendLocker);
+                wiMutexLocker lock(m_sendLocker);
 		byConnected = ES_DISCONNECTED;
 	}
 
@@ -124,7 +118,7 @@ CEMSocket::~CEMSocket()
 
 void CEMSocket::ClearQueues()
 {
-	wxMutexLocker lock(m_sendLocker);
+        wiMutexLocker lock(m_sendLocker);
 
 	DeleteContents(m_control_queue);
 
@@ -162,7 +156,7 @@ void CEMSocket::OnClose(int WXUNUSED(nErrorCode))
     // need to be locked here to know that the other methods
     // won't be in the middle of things
     {
-	wxMutexLocker lock(m_sendLocker);
+                wiMutexLocker lock(m_sendLocker);
 		byConnected = ES_DISCONNECTED;
 	}
 
@@ -176,6 +170,8 @@ void CEMSocket::OnClose(int WXUNUSED(nErrorCode))
 
 void CEMSocket::OnReceive(int nErrorCode)
 {
+        // the 2 meg size was taken from another place
+
 	if(nErrorCode) {
 		if (LastError()) {
 			OnError(nErrorCode);
@@ -220,13 +216,14 @@ void CEMSocket::OnReceive(int nErrorCode)
 			readMax = CPacket::GetPacketSizeFromHeader(pendingHeader) - pendingPacketSize;
 		}
 
+        // Remark: an overflow can not occur here
 		if (downloadLimitEnable && readMax > downloadLimit) {
 			readMax = downloadLimit;
 		}
 
 		ret = 0;
 		if (readMax) {
-			wxMutexLocker lock(m_sendLocker);
+			wiMutexLocker lock(m_sendLocker);
 			ret = Read(buf, readMax);
 			if (BlocksRead()) {
 				pendingOnReceive = true;
@@ -254,7 +251,7 @@ void CEMSocket::OnReceive(int nErrorCode)
 		if (pendingHeaderSize >= PACKET_HEADER_SIZE) {
 			pendingPacketSize += ret;
 			if (pendingPacketSize >= CPacket::GetPacketSizeFromHeader(pendingHeader)) {
-				CScopedPtr<CPacket> packet(new CPacket(pendingHeader, pendingPacket));
+                                std::unique_ptr<CPacket> packet(new CPacket(pendingHeader, pendingPacket));
 				pendingPacket = NULL;
 				pendingPacketSize = 0;
 				pendingHeaderSize = 0;
@@ -330,7 +327,7 @@ void CEMSocket::DisableDownloadLimit()
 void CEMSocket::SendPacket(CPacket* packet, bool delpacket, bool controlpacket, uint32 actualPayloadSize)
 {
 	//printf("* SendPacket called on socket %p\n", this);
-	wxMutexLocker lock(m_sendLocker);
+        wiMutexLocker lock(m_sendLocker);
 
 	if (byConnected == ES_DISCONNECTED) {
 		//printf("* Disconnected, drop packet\n");
@@ -366,7 +363,7 @@ void CEMSocket::SendPacket(CPacket* packet, bool delpacket, bool controlpacket, 
 
 uint64 CEMSocket::GetSentBytesCompleteFileSinceLastCallAndReset()
 {
-	wxMutexLocker lock( m_sendLocker );
+        wiMutexLocker lock( m_sendLocker );
 
 	uint64 sentBytes = m_numberOfSentBytesCompleteFile;
     m_numberOfSentBytesCompleteFile = 0;
@@ -377,7 +374,7 @@ uint64 CEMSocket::GetSentBytesCompleteFileSinceLastCallAndReset()
 
 uint64 CEMSocket::GetSentBytesPartFileSinceLastCallAndReset()
 {
-	wxMutexLocker lock( m_sendLocker );
+        wiMutexLocker lock( m_sendLocker );
 
 	uint64 sentBytes = m_numberOfSentBytesPartFile;
     m_numberOfSentBytesPartFile = 0;
@@ -387,7 +384,7 @@ uint64 CEMSocket::GetSentBytesPartFileSinceLastCallAndReset()
 
 uint64 CEMSocket::GetSentBytesControlPacketSinceLastCallAndReset()
 {
-	wxMutexLocker lock( m_sendLocker );
+        wiMutexLocker lock( m_sendLocker );
 
 	uint64 sentBytes = m_numberOfSentBytesControlPacket;
     m_numberOfSentBytesControlPacket = 0;
@@ -397,7 +394,7 @@ uint64 CEMSocket::GetSentBytesControlPacketSinceLastCallAndReset()
 
 uint64 CEMSocket::GetSentPayloadSinceLastCallAndReset()
 {
-	wxMutexLocker lock( m_sendLocker );
+        wiMutexLocker lock( m_sendLocker );
 
 	uint64 sentBytes = m_actualPayloadSizeSent;
     m_actualPayloadSizeSent = 0;
@@ -415,7 +412,7 @@ void CEMSocket::OnSend(int nErrorCode)
 
 	CEncryptedStreamSocket::OnSend(0);
 
-	wxMutexLocker lock( m_sendLocker );
+        wiMutexLocker lock( m_sendLocker );
     m_bBusy = false;
 
     if (byConnected != ES_DISCONNECTED) {
@@ -451,7 +448,7 @@ void CEMSocket::OnSend(int nErrorCode)
  */
 SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSize, bool onlyAllowedToSendControlPacket)
 {
-	wxMutexLocker lock(m_sendLocker);
+        wiMutexLocker lock(m_sendLocker);
 
 	//printf("* Attempt to send a packet on socket %p\n", this);
 
@@ -609,6 +606,7 @@ SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSiz
 					m_bAccelerateUpload = false; // Safe until told otherwise
 				}
 
+                                Flush(); // force flushing wxI2PSocketClient
 				sent = 0;
 			}
 		}
@@ -655,7 +653,7 @@ uint32 CEMSocket::GetNeededBytes()
 	uint64 sizeleft, sizetotal;
 
 	{
-		wxMutexLocker lock(m_sendLocker);
+                wiMutexLocker lock(m_sendLocker);
 
 		if (byConnected == ES_DISCONNECTED) {
 			return 0;
@@ -711,7 +709,7 @@ uint32 CEMSocket::GetNeededBytes()
  */
 void CEMSocket::TruncateQueues()
 {
-	wxMutexLocker lock(m_sendLocker);
+        wiMutexLocker lock(m_sendLocker);
 
 	// Clear the standard queue totally
     // Please note! There may still be a standardpacket in the sendbuffer variable!

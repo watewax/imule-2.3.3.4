@@ -58,6 +58,7 @@
 #include <common/Path.h>
 #include <common/StringFunctions.h>
 #include <common/TextFile.h>
+#include <common/coroutine.h>
 
 #include "ClientCreditsList.h"
 #include "ClientList.h"

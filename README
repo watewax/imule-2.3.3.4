@@ -1,0 +1,22 @@
+This is a rough merge down of iMule changes over to the latest aMule code base as of 2019/07/15.
+
+DO NOT COMPILE WITH ASIO ENABLED. THIS IS NOT TESTED IN IMULE!
+
+
+Some directories have not been fully tested:
+- platforms
+  - Windows
+  - MacOSX
+- po (translation files have not been updated)
+
+
+Files that seemed heavily modified by iMule team compared to others:
+- Kademlia
+- libs
+
+TODO:
+- check back on every files until EncryptedStreamSocket.cpp for muleSocketFlags replacing wxSocketFlags
+- check back on amuleIPV4Address replacing wxIPaddress -> we'll have to keep wxIPaddress for now
+- we might have a problem with GetPeer() that got redefined(?) in LibSocket.h, but gets overloaded by wxI2PSocketClient.h, see EncryptedStreamSocket.h line 281? Although the arguments should pick the right definition -> I think they just used GetPeer() while testing Asio and using LibSocket.h there.
+- we might have a big set of problems from the changes in ListenSocket.cpp
+- have reverted back to config dir checking in OtherFunctions.cpp, we don't have CConfigDir class anymore.

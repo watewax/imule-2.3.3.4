@@ -41,8 +41,9 @@ CAsyncDNS::CAsyncDNS(const wxString& ipName, DnsSolveType type, wxEvtHandler* ha
 }
 
 
-wxThread::ExitCode CAsyncDNS::Entry()
+int CAsyncDNS::Entry()
 {
+       wxASSERT_MSG(false, wxT("CAsyncDNS should not be launched because dns->Run() never destroys dns"));
 	uint32 result = StringHosttoUint32(m_ipName);
 	uint32 event_id = 0;
 	void* event_data = NULL;
@@ -65,12 +66,12 @@ wxThread::ExitCode CAsyncDNS::Entry()
 	}
 
 	if (event_id) {
-		CMuleInternalEvent evt(event_id);
-		evt.SetExtraLong(result);
-		evt.SetClientData(event_data);
-		wxPostEvent(m_handler,evt);
+                CMuleInternalEvent * evt = new CMuleInternalEvent(event_id);
+                evt->SetExtraLong(result);
+                evt->SetClientData(event_data);
+                wxQueueEvent(m_handler,evt);
 	}
 
-	return NULL;
+        return 0;
 }
 // File_checked_for_headers

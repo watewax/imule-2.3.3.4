@@ -51,5 +51,21 @@ wxString OriginToText(unsigned int source_from);
  */
 wxString GetConversionState(unsigned int state);
 
+/**
+ * @return The textual representation of an operation code
+ */
+wxString opstr ( int prot );
+
+/**
+ * @return The textual representation of an operation code
+ */
+wxString opstr ( int prot, int op );
+
+/**
+ * @return The textual representation of a kad operation code
+ */
+wxString kadopstr ( int op );
+
+
 #endif /* DATATOTEXT_H */
 // File_checked_for_headers

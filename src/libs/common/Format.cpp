@@ -372,7 +372,7 @@ wxString CFormat::GetModifiers(FormatList::const_iterator it) const
 		result += wxString::Format(wxT("%u"), it->width);
 	}
 	if (it->precision >= 0) {
-		result += wxString::Format(wxT(".%u"), it->precision);
+                result += wxString::Format(wxT(".%d"), it->precision);
 	}
 	return result;
 }

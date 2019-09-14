@@ -30,6 +30,8 @@
 #include "Types.h"		// Needed for uint16 and uint32
 #include <common/Format.h>	// Needed for CFormat
 
+#include <i2p/CI2PAddress.h>
+
 // Network ip/host handling functions
 // These functions take IPs in anti-host order
 
@@ -112,20 +114,18 @@ uint32 StringHosttoUint32(const wxString &Host);
  *
  * Note: IP must be in anti-host order (BE on LE platform, LE on BE platform).
  */
-bool IsGoodIP( uint32 IP, bool filterLAN ) throw();
-
-
-inline bool IsGoodIPPort(uint32 nIP, uint16 nPort) throw()
+inline bool IsGoodDest( const CI2PAddress & Dest ) throw();
 {
-	return IsGoodIP(nIP, true) && nPort!=0;
+        return Dest.isValid();
 }
 
-#define HIGHEST_LOWID_ED2K_KAD		16777216
 
+
+#define HIGHEST_LOWID_ED2K_KAD          0
 
 inline bool IsLowID(uint32 id)
 {
-	return (id < HIGHEST_LOWID_ED2K_KAD);
+        return (id <= HIGHEST_LOWID_ED2K_KAD);
 }
 
 

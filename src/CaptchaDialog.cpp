@@ -36,7 +36,7 @@ END_EVENT_TABLE()
 CCaptchaDialog::CCaptchaDialog(
 	wxWindow *parent,
 	const wxImage& captchaImage,
-	uint64 id)
+	const CI2PAddress& id)
 :
 wxDialog(
 	parent,

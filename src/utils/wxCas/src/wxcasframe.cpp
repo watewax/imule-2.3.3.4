@@ -108,7 +108,7 @@ WxCasFrame::WxCasFrame ( const wxString & title ) :
 #endif
 
 	// Statistics Static Vertical Box Sizer
-	m_sigPanelSBox = new wxStaticBox ( m_mainPanel, -1, _( "aMule" ) );
+        m_sigPanelSBox = new wxStaticBox ( m_mainPanel, -1, _( "iMule" ) );
 	m_sigPanelSBoxSizer = new wxStaticBoxSizer ( m_sigPanelSBox, wxVERTICAL );
 
 	// Hit Static Horizontal Box Sizer
@@ -147,19 +147,19 @@ WxCasFrame::WxCasFrame ( const wxString & title ) :
 #endif
 
 	// Statistic Panel Layout
-	m_sigPanelSBoxSizer->Add ( m_statLine_1, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
-	m_sigPanelSBoxSizer->Add ( m_statLine_2, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
-	m_sigPanelSBoxSizer->Add ( m_statLine_3, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
-	m_sigPanelSBoxSizer->Add ( m_statLine_4, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
-	m_sigPanelSBoxSizer->Add ( m_statLine_5, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
-	m_sigPanelSBoxSizer->Add ( m_statLine_6, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
-	m_sigPanelSBoxSizer->Add ( m_statLine_7, 0, wxALL | wxALIGN_CENTER | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_1, 0, wxALL | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_2, 0, wxALL | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_3, 0, wxALL | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_4, 0, wxALL | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_5, 0, wxALL | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_6, 0, wxALL | wxGROW, 5 );
+        m_sigPanelSBoxSizer->Add ( m_statLine_7, 0, wxALL | wxGROW, 5 );
 
-	m_hitPanelSBoxSizer->Add ( m_hitLine, 0, wxALL | wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxGROW, 5 );
-	m_hitPanelSBoxSizer->Add ( m_hitButton, 0, wxALL | wxALIGN_RIGHT, 5 );
+        m_hitPanelSBoxSizer->Add ( m_hitLine, 0, wxALL | wxALIGN_LEFT | wxGROW, 5 );
+        m_hitPanelSBoxSizer->Add ( m_hitButton, 0, wxALL, 5 );
 
-	m_absHitPanelSBoxSizer->Add ( m_absHitLine, 0, wxALL | wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxGROW, 5 );
-	m_absHitPanelSBoxSizer->Add ( m_absHitButton, 0, wxALL | wxALIGN_RIGHT, 5 );
+        m_absHitPanelSBoxSizer->Add ( m_absHitLine, 0, wxALL | wxALIGN_LEFT | wxGROW, 5 );
+        m_absHitPanelSBoxSizer->Add ( m_absHitButton, 0, wxALL, 5 );
 
 #ifdef __LINUX__		// System monitoring on Linux
 
@@ -168,22 +168,22 @@ WxCasFrame::WxCasFrame ( const wxString & title ) :
 #endif
 
 	// Main panel Layout
-	m_mainPanelVBox->Add ( m_staticLine, 0, wxALL | wxALIGN_CENTER | wxGROW );
+        m_mainPanelVBox->Add ( m_staticLine, 0, wxALL | wxGROW );
 
-	m_mainPanelVBox->Add ( m_sigPanelSBoxSizer, 0, wxALL | wxALIGN_CENTER | wxGROW, 10 );
+        m_mainPanelVBox->Add ( m_sigPanelSBoxSizer, 0, wxALL | wxGROW, 10 );
 
 #ifdef __LINUX__		// System monitoring on Linux
 
 	m_mainPanelVBox->Add ( m_monPanelSBoxSizer, 0, wxALL | wxALIGN_CENTER | wxGROW, 10 );
 #endif
 
-	m_mainPanelVBox->Add ( m_hitPanelSBoxSizer, 0, wxALL | wxALIGN_CENTER | wxGROW, 10 );
+        m_mainPanelVBox->Add ( m_hitPanelSBoxSizer, 0, wxALL | wxGROW, 10 );
 
-	m_mainPanelVBox->Add ( m_absHitPanelSBoxSizer, 0, wxALL | wxALIGN_CENTER | wxGROW, 10 );
+        m_mainPanelVBox->Add ( m_absHitPanelSBoxSizer, 0, wxALL | wxGROW, 10 );
 
 #ifdef __WINDOWS__
 
-	m_mainPanelVBox->Add ( m_BottomStaticLine, 0, wxALL | wxALIGN_CENTER | wxGROW );
+        m_mainPanelVBox->Add ( m_BottomStaticLine, 0, wxALL | wxGROW );
 #endif
 
 	// Toolbar Pixmaps
@@ -406,7 +406,7 @@ void
 WxCasFrame::OnBarAbout ( wxCommandEvent& WXUNUSED( event ) )
 {
 	wxMessageBox ( _
-	               ( "wxCas, aMule OnLine Signature Statistics\n\n(c) 2004 ThePolish <thepolish@vipmail.ru>\n\nBased on CAS by Pedro de Oliveira <falso@rdk.homeip.net>\n\nDistributed under GPL" ),
+                       ( "wxCas, iMule OnLine Signature Statistics\n\n(c) 2004 ThePolish <thepolish@vipmail.ru>\n\nBased on CAS by Pedro de Oliveira <falso@rdk.homeip.net>\n\nDistributed under GPL" ),
 	               _( "About wxCas" ), wxOK | wxCENTRE | wxICON_INFORMATION );
 }
 
@@ -572,7 +572,7 @@ WxCasFrame::UpdateStatsPanel ()
 
 	// aMule is not running
 	if ( m_aMuleSig->GetUpStatus () == 0) {
-		status = _( "Oh Oh, aMule is not running..." );
+                status = _( "Oh Oh, iMule is not running..." );
 		newline = MakeStatLine_2();
 		m_statLine_2->SetLabel ( newline );
 
@@ -648,7 +648,7 @@ WxCasFrame::UpdateStatsPanel ()
 		newMaxLineCount = GetMaxUInt( newline.Length (), newMaxLineCount );
 #endif
 
-		status = _( "aMule is running" );
+                status = _( "iMule is running" );
 	}
 	// aMule is running, ed2k is off, but kad connected
 	else if ( (m_aMuleSig->GetAmuleState () == 0) && (m_aMuleSig->GetKadState () == 1 || m_aMuleSig->GetKadState () == 2 )) {
@@ -718,7 +718,7 @@ WxCasFrame::UpdateStatsPanel ()
 
 		newMaxLineCount = GetMaxUInt( newline.Length (), newMaxLineCount );
 #endif
-		status = _( "aMule is running" );
+		status = _( "iMule is running" );
 	}
 	else if ( (m_aMuleSig->GetAmuleState () == 1) && (m_aMuleSig->GetKadState () == 0)) {
 		// Stat line 2
@@ -787,7 +787,7 @@ WxCasFrame::UpdateStatsPanel ()
 
 		newMaxLineCount = GetMaxUInt( newline.Length (), newMaxLineCount );
 #endif
-		status = _( "aMule is running" );
+		status = _( "iMule is running" );
 	}
 	//both disconnected
 	else if ( (m_aMuleSig->GetAmuleState () == 0) && (m_aMuleSig->GetKadState () == 0)) {
@@ -857,7 +857,7 @@ WxCasFrame::UpdateStatsPanel ()
 
 		newMaxLineCount = GetMaxUInt( newline.Length (), newMaxLineCount );
 #endif
-		status = _( "aMule is running, but disconnected" );
+		status = _( "iMule is running, but disconnected" );
 	}
 	// aMule is connecting
 	else if ( m_aMuleSig->GetAmuleState () == 2 ) {
@@ -928,11 +928,11 @@ WxCasFrame::UpdateStatsPanel ()
 		newMaxLineCount = GetMaxUInt( newline.Length (), newMaxLineCount );
 #endif
 
-		status = _( "aMule is connecting..." );
+                status = _( "iMule is connecting..." );
 	}
 	// aMule status is unknown
 	else {
-		status = _( "Oh Oh, aMule status is unknown..." );
+                status = _( "Oh Oh, iMule status is unknown..." );
 	}
 
 	Thaw ();
@@ -1003,24 +1003,24 @@ WxCasFrame::MakeStatLine_1() const
 {
 	wxString newline;
 	if ( m_aMuleSig->GetAmuleState () == 1 || m_aMuleSig->GetKadState () == 1 || m_aMuleSig->GetKadState () == 2 ) {
-		newline = _( "aMule " )
+                newline = _( "iMule " )
 		          + m_aMuleSig->GetVersion ()
 		          + _( " has been running for " )
 		          + m_aMuleSig->GetRunTime ();
 	} else if ( m_aMuleSig->GetUpStatus () == 0 ) {
-		newline  = _( "aMule " )
+                newline  = _( "iMule " )
 		          + m_aMuleSig->GetVersion ()
 		          + _( " is stopped !" );
 	} else if ( m_aMuleSig->GetAmuleState () == 0 && m_aMuleSig->GetKadState () == 0 ) {
-		newline = _( "aMule " )
+                newline = _( "iMule " )
 		          + m_aMuleSig->GetVersion ()
 		          + _( " is not connected !" );
 	} else if ( m_aMuleSig->GetAmuleState () == 2 ) {
-		newline = _( "aMule " )
+                newline = _( "iMule " )
 		          + m_aMuleSig->GetVersion ()
 		          + _( " is connecting..." );
 	} else {
-		newline = _( "aMule " )
+                newline = _( "iMule " )
 		          + m_aMuleSig->GetVersion ()
 		          + _( " is doing something strange, check it !" );
 	}

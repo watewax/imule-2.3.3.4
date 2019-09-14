@@ -27,6 +27,7 @@
 #define OBSERVABLEQUEUE_H
 
 #include "Observable.h"
+#include "MuleThread.h"
 
 
 
@@ -354,7 +355,7 @@ CQueueObserver<ValueType>::CQueueObserver()
 template <typename ValueType>
 void CQueueObserver<ValueType>::ReceiveNotification( const ObservableType* o, const EventType& e )
 {
-	wxMutexLocker lock( m_mutex );
+        wiMutexLocker lock( m_mutex );
 
 	if ( e.GetEvent() == EventType::INSERTED || e.GetEvent() == EventType::INITIAL ) {
 		for ( size_t i = 0; i < e.GetCount(); i++ ) {
@@ -385,7 +386,7 @@ void CQueueObserver<ValueType>::ReceiveNotification( const ObservableType* o, co
 template <typename ValueType>
 ValueType CQueueObserver<ValueType>::GetNext()
 {
-	wxMutexLocker lock( m_mutex );
+        wiMutexLocker lock( m_mutex );
 
 	if (!m_queue.empty()) {
 		ValueType v = *m_queue.begin();
@@ -401,7 +402,7 @@ ValueType CQueueObserver<ValueType>::GetNext()
 template <typename ValueType>
 size_t CQueueObserver<ValueType>::GetRemaining() const
 {
-	wxMutexLocker lock( m_mutex );
+        wiMutexLocker lock( m_mutex );
 
 	return m_queue.size();
 }
@@ -420,7 +421,7 @@ void CQueueObserver<ValueType>::Reset()
 	ObservableType* owner;
 
 	{
-		wxMutexLocker lock(m_mutex);
+                wiMutexLocker lock(m_mutex);
 		m_queue.clear();
 		owner = const_cast<ObservableType*>( m_owner );
 	}

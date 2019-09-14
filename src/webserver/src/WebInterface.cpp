@@ -296,7 +296,7 @@ class CWebserverAppTraits : public wxConsoleAppTraits
 {
 private:
 	CWebserverGSocketFuncTable *m_table;
-	wxMutex m_lock;
+        wiMutex m_lock;
 	std::list<wxObject *> m_sched_delete;
 
 public:
@@ -311,7 +311,7 @@ public:
 CWebserverAppTraits::CWebserverAppTraits(CWebserverGSocketFuncTable *table)
 :
 wxConsoleAppTraits(),
-m_table(table),m_lock(wxMUTEX_RECURSIVE),
+        m_table(table),m_lock(wiMUTEX_RECURSIVE),
 m_sched_delete()
 {
 	m_lock.Unlock();
@@ -326,14 +326,14 @@ GSocketGUIFunctionsTable *CWebserverAppTraits::GetSocketGUIFunctionsTable()
 
 void CWebserverAppTraits::ScheduleForDestroy(wxObject *object)
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 	m_sched_delete.push_back(object);
 }
 
 
 void CWebserverAppTraits::RemoveFromPendingDelete(wxObject *object)
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 
 	for(std::list<wxObject *>::iterator i = m_sched_delete.begin();
 	    i != m_sched_delete.end(); i++) {
@@ -347,12 +347,10 @@ void CWebserverAppTraits::RemoveFromPendingDelete(wxObject *object)
 
 void CWebserverAppTraits::DeletePending()
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 
-	while (!m_sched_delete.empty()) {
-		std::list<wxObject *>::iterator i = m_sched_delete.begin();
-		wxObject *object = *i;
-		delete object;
+        for (wxOject *object: m_sched_delete) delete object;
+        m_sched_delete.clear();
 	}
 }
 
@@ -431,7 +429,7 @@ bool CamulewebApp::OnInit()
 
 int CamulewebApp::OnRun()
 {
-	ConnectAndRun(wxT("aMuleweb"), wxT(VERSION));
+        ConnectAndRun(wxT("imuleweb"), wxT(VERSION));
 	return 0;
 }
 
@@ -477,7 +475,7 @@ bool CamulewebApp::GetTemplateDir(const wxString& templateName, wxString& templa
 	OSStatus status = LSFindApplicationForInfo(
 		kLSUnknownCreator,
 		// This magic string is the bundle identifier in aMule.app's Info.plist
-		CFSTR("org.amule.aMule"),
+		CFSTR("org.imule.iMule"),
 		NULL, NULL, &amuleBundleUrl);
 	if (status == noErr && amuleBundleUrl) {
 		CFBundleRef amuleBundle = CFBundleCreate(NULL, amuleBundleUrl);
@@ -532,7 +530,7 @@ bool CamulewebApp::GetTemplateDir(const wxString& templateName, wxString& templa
 	dir = wxStandardPaths::Get().GetResourcesDir();	// Returns 'aMule' when we use 'amule' elsewhere
 #if !defined(__WINDOWS__) && !defined(__WXMAC__)
 	dir = dir.BeforeLast(wxFileName::GetPathSeparator());
-	dir = JoinPaths(dir, wxT("amule"));
+        dir = JoinPaths(dir, wxT("imule"));
 #endif
 	dir = JoinPaths(dir, wxT("webserver"));
 	if (CheckDirForTemplate(dir, templateName)) {
@@ -553,7 +551,7 @@ bool CamulewebApp::GetTemplateDir(const wxString& templateName, wxString& templa
 
 void CamulewebApp::OnInitCmdLine(wxCmdLineParser& amuleweb_parser)
 {
-	CaMuleExternalConnector::OnInitCmdLine(amuleweb_parser, "amuleweb");
+        CaMuleExternalConnector::OnInitCmdLine(amuleweb_parser, "imuleweb");
 	amuleweb_parser.AddOption(wxT("t"), wxT("template"),
 		_("Loads template <str>"),
 		wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
@@ -595,11 +593,11 @@ void CamulewebApp::OnInitCmdLine(wxCmdLineParser& amuleweb_parser)
 		wxCMD_LINE_PARAM_OPTIONAL);
 
 	amuleweb_parser.AddSwitch(wxT("L"), wxT("load-settings"),
-		_("Load/save web server settings from/to remote aMule"),
+		_("Load/save web server settings from/to remote iMule"),
 		wxCMD_LINE_PARAM_OPTIONAL);
 
-	amuleweb_parser.AddOption(wxEmptyString, wxT("amule-config-file"),
-		_("aMule config file path. DO NOT USE DIRECTLY!"),
+	amuleweb_parser.AddOption(wxEmptyString, wxT("imule-config-file"),
+		_("iMule config file path. DO NOT USE DIRECTLY!"),
 		wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
 
 	/*
@@ -623,7 +621,7 @@ void CamulewebApp::OnInitCmdLine(wxCmdLineParser& amuleweb_parser)
 bool CamulewebApp::OnCmdLineParsed(wxCmdLineParser& parser)
 {
 	wxString aMuleConfigFile;
-	if (parser.Found(wxT("amule-config-file"), &aMuleConfigFile)) {
+	if (parser.Found(wxT("imule-config-file"), &aMuleConfigFile)) {
 		aMuleConfigFile = FinalizeFilename(aMuleConfigFile);
 		if (!::wxFileExists(aMuleConfigFile)) {
 			fprintf(stderr, "FATAL ERROR: file '%s' does not exist.\n",
@@ -713,7 +711,7 @@ bool CamulewebApp::OnCmdLineParsed(wxCmdLineParser& parser)
 
 const wxString CamulewebApp::GetGreetingTitle()
 {
-	return _("aMule Web Server");
+	return _("iMule Web Server");
 }
 
 
@@ -840,7 +838,7 @@ wxString CamulewebApp::SetLocale(const wxString& language)
 	if (!lang.IsEmpty()) {
 		DebugShow(wxT("*** Language set to: ") + lang + wxT(" ***\n"));
 #ifdef ENABLE_NLS
-		wxString domain = wxT("amuleweb-") + m_TemplateName;
+                wxString domain = wxT("imuleweb-") + m_TemplateName;
 		Unicode2CharBuf domainBuf = unicode2char(domain);
 		const char *c_domain = (const char *)domainBuf;
 

@@ -27,7 +27,9 @@
 #define FRIENDLIST_H
 
 
-#include "Types.h"	// Needed for uint32
+#include "Types.h"	// Needed for uint32_t
+
+#include "i2p/CI2PAddress.h"
 
 class wxString;
 class CFriend;
@@ -41,14 +43,14 @@ public:
 	CFriendList();
 	~CFriendList();
 
-	bool		IsAlreadyFriend(uint32 dwLastUsedIP, uint32 nLastUsedPort);
+        bool		IsAlreadyFriend(const CI2PAddress & dwLastUsedIP, uint16 nLastUsedPort);
 	void		SaveList();
 	void		LoadList();
-	CFriend*	FindFriend(const CMD4Hash& userhash, uint32 dwIP, uint16 nPort);
+        CFriend*	FindFriend( const CMD4Hash& userhash, const CI2PAddress &nDest, uint16 port);
 	CFriend*	FindFriend(uint32 ecid);
 	void		AddFriend(CFriend* toadd, bool notify = true);
 	void		AddFriend(const CClientRef& toadd);
-	void		AddFriend(const CMD4Hash& userhash, uint32 lastUsedIP, uint32 lastUsedPort, const wxString& name, uint32 lastSeen = 0, uint32 lastChatted = 0);
+        void		AddFriend(const CMD4Hash& userhash, const CI2PAddress &lastUsedDest, const wxString& name, uint32 lastSeen = 0, uint32 lastChatted = 0);
 	void		RemoveFriend(CFriend* toremove);
 	void		RequestSharedFileList(CFriend* Friend);
 

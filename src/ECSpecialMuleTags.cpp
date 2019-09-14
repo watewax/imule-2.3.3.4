@@ -96,11 +96,41 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 		CECEmptyTag user_prefs(EC_TAG_PREFS_GENERAL);
 		user_prefs.AddTag(CECTag(EC_TAG_USER_NICK, thePrefs::GetUserNick()));
 		user_prefs.AddTag(CECTag(EC_TAG_USER_HASH, thePrefs::GetUserHash()));
-		user_prefs.AddTag(CECTag(EC_TAG_USER_HOST, thePrefs::GetYourHostname()));
 		user_prefs.AddTag(CECTag(EC_TAG_GENERAL_CHECK_NEW_VERSION, thePrefs::GetCheckNewVersion()));
 		AddTag(user_prefs);
 	}
 
+        if (selection & EC_PREFS_I2PCONNECTION) {
+                CECEmptyTag connPrefs(EC_TAG_PREFS_I2PCONNECTION);
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SERVER_DYNIP,   thePrefs::GetI2PServerDynIP()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SERVER_I2PTCPPORT, thePrefs::GetI2PServerI2PTcpPort()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SERVER_I2PUDPPORT, thePrefs::GetI2PServerI2PUdpPort()));
+                if (thePrefs::GetI2PServerUseDynIP())
+                        connPrefs.AddTag(CECEmptyTag(EC_TAG_I2PCONN_SERVER_ISDYNIP));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SERVERIP,       thePrefs::GetI2PServerIP()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SERVERPORT,     thePrefs::GetI2PServerPort()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SAMTCPPORT,     thePrefs::GetI2PSamTcpPort()));
+//		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_SAMUDPPORT,     thePrefs::GetI2PSamUdpPort()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_PROXYPORT,      thePrefs::GetI2PProxyPort()));
+                if (thePrefs::GetI2PServerInternal())
+                        connPrefs.AddTag(CECEmptyTag(EC_TAG_I2PCONN_SERVERINTERNAL));
+                /*		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_IpToWatch,      thePrefs::GetIpToWatch()));
+                		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_TcpPortToWatch,      thePrefs::GetTcpPortToWatch()));
+                		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_UdpPortToWatch,      thePrefs::GetUdpPortToWatch()));
+                		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_AddressFromRouter,      thePrefs::GetAddressFromRouter()));
+                		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_TcpPortFromRouter,      thePrefs::GetTcpPortFromRouter()));
+                		connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_UdpPortFromRouter,      thePrefs::GetUdpPortFromRouter())); */
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_INBOUNDHOPS,    thePrefs::GetI2PInboundHops()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_OUTBOUNDHOPS,   thePrefs::GetI2POutboundHops()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_NBUDPTUNNELS,   thePrefs::GetI2PNbUDPTunnels()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_NBTCPTUNNELS,   thePrefs::GetI2PNbTCPTunnels()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_BANDWIDTHSHAREPERCENTAGE,    thePrefs::GetI2PBandwidthSharePercentage()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PCONN_CLIENTNAME,     thePrefs::GetI2PClientName()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PPROP_INBOUND_BANDWIDTH, thePrefs::GetI2PPROP_INBOUND_BANDWIDTH()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PPROP_OUTBOUND_BANDWIDTH, thePrefs::GetI2PPROP_OUTBOUND_BANDWIDTH()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PPROP_INBOUND_BURST_BANDWIDTH, thePrefs::GetI2PPROP_INBOUND_BURST_BANDWIDTH()));
+                connPrefs.AddTag(CECTag(EC_TAG_I2PPROP_OUTBOUND_BURST_BANDWIDTH, thePrefs::GetI2PPROP_OUTBOUND_BURST_BANDWIDTH()));
+        }
 	if (selection & EC_PREFS_CONNECTIONS) {
 		CECEmptyTag connPrefs(EC_TAG_PREFS_CONNECTIONS);
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_UL_CAP, thePrefs::GetMaxGraphUploadRate()));
@@ -108,8 +138,6 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_UL, thePrefs::GetMaxUpload()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_MAX_DL, thePrefs::GetMaxDownload()));
 		connPrefs.AddTag(CECTag(EC_TAG_CONN_SLOT_ALLOCATION, thePrefs::GetSlotAllocation()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_TCP_PORT, thePrefs::GetPort()));
-		connPrefs.AddTag(CECTag(EC_TAG_CONN_UDP_PORT, thePrefs::GetUDPPort()));
 		if (thePrefs::IsUDPDisabled()) {
 			connPrefs.AddTag(CECEmptyTag(EC_TAG_CONN_UDP_DISABLE));
 		}
@@ -268,6 +296,7 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 	}
 
 	if (selection & EC_PREFS_DIRECTORIES) {
+                //#warning TODO
 		CECEmptyTag dirPrefs(EC_TAG_PREFS_DIRECTORIES);
 		dirPrefs.AddTag(CECTag(EC_TAG_DIRECTORIES_INCOMING, thePrefs::GetIncomingDir().GetRaw()));
 		dirPrefs.AddTag(CECTag(EC_TAG_DIRECTORIES_TEMP, thePrefs::GetTempDir().GetRaw()));
@@ -299,9 +328,6 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
 		}
 		secPrefs.AddTag(CECTag(EC_TAG_IPFILTER_UPDATE_URL, thePrefs::IPFilterURL()));
 		secPrefs.AddTag(CECTag(EC_TAG_IPFILTER_LEVEL, thePrefs::GetIPFilterLevel()));
-		if (thePrefs::FilterLanIPs()) {
-			secPrefs.AddTag(CECEmptyTag(EC_TAG_IPFILTER_FILTER_LAN));
-		}
 		if (thePrefs::IsSecureIdentEnabled()) {
 			secPrefs.AddTag(CECEmptyTag(EC_TAG_SECURITY_USE_SECIDENT));
 		}
@@ -346,7 +372,7 @@ CEC_Prefs_Packet::CEC_Prefs_Packet(uint32 selection, EC_DETAIL_LEVEL pref_detail
  * @param applyFunc	The function to use for applying the value
  * @param tagName	The name of the TAG that holds the boolean value
  */
-void ApplyBoolean(bool use_tag, const CECTag *thisTab, void (applyFunc)(bool), int tagName)
+void ApplyBoolean(bool use_tag, const CECTag *thisTab, void (applyFunc)(bool), ECTagNames tagName)
 {
 	const CECTag *boolTag = thisTab->GetTagByName(tagName);
 	if (use_tag) {
@@ -375,9 +401,6 @@ void CEC_Prefs_Packet::Apply() const
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_USER_HASH)) != NULL) {
 			thePrefs::SetUserHash(oneTag->GetMD4Data());
 		}
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_USER_HOST)) != NULL) {
-			thePrefs::SetYourHostname(oneTag->GetStringData());
-		}
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_GENERAL_CHECK_NEW_VERSION)) != NULL) {
 			thePrefs::SetCheckNewVersion(oneTag->GetInt() != 0);
 		}
@@ -404,11 +427,79 @@ void CEC_Prefs_Packet::Apply() const
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_SLOT_ALLOCATION)) != NULL) {
 			thePrefs::SetSlotAllocation(oneTag->GetInt());
 		}
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_TCP_PORT)) != NULL) {
-			thePrefs::SetPort(oneTag->GetInt());
+                ApplyBoolean(use_tag, thisTab, thePrefs::SetI2PServerUseDynIP, EC_TAG_I2PCONN_SERVER_ISDYNIP);
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SERVER_DYNIP)) != NULL) {
+                        thePrefs::SetI2PServerDynIP(oneTag->GetStringData());
 		}
-		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_UDP_PORT)) != NULL) {
-			thePrefs::SetUDPPort(oneTag->GetInt());
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SERVER_I2PTCPPORT)) != NULL) {
+                        thePrefs::SetI2PServerI2PTcpPort(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SERVER_I2PUDPPORT)) != NULL) {
+                        thePrefs::SetI2PServerI2PUdpPort(oneTag->GetInt());
+                }
+                ApplyBoolean(use_tag, thisTab, thePrefs::SetI2PServerInternal, EC_TAG_I2PCONN_SERVERINTERNAL);
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SERVERIP)) != NULL) {
+                        thePrefs::SetI2PServerIP(oneTag->GetStringData());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SERVERPORT)) != NULL) {
+                        thePrefs::SetI2PServerPort(oneTag->GetInt());
+                }
+                /*		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SAMUDPPORT)) != NULL) {
+                			thePrefs::SetI2PSamUdpPort(oneTag->GetInt());
+                		}*/
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_SAMTCPPORT)) != NULL) {
+                        thePrefs::SetI2PSamTcpPort(oneTag->GetInt());
+                }
+                /*		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_IpToWatch)) != NULL) {
+                			thePrefs::SetIpToWatch(oneTag->GetStringData());
+                		}
+                		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_TcpPortToWatch)) != NULL) {
+                			thePrefs::SetTcpPortToWatch(oneTag->GetInt());
+                		}
+                		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_UdpPortToWatch)) != NULL) {
+                			thePrefs::SetUdpPortToWatch(oneTag->GetInt());
+                		}
+                		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_AddressFromRouter)) != NULL) {
+                			thePrefs::SetAddressFromRouter(oneTag->GetStringData());
+                		}
+                		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_TcpPortFromRouter)) != NULL) {
+                			thePrefs::SetTcpPortFromRouter(oneTag->GetInt());
+                		}
+                		if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_UdpPortFromRouter)) != NULL) {
+                			thePrefs::SetUdpPortFromRouter(oneTag->GetInt());
+                		}*/
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_PROXYPORT)) != NULL) {
+                        thePrefs::SetI2PProxyPort(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_INBOUNDHOPS)) != NULL) {
+                        thePrefs::SetI2PInboundHops(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_OUTBOUNDHOPS)) != NULL) {
+                        thePrefs::SetI2POutboundHops(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_NBUDPTUNNELS)) != NULL) {
+                        thePrefs::SetI2PNbUDPTunnels(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_NBTCPTUNNELS)) != NULL) {
+                        thePrefs::SetI2PNbTCPTunnels(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_BANDWIDTHSHAREPERCENTAGE)) != NULL) {
+                        thePrefs::SetI2PBandwidthSharePercentage(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PPROP_INBOUND_BANDWIDTH)) != NULL) {
+                        thePrefs::SetI2PPROP_INBOUND_BANDWIDTH(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PPROP_OUTBOUND_BANDWIDTH)) != NULL) {
+                        thePrefs::SetI2PPROP_OUTBOUND_BANDWIDTH(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PPROP_INBOUND_BURST_BANDWIDTH)) != NULL) {
+                        thePrefs::SetI2PPROP_INBOUND_BURST_BANDWIDTH(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PPROP_OUTBOUND_BURST_BANDWIDTH)) != NULL) {
+                        thePrefs::SetI2PPROP_OUTBOUND_BURST_BANDWIDTH(oneTag->GetInt());
+                }
+                if ((oneTag = thisTab->GetTagByName(EC_TAG_I2PCONN_CLIENTNAME)) != NULL) {
+                        thePrefs::SetI2PClientName(oneTag->GetStringData());
 		}
 		ApplyBoolean(use_tag, thisTab, thePrefs::SetUDPDisable, EC_TAG_CONN_UDP_DISABLE);
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_CONN_MAX_FILE_SOURCES)) != NULL) {
@@ -500,6 +591,7 @@ void CEC_Prefs_Packet::Apply() const
 	}
 
 	if ((thisTab = GetTagByName(EC_TAG_PREFS_DIRECTORIES)) != NULL) {
+                //#warning TODO
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_DIRECTORIES_INCOMING)) != NULL) {
 			thePrefs::SetIncomingDir(CPath(oneTag->GetStringData()));
 		}
@@ -532,7 +624,6 @@ void CEC_Prefs_Packet::Apply() const
 		if ((oneTag = thisTab->GetTagByName(EC_TAG_IPFILTER_LEVEL)) != NULL) {
 			thePrefs::SetIPFilterLevel(oneTag->GetInt());
 		}
-		ApplyBoolean(use_tag, thisTab, thePrefs::SetFilterLanIPs, EC_TAG_IPFILTER_FILTER_LAN);
 		ApplyBoolean(use_tag, thisTab, thePrefs::SetSecureIdentEnabled, EC_TAG_SECURITY_USE_SECIDENT);
 
 		ApplyBoolean(use_tag, thisTab, thePrefs::SetClientCryptLayerSupported, EC_TAG_SECURITY_OBFUSCATION_SUPPORTED);

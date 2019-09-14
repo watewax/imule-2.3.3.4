@@ -28,7 +28,7 @@
 
 
 #include <deque>	// Needed for std::deque
-#include <memory>	// Needed for std::auto_ptr	// Do_not_auto_remove (mingw-gcc-3.4.5)
+#include <memory>	// Needed for std::unique_ptr	// Do_not_auto_remove (mingw-gcc-3.4.5)
 #include <string>
 #include <vector>
 
@@ -77,8 +77,8 @@ private:
 	// zlib (deflation) buffers
 	std::vector<unsigned char> m_in_ptr;
 	std::vector<unsigned char> m_out_ptr;
-	std::auto_ptr<CQueuedData> m_curr_rx_data;
-	std::auto_ptr<CQueuedData> m_curr_tx_data;
+        std::unique_ptr<CQueuedData> m_curr_rx_data;
+        std::unique_ptr<CQueuedData> m_curr_tx_data;
 
 	// This transfer only
 	uint32_t m_rx_flags;
@@ -203,6 +203,7 @@ public:
 	bool SocketError() { return InternalError() && GotError(); }
 	bool SocketRealError();
 
+        size_t GetLastCount() { return InternalLastCount(); }
 	bool WaitSocketConnect(long secs = -1, long msecs = 0) { return InternalWaitOnConnect(secs,msecs); }
 	bool WaitSocketWrite(long secs = -1, long msecs = 0) { return InternalWaitForWrite(secs,msecs); }
 	bool WaitSocketRead(long secs = -1, long msecs = 0) { return InternalWaitForRead(secs,msecs); }

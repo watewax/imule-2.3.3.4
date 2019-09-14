@@ -31,7 +31,7 @@
 #include <protocol/ed2k/Client2Server/UDP.h>
 #include "../../OtherFunctions.h"
 #include "../../Friend.h"			// Needed for FF_NAME
-#include "../../Constants.h"		// Needed for PR_*
+#include "../../KnownFile.h"		// Needed for PR_*
 #include "../../NetworkFunctions.h"	// Needed for Uint32toStringIP
 
 #include <cctype>
@@ -71,12 +71,12 @@ wxString MakePrintableString(const wxString& s)
 
 	if (GetStringsMode() != SD_DISPLAY) {
 		for (unsigned i = 0; i < str.length(); i++) {
-			if (GetStringsMode() == SD_NONE ? ((unsigned)str[i] >= ' ' && (unsigned)str[i] <= 0x7f) : std::isprint(str[i])) {
+                        if (GetStringsMode() == SD_NONE ? ((unsigned char)str[i] >= ' ' && (unsigned char)str[i] <= 0x7f) : std::isprint(str[i])) {
 				retval += str[i];
 			} else if (c <= 0xff) {
-				retval += wxString::Format(wxT("\\x%02x"), str[i]);
+                                retval += wxString::Format(wxT("\\x%02x"), (unsigned int) str[i]);
 			} else {
-				retval += wxString::Format(wxT("\\u%04x"), str[i]);
+                                retval += wxString::Format(wxT("\\u%04x"), (unsigned int) str[i]);
 			}
 		}
 	}
@@ -108,10 +108,10 @@ std::ostream& operator<<(std::ostream& x, const CeD2kIP& ip)
 static inline wxString TagNameString(const wxString& name)
 {
 	if (name.length() == 1) {
-		return wxString::Format(wxT("\"\\x%02x\""), name[0]);
+                return wxString::Format(wxT("\"\\x%02x\""), (unsigned int) name[0]);
 	} else if (name.length() > 1) {
 		if (name[0] == FT_GAPSTART || name[0] == FT_GAPEND) {
-			return wxString::Format(wxT("\"\\x%02x"), name[0]) + name.substr(1) + wxT("\"");
+                        return wxString::Format(wxT("\"\\x%02x"), (unsigned int) name[0]) + name.substr(1) + wxT("\"");
 		}
 	}
 	return wxT("\"") + name + wxT("\"");
@@ -394,9 +394,9 @@ std::ostream& operator<<(std::ostream& out, const CTag& tag)
 	} else if (tag.IsHash()) {
 		out << tag.GetHash();
 	} else if (tag.IsBlob()) {
-		out << wxString::Format(wxT("(size = %u)"), tag.GetBlobSize());
+                out << wxString::Format(wxT("(size = %" PRIu32 ")"), tag.GetBlobSize());
 	} else if (tag.IsBsob()) {
-		out << wxString::Format(wxT("(size = %u)"), tag.GetBsobSize());
+                out << wxString::Format(wxT("(size = %" PRIu32 ")"), tag.GetBsobSize());
 	} else {
 		out << "(...)";
 	}
@@ -451,9 +451,9 @@ std::ostream& operator<<(std::ostream& out, const CServerTag& tag)
 	} else if (tag.IsHash()) {
 		out << tag.GetHash();
 	} else if (tag.IsBlob()) {
-		out << wxString::Format(wxT("(size = %u)"), tag.GetBlobSize());
+                out << wxString::Format(wxT("(size = %" PRIu32 ")"), tag.GetBlobSize());
 	} else if (tag.IsBsob()) {
-		out << wxString::Format(wxT("(size = %u)"), tag.GetBsobSize());
+                out << wxString::Format(wxT("(size = %" PRIu32 ")"), tag.GetBsobSize());
 	} else {
 		out << "(...)";
 	}
@@ -479,9 +479,9 @@ std::ostream& operator<<(std::ostream& out, const CFriendTag& tag)
 	} else if (tag.IsHash()) {
 		out << tag.GetHash();
 	} else if (tag.IsBlob()) {
-		out << wxString::Format(wxT("(size = %u)"), tag.GetBlobSize());
+                out << wxString::Format(wxT("(size = %" PRIu32 ")"), tag.GetBlobSize());
 	} else if (tag.IsBsob()) {
-		out << wxString::Format(wxT("(size = %u)"), tag.GetBsobSize());
+                out << wxString::Format(wxT("(size = %" PRIu32 ")"), tag.GetBsobSize());
 	} else {
 		out << "(...)";
 	}

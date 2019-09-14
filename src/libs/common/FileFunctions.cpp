@@ -34,7 +34,7 @@
 #ifdef __WXMAC__
 #include <zlib.h> // Do_not_auto_remove
 #endif
-#include <memory>		// Needed for std::auto_ptr
+#include <memory>		// Needed for std::unique_ptr
 #include <algorithm>	// Needed for std::min
 
 #include "FileFunctions.h"
@@ -134,6 +134,9 @@ EFileType GuessFiletype(const wxString& file)
  */
 bool UnpackZipFile(const wxString& file, const wxChar* files[])
 {
+        wxZipFSHandler archive;
+        wxString filename = archive.FindFirst(
+                                    wxT("file:") + file + wxT("#zip:/*"), wxFILE);
 	wxTempFile target(file);
 	std::auto_ptr<wxZipEntry> entry;
 	wxFFileInputStream fileInputStream(file);

@@ -53,14 +53,16 @@ class CUDPFirewallTester
 	static bool	IsFWCheckUDPRunning() throw()		{ return m_fwChecksFinishedUDP < UDP_FIREWALLTEST_CLIENTSTOASK && !CKademlia::IsRunningInLANMode(); }
 	static bool	IsVerified() throw()			{ return m_isFWVerifiedUDP || CKademlia::IsRunningInLANMode(); }
 
-	static void	AddPossibleTestContact(const CUInt128& clientID, uint32_t ip, uint16_t port, uint16_t tport, const CUInt128& target, uint8_t version, const CKadUDPKey& udpKey, bool ipVerified)
+	static void	AddPossibleTestContact(const CUInt128& WXUNUSED(clientID), uint32_t WXUNUSED(ip), uint16_t WXUNUSED(port), uint16_t WXUNUSED(tport), const CUInt128& WXUNUSED(target), uint8_t WXUNUSED(version), const CKadUDPKey& WXUNUSED(udpKey), bool WXUNUSED(ipVerified))
 	{
+                /* mkvore: no firewall for imule
 		if (!IsFWCheckUDPRunning()) {
 			return;
 		}
 		// add the possible contact to our list - no checks in advance
 		m_possibleTestClients.push_front(CContact(clientID, ip, port, tport, version, udpKey, ipVerified, target));
 		QueryNextClient();
+		*/
 	}
 
 	static void	Reset(); // when stopping Kad

@@ -31,11 +31,16 @@
 #include <wx/app.h>		// Needed for wxApp
 #include <wx/intl.h>		// Needed for wxLocale
 
+#include "i2p/wxI2PEvents.h"
+#include "i2p/CI2PAddress.h"
 
 #include "Types.h"		// Needed for int32, uint16 and uint64
 #include <map>
 #ifndef __WINDOWS__
 	#include <signal.h>
+#if !wxCHECK_VERSION(3, 0, 0)
+#include <wx/unix/execute.h>
+#endif
 //	#include <wx/unix/execute.h>
 #endif // __WINDOWS__
 
@@ -43,6 +48,7 @@
 #	include "config.h"		// Needed for ASIO_SOCKETS
 #endif
 
+#include <memory>
 
 class CAbstractFile;
 class CKnownFile;
@@ -57,6 +63,7 @@ class CServer;
 class CFriend;
 class CMD4Hash;
 class CServerList;
+class CI2PRouter;
 class CListenSocket;
 class CClientList;
 class CKnownFileList;
@@ -76,20 +83,24 @@ class wxSocketEvent;
 class CUPnPControlPoint;
 class CUPnPPortMapping;
 #endif
+class wxTimer;
+class wxTimerEvent;
 class CStatistics;
 class wxCommandEvent;
 class wxCloseEvent;
 class wxFFileOutputStream;
-class CTimer;
-class CTimerEvent;
+//class CTimer;
+//class CTimerEvent;
 class wxSingleInstanceChecker;
 class CHashingEvent;
 class CMuleInternalEvent;
+class I2PConnectionManager ;
 class CCompletionEvent;
 class CAllocFinishedEvent;
 class wxExecuteData;
 class CLoggingEvent;
 
+class wxCloseEvent;
 
 namespace MuleNotify {
 	class CMuleGUIEvent;
@@ -105,16 +116,20 @@ namespace Kademlia {
 
 #ifdef AMULE_DAEMON
 #define AMULE_APP_BASE wxAppConsole
+//#define AMULE_APP_BASE wxApp
 #define CORE_TIMER_PERIOD 300
 #else
 #define AMULE_APP_BASE wxApp
 #define CORE_TIMER_PERIOD 100
 #endif
 
-#define CONNECTED_ED2K (1<<0)
-#define CONNECTED_KAD_NOT (1<<1)
-#define CONNECTED_KAD_OK (1<<2)
-#define CONNECTED_KAD_FIREWALLED (1<<3)
+#define CONNECTED_ED2K                  (0x01)
+#define CONNECTED_KAD_NOT               (0x02)
+#define CONNECTED_KAD_OK                (0x04)
+#define CONNECTED_KAD_FIREWALLED        (0x08)
+#define CONNECTED_KAD_RUNNING           (0x10)
+#define CONNECTED_NETWORK_STARTING      (0x20)
+#define CONNECTED_NETWORK_STARTED       (0x40)
 
 
 // Base class common to amule, aamuled and amulegui
@@ -169,6 +184,7 @@ public:
 
 class CamuleApp : public AMULE_APP_BASE, public CamuleAppCommon
 {
+        friend class I2PConnectionManager ;
 private:
 	enum APPState {
 		APP_STATE_RUNNING = 0,
@@ -185,15 +201,23 @@ public:
 #if wxUSE_ON_FATAL_EXCEPTION
 	void		OnFatalException();
 #endif
-	bool		ReinitializeNetwork(wxString *msg);
+        bool        InitializeNetwork(wxString *msg);
+
+        void        StopNetwork() ;
+        void        StartNetwork();
+        void        RestartNetworkIfStarted();
+        void        StartSearchNetwork();
+        void        FetchIfNewVersionIsAvailable();
+        wxString        GetKadContacts() const;
 
 	// derived classes may override those
 	virtual int InitGui(bool geometry_enable, wxString &geometry_string);
 
 #ifndef ASIO_SOCKETS
 	// Socket handlers
-	void ListenSocketHandler(wxSocketEvent& event);
-	void UDPSocketHandler(wxSocketEvent& event);
+    void ListenSocketHandler(CI2PSocketEvent& event);
+    void ServerSocketHandler(CI2PSocketEvent& event);
+    void UDPSocketHandler(CI2PSocketEvent& event);
 #endif
 
 	virtual int ShowAlert(wxString msg, wxString title, int flags) = 0;
@@ -202,6 +226,11 @@ public:
 	bool IsRunning() const { return (m_app_state == APP_STATE_RUNNING); }
 	bool IsOnShutDown() const { return (m_app_state == APP_STATE_SHUTTINGDOWN); }
 
+        bool NetworkStarting() {return networkStarting;}
+
+        bool NetworkStarted() {return networkStarted;}
+
+        // NOTE : i2P : no firewall, no LowID
 	// Check ED2K and Kademlia state
 	bool IsFirewalled() const;
 	// Are we connected to at least one network?
@@ -227,16 +256,17 @@ public:
 	uint32	GetKadIndexedNotes() const;
 	uint32	GetKadIndexedLoad() const;
 	// True IP of machine
-	uint32	GetKadIPAdress() const;
+	CI2PAddress	GetKadIPAdress() const;
 	// Buddy status
-	uint8	GetBuddyStatus() const;
-	uint32	GetBuddyIP() const;
-	uint32	GetBuddyPort() const;
+	//uint8	GetBuddyStatus() const;
+	//uint32	GetBuddyIP() const;
+	//uint32	GetBuddyPort() const;
+
 	// Kad ID
 	const Kademlia::CUInt128& GetKadID() const;
 
 	// Check if we should callback this client
-	bool CanDoCallback(uint32 clientServerIP, uint16 clientServerPort);
+	//bool CanDoCallback(uint32 clientServerIP, uint16 clientServerPort);
 
 	// Misc functions
 	void		OnlineSig(bool zero = false);
@@ -248,19 +278,25 @@ public:
 
 	// return current (valid) public IP or 0 if unknown
 	// If ignorelocal is true, don't use m_localip
-	uint32	GetPublicIP(bool ignorelocal = false) const;
-	void		SetPublicIP(const uint32 dwIP);
+        CI2PAddress		GetPublicDest ( bool ignorelocal = false ) const;
+        void		SetPublicDest ( const CI2PAddress & dwDest );
 
 	uint32	GetED2KID() const;
 	uint32	GetID() const;
+        CI2PAddress	GetUdpDest() const;
+        CI2PAddress	GetTcpDest() const;
 
 	// Other parts of the interface and such
 	CPreferences*		glob_prefs;
 	CDownloadQueue*		downloadqueue;
 	CUploadQueue*		uploadqueue;
+        // No server yet in imule
 	CServerConnect*		serverconnect;
 	CSharedFileList*	sharedfiles;
 	CServerList*		serverlist;
+#ifdef INTERNAL_ROUTER
+        CI2PRouter*             i2prouter;
+#endif
 	CListenSocket*		listensocket;
 	CClientList*		clientlist;
 	CKnownFileList*		knownfiles;
@@ -289,6 +325,10 @@ public:
 
 	bool AddServer(CServer *srv, bool fromUser = false);
 	void AddServerMessageLine(wxString &msg);
+#ifdef INTERNAL_ROUTER
+        virtual void UpdateRouterStatus( wxString & msg ) {}
+        virtual void UpdateRouterStatus();
+#endif
 #ifdef __DEBUG__
 	void AddSocketDeleteDebug(uint32 socket_pointer, uint32 creation_time);
 #endif
@@ -303,13 +343,17 @@ public:
 	void StartKad();
 	void StopKad();
 
-	/** Bootstraps kad from the specified IP (must be in hostorder). */
-	void BootstrapKad(uint32 ip, uint16 port);
+        /** Bootstraps kad from the specified destination. */
+        void BootstrapKad(const CI2PAddress & dest);
+        void exportKadContactsOnFile(const wxString & filename) const;
 	/** Updates the nodes.dat file from the specified url. */
 	void UpdateNotesDat(const wxString& str);
 
 
 	void DisconnectED2K();
+        void SetNetworkStopped();
+        void SetNetworkStarted();
+        void SetNetworkStarting() {networkStarted=!(networkStarting=true);}
 
 	bool CryptoAvailable() const;
 
@@ -327,8 +371,8 @@ protected:
 	void OnSourceDnsDone(CMuleInternalEvent& evt);
 	void OnServerDnsDone(CMuleInternalEvent& evt);
 
-	void OnTCPTimer(CTimerEvent& evt);
-	void OnCoreTimer(CTimerEvent& evt);
+        void OnTCPTimer(wxTimerEvent& evt);
+        void OnCoreTimer(wxTimerEvent& evt);
 
 	void OnFinishedHashing(CHashingEvent& evt);
 	void OnFinishedAICHHashing(CHashingEvent& evt);
@@ -342,23 +386,28 @@ protected:
 
 	APPState m_app_state;
 
+        std::unique_ptr<I2PConnectionManager> m_connection_manager ;
 	wxString m_emulesig_path;
 	wxString m_amulesig_path;
 
-	uint32 m_dwPublicIP;
+        CI2PAddress m_dwPublicDest;
 
 	long webserver_pid;
 
 	wxString server_msg;
 
-	CTimer* core_timer;
+        wxTimer* core_timer;
 
 private:
 	virtual void OnUnhandledException();
 
 	void CheckNewVersion(uint32 result);
 
-	uint32 m_localip;
+        CI2PAddress m_localdest;
+
+        bool networkStarted ;
+
+        bool networkStarting ;
 };
 
 
@@ -410,10 +459,15 @@ public:
 	wxString GetLog(bool reset = false);
 	wxString GetServerLog(bool reset = false);
 	void AddServerMessageLine(wxString &msg);
+#ifdef INTERNAL_ROUTER
+        void UpdateRouterStatus( wxString & msg );
+        void UpdateRouterStatus();
+#endif
 	DECLARE_EVENT_TABLE()
 };
 
 
+typedef CamuleGuiApp AMULE_APP;
 DECLARE_APP(CamuleGuiApp)
 extern CamuleGuiApp *theApp;
 
@@ -456,6 +510,13 @@ extern CamuleGuiApp *theApp;
 	#endif
 #endif
 
+#if wxCHECK_VERSION(3, 0, 0)
+	#define AMULED_NOAPPTRAIT
+#endif
+#ifdef __WINDOWS__
+	#define AMULED_NOAPPTRAIT
+#endif
+
 #ifdef AMULED28_SOCKETS
 #include <wx/socket.h>
 
@@ -467,7 +528,7 @@ class CAmuledGSocketFuncTable : public GSocketGUIFunctionsTable
 private:
 	CSocketSet *m_in_set, *m_out_set;
 
-	wxMutex m_lock;
+        wiMutex m_lock;
 public:
 	CAmuledGSocketFuncTable();
 
@@ -512,7 +573,7 @@ private:
 
 #ifdef AMULED28_SOCKETS
 	CAmuledGSocketFuncTable *m_table;
-	wxMutex m_lock;
+        wiMutex m_lock;
 	std::list<wxObject *> m_sched_delete;
 public:
 	CDaemonAppTraits(CAmuledGSocketFuncTable *table);
@@ -552,6 +613,7 @@ private:
 	int OnRun();
 	int OnExit();
 
+    void OnCoreTimer(wxTimerEvent& evt) {CamuleApp::OnCoreTimer(evt);}
 	virtual int InitGui(bool geometry_enable, wxString &geometry_string);
 	// The GTK wxApps sets its file name conversion properly
 	// in wxApp::Initialize(), while wxAppConsole::Initialize()
@@ -582,7 +644,7 @@ public:
 
 	DECLARE_EVENT_TABLE()
 };
-
+typedef CamuleDaemonApp AMULE_APP;
 DECLARE_APP(CamuleDaemonApp)
 extern CamuleDaemonApp *theApp;
 

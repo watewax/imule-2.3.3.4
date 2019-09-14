@@ -27,13 +27,14 @@
 #define ED2KC2CUDP_H
 
 // Extended prot client <-> Extended prot client UDP
+// follows OP_AICHFILEHASHREQ in Client2Client/TCP.h
 enum ED2KExtendedClientUDP {
-	OP_REASKFILEPING			= 0x90,	// <HASH 16>
-	OP_REASKACK					= 0x91,	// <RANG 2>
-	OP_FILENOTFOUND				= 0x92,	// (null)
-	OP_QUEUEFULL				= 0x93,	// (null)
-	OP_REASKCALLBACKUDP			= 0x94,
-	OP_PORTTEST					= 0xFE	// Connection Test
+        OP_REASKFILEPING			= 0x60,	// <HASH 16>
+        OP_REASKACK					= 0x61,	// <RANG 2>
+        OP_FILENOTFOUND				= 0x62,	// (null)
+        OP_QUEUEFULL				= 0x63,	// (null)
+//	OP_REASKCALLBACKUDP			= 0x,
+        OP_PORTTEST					= 0x64	// Connection Test
 };
 
 #endif // ED2KC2CUDP_H

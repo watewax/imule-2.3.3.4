@@ -324,7 +324,7 @@ void CStatisticsDlg::RebuildStatTreeRemote(const CECTag * tag)
 
 void CStatisticsDlg::FillTree(CStatTreeItemBase* statssubtree, wxTreeItemId& StatsGUITree, const NodeIdSet& expandednodes)
 {
-	wxMutexLocker lock(statssubtree->GetLock());
+        wiMutexLocker lock(statssubtree->GetLock());
 
 #ifndef CLIENT_GUI
 	StatTreeItemIterator temp_it = statssubtree->GetFirstVisibleChild(thePrefs::GetMaxClientVersions());

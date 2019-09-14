@@ -32,6 +32,7 @@
 //
 
 
+#define wxCHECK_W32API_VERSION(maj, min) (0) // mkvore: needed for mingw64
 #include "MuleCollection.h"
 
 #include <fstream>

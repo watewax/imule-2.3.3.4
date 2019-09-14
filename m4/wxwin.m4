@@ -203,7 +203,7 @@ AC_DEFUN([WX_CONFIG_CHECK],
   if test "$WX_CONFIG_PATH" != "no" ; then
     WX_VERSION=""
 
-    min_wx_version=ifelse([$1], ,2.2.1,$1)
+    min_wx_version=ifelse([$1], ,2.8.0,$1)
     if test -z "$5" ; then
       AC_MSG_CHECKING([for wxWidgets version >= $min_wx_version])
     else

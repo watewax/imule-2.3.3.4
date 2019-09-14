@@ -81,14 +81,14 @@ public:
 	static void Remove(CFileArea& area);
 private:
 	CFileAreaSigHandler() {};
-	static wxMutex mutex;
+	static wiMutex mutex;
 	static CFileArea *first;
 	static bool initialized;
 	static struct sigaction old_segv, old_bus;
 	static void Handler(int sig, siginfo_t *info, void *ctx);
 };
 
-wxMutex          CFileAreaSigHandler::mutex;
+wiMutex          CFileAreaSigHandler::mutex;
 CFileArea *      CFileAreaSigHandler::first;
 bool             CFileAreaSigHandler::initialized = false;
 struct sigaction CFileAreaSigHandler::old_segv;
@@ -107,7 +107,7 @@ void CFileAreaSigHandler::Handler(int sig, siginfo_t *info, void *ctx)
 	CFileArea *cur;
 	// find the mapped section where violation occurred (if any)
 	{
-		wxMutexLocker lock(mutex);
+		wiMutexLocker lock(mutex);
 		cur = first;
 		while (cur) {
 			if (cur->m_mmap_buffer && info->si_addr >= cur->m_mmap_buffer && info->si_addr < cur->m_mmap_buffer + cur->m_length)
@@ -137,7 +137,7 @@ void CFileAreaSigHandler::Handler(int sig, siginfo_t *info, void *ctx)
 void CFileAreaSigHandler::Init()
 {
 	// init error handler if needed
-	wxMutexLocker lock(mutex);
+	wiMutexLocker lock(mutex);
 	if (initialized)
 		return;
 
@@ -162,14 +162,14 @@ void CFileAreaSigHandler::Init()
 
 void CFileAreaSigHandler::Add(CFileArea& area)
 {
-	wxMutexLocker lock(mutex);
+	wiMutexLocker lock(mutex);
 	area.m_next = first;
 	first = &area;
 }
 
 void CFileAreaSigHandler::Remove(CFileArea& area)
 {
-	wxMutexLocker lock(mutex);
+	wiMutexLocker lock(mutex);
 	CFileArea **cur = &first;
 	while (*cur) {
 		if (*cur == &area) {

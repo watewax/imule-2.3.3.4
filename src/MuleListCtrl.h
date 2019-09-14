@@ -31,7 +31,14 @@
 #endif
 
 #include <wx/defs.h> // Do_not_auto_remove (Mac, Win32, and just good practice)
+#define USE_MULEEXTERN 1
+#if USE_MULEEXTERN
 #include "extern/wxWidgets/listctrl.h"
+#define wxLISTCTRLCLASS MuleExtern::wxGenericListCtrl
+#else
+#include <wx/listctrl.h>
+#define wxLISTCTRLCLASS wxListCtrl
+#endif
 
 #include <vector>
 #include <list>
@@ -47,7 +54,7 @@
  *  - Loading and saving of column properties.
  *  - Selection of items by typing an initial part of the text (TTS).
  */
-class CMuleListCtrl : public MuleExtern::wxGenericListCtrl
+class CMuleListCtrl : public wxLISTCTRLCLASS
 {
 public:
 	/**
@@ -156,7 +163,7 @@ public:
 	 * See the documentation on wxListCtrl::SortItems for more information
 	 * about the expected function type.
 	 */
-	void SetSortFunc(MuleListCtrlCompare func)	{ m_sort_func = func; }
+        void SetSortFunc(wxListCtrlCompare func)	{ m_sort_func = func; }
 
 	/**
 	 * Deselects all selected items, but does not change focus.
@@ -211,7 +218,7 @@ public:
 	void ClearAll()
 	{
 		m_column_names.clear();
-		MuleExtern::wxGenericListCtrl::ClearAll();
+                wxLISTCTRLCLASS::ClearAll();
 	}
 
 	/**
@@ -370,7 +377,7 @@ private:
 	wxString		m_name;
 
 	//! The sorter function needed by wxListCtrl.
-	MuleListCtrlCompare	m_sort_func;
+        wxListCtrlCompare	m_sort_func;
 
 	//! Contains the current search string.
 	wxString		m_tts_text;
@@ -391,10 +398,10 @@ private:
 	 * otherwise, parents may not end up properly located in
 	 * relation to child-items.
 	 */
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+        static int wxCALLBACK SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData);
 
 	/** Compares two items in the list, using the current sort sequence. */
-	int CompareItems(wxUIntPtr item1, wxUIntPtr item2);
+        int CompareItems(wxIntPtr item1, wxIntPtr item2);
 
 	//! This pair contains a column number and its sorting order.
 	typedef std::pair<unsigned, unsigned> CColPair;
@@ -402,10 +409,10 @@ private:
 
 	class MuleSortData {
 	public:
-		MuleSortData(CSortingList sort_orders, MuleListCtrlCompare sort_func) : m_sort_orders(sort_orders), m_sort_func(sort_func) { };
+                MuleSortData(CSortingList sort_orders, wxListCtrlCompare sort_func) : m_sort_orders(sort_orders), m_sort_func(sort_func) { };
 
 		CSortingList m_sort_orders;
-		MuleListCtrlCompare m_sort_func;
+                wxListCtrlCompare m_sort_func;
 	};
 
 	//! This list contains in order the columns sequence to sort by.

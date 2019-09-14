@@ -203,11 +203,12 @@ bool Ed2kHash::SetED2KHashFromFile(const wxString& filename, MD4Hook hook)
 #endif
 
 /// Get Ed2k link
+#include <inttypes.h>
 wxString Ed2kHash::GetED2KLink(const bool addPartHashes, const wxArrayString* arrayOfUrls)
 {
   // Constructing ed2k basic link
   wxString ed2kLink = wxT("ed2k://|file|") + CleanFilename(m_filename)
-                      + wxString::Format(wxT("|%") WXLONGLONGFMTSPEC wxT("u|"), m_fileSize)
+                            + wxString::Format(wxT("|%" PRIu64 "|"), m_fileSize)
                       + m_ed2kArrayOfHashes.Last() + wxT("|");
 
 

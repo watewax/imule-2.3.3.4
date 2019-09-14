@@ -183,6 +183,8 @@ public:
 	static bool RemoveDir(const CPath& file);
 	/** Creates the specified directory, returning true on success. */
 	static bool MakeDir(const CPath& file);
+        /** Creates the specified file, returning true on success. */
+        bool        Touch() const;
 
 	/** Returns true if the path exists, and is a file. */
 	static bool FileExists(const wxString& file);

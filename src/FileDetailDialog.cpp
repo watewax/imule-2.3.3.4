@@ -33,6 +33,7 @@
 #include "FileDetailListCtrl.h"	// Needed for CFileDetailListCtrl
 #include "CommentDialogLst.h"	// Needed for CCommentDialogLst
 #include "PartFile.h"		// Needed for CPartFile
+#include <common/Format.h>	// Needed for CFormat
 #include "amule.h"		// Needed for theApp
 #include "SharedFileList.h"	// Needed for CSharedFileList
 #include "OtherFunctions.h"
@@ -112,13 +113,13 @@ void CFileDetailDialog::UpdateData(bool resetFilename)
 	CastChild(IDC_PROCCOMPL,wxControl)->SetLabel(bufferS);
 	bufferS = CFormat(_("%.2f kB/s")) % m_file->GetKBpsDown();
 	CastChild(IDC_DATARATE,wxControl)->SetLabel(bufferS);
-	bufferS = CFormat(wxT("%i")) % m_file->GetSourceCount();
+        bufferS = CFormat(wxT("%" PRIu16)) % m_file->GetSourceCount();
 	CastChild(IDC_SOURCECOUNT,wxControl)->SetLabel(bufferS);
-	bufferS = CFormat(wxT("%i")) % m_file->GetTransferingSrcCount();
+        bufferS = CFormat(wxT("%" PRIu16)) % m_file->GetTransferingSrcCount();
 	CastChild(IDC_SOURCECOUNT2,wxControl)->SetLabel(bufferS);
-	bufferS = CFormat(wxT("%i (%.1f%%)"))
+        bufferS = CFormat(wxT("%" PRIu16 " (%.1lf%%)"))
 		% m_file->GetAvailablePartCount()
-		% ((m_file->GetAvailablePartCount() * 100.0)/ m_file->GetPartCount());
+                  % (double) ((m_file->GetAvailablePartCount() * 100.0)/ m_file->GetPartCount());
 	CastChild(IDC_PARTAVAILABLE,wxControl)->SetLabel(bufferS);
 	bufferS = CastSecondsToHM(m_file->GetDlActiveTime());
 	CastChild(IDC_DLACTIVETIME, wxControl)->SetLabel(bufferS);

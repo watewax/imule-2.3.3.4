@@ -117,35 +117,29 @@ CED2KServerLink::CED2KServerLink(const wxString& link)
 		throw wxString(wxT("Not a valid server link."));
 	}
 
-	wxString ip = UnescapeHTML(re.GetMatch(link, 1));
-	wxString port = re.GetMatch(link, 2);
-
-	unsigned long ul = StrToULong(port);
-	if (ul > 0xFFFF || ul == 0) {
-		throw wxString( wxT("Bad port number") );
-	}
-
-	m_port = static_cast<uint16>(ul);
-	m_ip = StringIPtoUint32(ip);
+        wxString addr = UnescapeHTML(re.GetMatch(link, 1));
+        m_dest = CI2PAddress::fromString(addr); //m_ip = StringIPtoUint32(ip);
 }
 
 
 wxString CED2KServerLink::GetLink() const
 {
-	return wxString(wxT("ed2k://|server|")) << Uint32toStringIP(m_ip) << wxT("|") << m_port << wxT("|/");
+        return wxString(wxT("ed2k://|server|")) << m_dest.toString() << wxT("|") << wxT("|/");
 }
 
 
-uint32 CED2KServerLink::GetIP() const
+CI2PAddress CED2KServerLink::GetDest() const
 {
-	return m_ip;
+        return m_dest;
 }
 
 
+/*
 uint16 CED2KServerLink::GetPort() const
 {
 	return m_port;
 }
+*/
 
 
 /////////////////////////////////////////////
@@ -186,7 +180,7 @@ CED2KFileLink::CED2KFileLink(const wxString& link)
 
 	// Check extra fields (sources, parthashes, masterhashes)
 	while (tokens.HasMoreTokens()) {
-		wxString field = tokens.GetNextToken().MakeLower().Strip(wxString::both);
+                wxString field = tokens.GetNextToken().Strip(wxString::both);
 
 		if (field.StartsWith(wxT("sources,"))) {
 			wxStringTokenizer srcTokens(field, wxT(","));
@@ -201,33 +195,21 @@ CED2KFileLink::CED2KFileLink(const wxString& link)
 					throw wxString( wxT("Empty address" ) );
 				}
 
-				wxString strport = sourceTokens.GetNextToken();
-				if (strport.IsEmpty()) {
-					throw wxString( wxT("Empty port" ) );
-				}
-
-				unsigned port = StrToULong(strport);
-
-				// Sanity checking
-				if ((port == 0) || (port > 0xFFFF)) {
-					throw wxString( wxT("Invalid Port" ) );
-				}
-
 				wxString sourcehash;
 				uint8 cryptoptions =0;
-				wxString strcryptoptions = sourceTokens.GetNextToken();
+                                wxString strcryptoptions = sourceTokens.GetNextToken().MakeLower();
 				if (!strcryptoptions.IsEmpty()) {
 					cryptoptions = (uint8) StrToULong(strcryptoptions);
 					if ((cryptoptions & 0x80) > 0) {
 						// Source ready for encryption, hash included.
-						sourcehash = sourceTokens.GetNextToken();
+                                                sourcehash = sourceTokens.GetNextToken().MakeLower();
 						if (sourcehash.IsEmpty()) {
 							throw wxString( wxT("Empty sourcehash conflicts with cryptoptions flag 0x80" ) );
 						}
 					}
 				}
 
-				SED2KLinkSource entry = { addr, (uint16) port, sourcehash, cryptoptions };
+                                SED2KLinkSource entry = { addr, sourcehash, cryptoptions };
 
 				m_sources.push_back(entry);
 			}
@@ -240,7 +222,7 @@ CED2KFileLink::CED2KFileLink(const wxString& link)
 
 			while (hashTokens.HasMoreTokens()) {
 				CMD4Hash hash;
-				if (!hash.Decode(hashTokens.GetNextToken().Strip(wxString::both))) {
+                                if (!hash.Decode(hashTokens.GetNextToken().MakeLower().Strip(wxString::both))) {
 					throw wxString(wxT("Invalid hash in part-hashes list"));
 				}
 
@@ -250,8 +232,9 @@ CED2KFileLink::CED2KFileLink(const wxString& link)
 			unsigned count = m_hashset->GetLength() / 16u - 1u;
 
 			if (count) {
+                                wxASSERT(count < 1 << 16);
 				m_hashset->Seek( 16, wxFromStart);
-				m_hashset->WriteUInt16( count );
+                                m_hashset->WriteUInt16( (uint16)count );
 				m_hashset->Seek( 0, wxFromStart);
 			} else {
 				delete m_hashset;
@@ -280,7 +263,7 @@ CED2KFileLink::~CED2KFileLink()
 
 wxString CED2KFileLink::GetLink() const
 {
-	return CFormat(wxT("ed2k://|file|%s|%u|%s|/")) % m_name % m_size % m_hash.Encode();
+        return CFormat(wxT("ed2k://|file|%s|%llu|%s|/")) % m_name % m_size % m_hash.Encode();
 }
 
 

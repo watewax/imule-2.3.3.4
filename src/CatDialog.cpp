@@ -197,9 +197,9 @@ void CCatDialog::OnBnClickedOk(wxCommandEvent& WXUNUSED(evt))
 
 		theApp->amuledlg->m_transferwnd->AddCategory(m_category);
 	} else {
-		theApp->glob_prefs->UpdateCategory(index, newname, newpath,
+                theApp->glob_prefs->UpdateCategory((uint8)index, newname, newpath,
 		CastChild(IDC_COMMENT, wxTextCtrl)->GetValue(), m_colour.GetULong(),
-		CastChild(IDC_PRIOCOMBO, wxChoice)->GetSelection());
+                                                   (uint8)CastChild(IDC_PRIOCOMBO, wxChoice)->GetSelection());
 
 		theApp->amuledlg->m_transferwnd->UpdateCategory(index);
 		theApp->amuledlg->m_transferwnd->downloadlistctrl->Refresh();

@@ -26,6 +26,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "i2p/CI2PAddress.h"
 #include "Tag.h"
 #include "OtherStructs.h"
 #include <ec/cpp/ECID.h>	// Needed for CECID
@@ -49,32 +50,29 @@ class CServer : public CECID
 friend class CServerListRem;
 public:
 	CServer(ServerMet_Struct* in_data);
-	CServer(uint16 in_port, const wxString& i_addr);
+        CServer(const CI2PAddress & in_dest);
 	CServer(CServer* pOld);
 	CServer(const class CEC_Server_Tag *);
 
 	~CServer();
-	void		AddTag(CTag* in_tag)	{m_taglist.push_back(in_tag);}
+        void  AddTag(CTag & in_tag)	{m_taglist.push_back(in_tag);}
 	const wxString &GetListName() const	{return listname;}
-	const wxString &GetFullIP() const	{return ipfull;}
-
-	const wxString &GetAddress() const {
-		if (!dynip.IsEmpty()) {
-			return dynip;
-		} else {
-			return ipfull;
-		}
+        const wxString GetFullIP() const	{return dest.toString();}
+        const wxString GetAddress() const 	{
+                if (!dest.isValid())
+			return dest.getAlias();
+                else
+			return dest.toString();
 	}
 
 	// the official port
-	uint16  GetPort() const			{return realport ? realport : port;}
+        const CI2PAddress & GetDest() const 	{return realdest.isValid() ? realdest : dest;}
 	// the connection port
-	uint16  GetConnPort() const		{return port;}
-	void    SetPort(uint32 val)		{realport = val;}
+        const CI2PAddress & GetConnDest() const	{return dest;}
+        void    SetDest( const CI2PAddress & val)	{realdest = val;}
 	bool	AddTagFromFile(CFileDataIO* servermet);
 	void	SetListName(const wxString& newname);
 	void	SetDescription(const wxString& newdescription);
-	uint32	GetIP() const			{return ip;}
 	uint32	GetFiles() const		{return files;}
 	uint32	GetUsers() const		{return users;}
 	const wxString	&GetDescription() const	{return description;}
@@ -168,6 +166,8 @@ private:
 	uint32		ping;
 	wxString	description;
 	wxString	listname;
+        CI2PAddress	dest;
+        CI2PAddress	realdest;
 	wxString	dynip;
 	uint32		tagcount;
 	wxString	ipfull;
@@ -177,7 +177,7 @@ private:
 	uint32		failedcount;
 	uint32		m_uDescReqChallenge;
 	uint8		lastdescpingedcout;
-	TagPtrList		m_taglist;
+        TagList		m_taglist;
 	bool		staticservermember;
 	wxString	m_strVersion;
 	uint32		m_uTCPFlags;

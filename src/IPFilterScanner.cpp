@@ -28,7 +28,7 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 5
-#define YY_FLEX_SUBMINOR_VERSION 35
+#define YY_FLEX_SUBMINOR_VERSION 39
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -73,7 +73,6 @@ typedef int flex_int32_t;
 typedef unsigned char flex_uint8_t;
 typedef unsigned short int flex_uint16_t;
 typedef unsigned int flex_uint32_t;
-#endif /* ! C99 */
 
 /* Limits of integral types. */
 #ifndef INT8_MIN
@@ -104,6 +103,7 @@ typedef unsigned int flex_uint32_t;
 #define UINT32_MAX             (4294967295U)
 #endif
 
+#endif /* ! C99 */
 #endif /* ! FLEXINT_H */
 
 #ifdef __cplusplus
@@ -181,6 +181,7 @@ extern FILE *yyipin, *yyipout;
 #define EOB_ACT_LAST_MATCH 2
 
     #define YY_LESS_LINENO(n)
+    #define YY_LINENO_REWIND_TO(ptr)
 
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -351,7 +352,7 @@ void yyipfree (void *  );
 
 /* Begin user sect3 */
 
-#define yyipwrap(n) 1
+#define yyipwrap() 1
 #define YY_SKIP_YYWRAP
 
 typedef unsigned char YY_CHAR;
@@ -670,7 +671,7 @@ static bool ScanInt(const char * buf, uint32 & a)
 	return true;
 }
 
-#line 674 "IPFilterScanner.cpp"
+#line 675 "IPFilterScanner.cpp"
 
 #define INITIAL 0
 
@@ -759,7 +760,7 @@ static int input (void );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO fwrite( yyiptext, yyipleng, 1, yyipout )
+#define ECHO do { if (fwrite( yyiptext, yyipleng, 1, yyipout )) {} } while (0)
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -770,7 +771,7 @@ static int input (void );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		int n; \
+		size_t n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyipin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -855,10 +856,6 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
 
-#line 106 "./IPFilterScanner.l"
-
-
-#line 862 "IPFilterScanner.cpp"
 
 	if ( !(yy_init) )
 		{
@@ -885,6 +882,12 @@ YY_DECL
 
 		yyip_load_buffer_state( );
 		}
+
+	{
+#line 106 "./IPFilterScanner.l"
+
+
+#line 891 "IPFilterScanner.cpp"
 
 	while ( 1 )		/* loops until end-of-file is reached */
 		{
@@ -1010,7 +1013,7 @@ YY_RULE_SETUP
 #line 155 "./IPFilterScanner.l"
 ECHO;
 	YY_BREAK
-#line 1014 "IPFilterScanner.cpp"
+#line 1017 "IPFilterScanner.cpp"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1141,6 +1144,7 @@ case YY_STATE_EOF(INITIAL):
 			"fatal flex scanner internal error--no action found" );
 	} /* end of action switch */
 		} /* end of scanning one token */
+	} /* end of user's declarations */
 } /* end of yyiplex */
 
 /* yy_get_next_buffer - try to read in a new buffer
@@ -1203,7 +1207,7 @@ static int yy_get_next_buffer (void)
 			{ /* Not enough room in the buffer - grow it. */
 
 			/* just a shorter name for the current buffer */
-			YY_BUFFER_STATE b = YY_CURRENT_BUFFER;
+			YY_BUFFER_STATE b = YY_CURRENT_BUFFER_LVALUE;
 
 			int yy_c_buf_p_offset =
 				(int) ((yy_c_buf_p) - b->yy_ch_buf);
@@ -1563,9 +1567,6 @@ static void yyip_load_buffer_state  (void)
 	yyipfree((void *) b  );
 }
 
-#ifndef __cplusplus
-extern int isatty (int );
-#endif /* __cplusplus */
 
 /* Initializes or reinitializes a buffer.
  * This function is sometimes called more than once on the same buffer,
@@ -1771,17 +1772,17 @@ YY_BUFFER_STATE yyip_scan_string (yyconst char * yystr )
 
 /** Setup the input buffer state to scan the given bytes. The next call to yyiplex() will
  * scan from a @e copy of @a bytes.
- * @param bytes the byte buffer to scan
- * @param len the number of bytes in the buffer pointed to by @a bytes.
+ * @param yybytes the byte buffer to scan
+ * @param _yybytes_len the number of bytes in the buffer pointed to by @a bytes.
  *
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE yyip_scan_bytes  (yyconst char * yybytes, int  _yybytes_len )
+YY_BUFFER_STATE yyip_scan_bytes  (yyconst char * yybytes, yy_size_t  _yybytes_len )
 {
 	YY_BUFFER_STATE b;
 	char *buf;
 	yy_size_t n;
-	int i;
+	yy_size_t i;
 
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;

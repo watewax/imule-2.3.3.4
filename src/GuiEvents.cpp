@@ -34,6 +34,7 @@
 #include "IPFilter.h"
 #include "Friend.h"
 #include "Logger.h"
+#include "kademlia/routing/Contact.h"
 
 #ifndef AMULE_DAEMON
 #	include "ChatWnd.h"
@@ -71,7 +72,7 @@ namespace MuleNotify
 
 	void HandleNotification(const CMuleNotiferBase& ntf)
 	{
-		if (wxThread::IsMain()) {
+		if (wiThread::IsMain()) {
 #ifdef AMULE_DAEMON
 			ntf.Notify();
 #else
@@ -80,16 +81,16 @@ namespace MuleNotify
 			}
 #endif
 		} else {
-			CMuleGUIEvent evt(ntf.Clone());
-			wxPostEvent(wxTheApp, evt);
+                CMuleGUIEvent * evt = new CMuleGUIEvent(ntf.Clone());
+                wxQueueEvent(wxTheApp, evt);
 		}
 	}
 
 
 	void HandleNotificationAlways(const CMuleNotiferBase& ntf)
 	{
-		CMuleGUIEvent evt(ntf.Clone());
-		wxPostEvent(wxTheApp, evt);
+        CMuleGUIEvent * evt = new CMuleGUIEvent(ntf.Clone());
+        wxQueueEvent(wxTheApp, evt);
 	}
 
 
@@ -298,7 +299,7 @@ namespace MuleNotify
 		theApp->downloadqueue->SendFileCommand(file, EC_OP_PARTFILE_DELETE);
 	}
 
-	void PartFile_SetCat(CPartFile* file, uint32 val)
+void PartFile_SetCat(CPartFile* file, uint8 val)
 	{
 		theApp->downloadqueue->Category(file, val);
 	}
@@ -546,7 +547,7 @@ namespace MuleNotify
 #endif
 	}
 
-	void ChatProcessMsg(uint64 NOT_ON_DAEMON(sender), wxString NOT_ON_DAEMON(message))
+void ChatProcessMsg(const CI2PAddress NOT_ON_DAEMON(sender), wxString NOT_ON_DAEMON(message))
 	{
 #ifndef AMULE_DAEMON
 		if (theApp->amuledlg->m_chatwnd) {
@@ -556,7 +557,7 @@ namespace MuleNotify
 	}
 
 
-	void ChatSendCaptcha(wxString NOT_ON_DAEMON(captcha), uint64 NOT_ON_DAEMON(to_id))
+void ChatSendCaptcha(wxString NOT_ON_DAEMON(captcha), const CI2PAddress NOT_ON_DAEMON(to_id))
 	{
 #ifndef AMULE_DAEMON
 		if (theApp->amuledlg->m_chatwnd) {
@@ -622,6 +623,26 @@ namespace MuleNotify
 #endif
 	}
 
+void KadNode_Added( Kademlia::CContact NOT_ON_DAEMON(contact) )
+{
+#ifndef AMULE_DAEMON
+        theApp->amuledlg->m_kademliawnd->AddNode(contact);
+#endif
+}
+
+void KadNode_Updated( Kademlia::CContact NOT_ON_DAEMON(contact) )
+{
+#ifndef AMULE_DAEMON
+        theApp->amuledlg->m_kademliawnd->UpdateNode(contact);
+#endif
+}
+
+void KadNode_Deleted( Kademlia::CContact NOT_ON_DAEMON(contact) )
+{
+#ifndef AMULE_DAEMON
+        theApp->amuledlg->m_kademliawnd->DeleteNode(contact);
+#endif
+}
 
 	void PartFile_Swap_A4AF(CPartFile* file)
 	{
@@ -681,7 +702,7 @@ namespace MuleNotify
 		file->Delete();
 	}
 
-	void PartFile_SetCat(CPartFile* file, uint32 val)
+void PartFile_SetCat(CPartFile* file, uint8 val)
 	{
 		file->SetCategory(val);
 	}

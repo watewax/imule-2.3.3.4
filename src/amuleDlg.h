@@ -116,6 +116,9 @@ public:
 	void AddServerMessageLine(wxString& message);
 	void ResetLog(int id);
 
+#ifdef INTERNAL_ROUTER
+        void UpdateRouterStatus( wxString& message );
+#endif
 	void ShowUserCount(const wxString& info = wxEmptyString);
 	void ShowConnectionState(bool skinChanged = false);
 	void ShowTransferRate();
@@ -209,6 +212,7 @@ protected:
 	void OnImportButton(wxCommandEvent& ev);
 	void OnMinimize(wxIconizeEvent& evt);
 	void OnBnClickedFast(wxCommandEvent& evt);
+        void OnBnStatusText(wxCommandEvent& evt);
 	void OnGUITimer(wxTimerEvent& evt);
 	void OnMainGUISizeChange(wxSizeEvent& evt);
 	void OnExit(wxCommandEvent& evt);
@@ -229,6 +233,8 @@ private:
 	bool m_GeoIPavailable;
 
 	WX_DECLARE_STRING_HASH_MAP(wxZipEntry*, ZipCatalog);
+    ZipCatalog::iterator it;
+    wxZipEntry *entry;
 	ZipCatalog cat;
 
 	PageType m_logpages[4];

@@ -43,6 +43,9 @@ class CClientRef;
 class CLibSocket;
 class CLibSocketServer;
 class CMuleUDPSocket;
+namespace Kademlia { class CContact; }
+class CI2PAddress;
+
 
 
 DECLARE_LOCAL_EVENT_TYPE(MULE_EVT_NOTIFY, -1)
@@ -71,9 +74,16 @@ namespace MuleNotify
 	/** Special DeepCopy for wxString, which uses reference counting. */
 	inline wxString DeepCopy(const wxString& value)
 	{
-		return wxString(value.c_str(), value.Length());
+        return value.Clone();
 	}
 
+inline std::vector<wxString> DeepCopy(const std::vector<wxString>&  value)
+{
+        std::vector<wxString> res;
+        res.reserve(value.size());
+        for (const wxString & s: value) res.push_back(s.Clone());
+        return res;
+}
 
 	////////////////////////////////////////////////////////////
 	// Notification handlers
@@ -122,8 +132,8 @@ namespace MuleNotify
 	void ChatUpdateFriend(CFriend* Friend);
 	void ChatRemoveFriend(CFriend* Friend);
 	void ChatConnResult(bool success, uint64 id, wxString message);
-	void ChatProcessMsg(uint64 sender, wxString message);
-	void ChatSendCaptcha(wxString captcha, uint64 to_id);
+void ChatProcessMsg(const CI2PAddress sender, wxString message);
+void ChatSendCaptcha(wxString captcha, const CI2PAddress to_id);
 
 	void ShowConnState(long state);
 	void ShowUserCount(wxString str);
@@ -137,6 +147,10 @@ namespace MuleNotify
 	void NodesURLChanged(wxString url);
 	void ServersURLChanged(wxString url);
 
+// kad nodes list
+void KadNode_Added(Kademlia::CContact contact);
+void KadNode_Updated(Kademlia::CContact contact);
+void KadNode_Deleted(Kademlia::CContact contact);
 	// Partfile conversion: Core -> GUI
 	void ConvertUpdateProgress(float percent, wxString label, wxString header);
 	void ConvertUpdateJobInfo(ConvertInfo info);
@@ -160,7 +174,7 @@ namespace MuleNotify
 	void PartFile_PrioAuto(CPartFile* file, bool val);
 	void PartFile_PrioSet(CPartFile* file, uint8 newDownPriority, bool bSave);
 	void PartFile_Delete(CPartFile* file);
-	void PartFile_SetCat(CPartFile* file, uint32 val);
+void PartFile_SetCat(CPartFile* file, uint8 val);
 
 	void KnownFile_Up_Prio_Set(CKnownFile* file, uint8 val);
 	void KnownFile_Up_Prio_Auto(CKnownFile* file);
@@ -529,6 +543,10 @@ typedef void (wxEvtHandler::*MuleNotifyEventFunction)(CMuleGUIEvent&);
 #define Notify_NodesURLChanged(url)			MuleNotify::DoNotify(&MuleNotify::NodesURLChanged, url)
 #define Notify_ServersURLChanged(url)			MuleNotify::DoNotify(&MuleNotify::ServersURLChanged, url)
 
+// kad nodes list
+#define Notify_KadNode_Added(ptr)           MuleNotify::DoNotify(&MuleNotify::KadNode_Added, ptr)
+#define Notify_KadNode_Updated(ptr)         MuleNotify::DoNotify(&MuleNotify::KadNode_Updated, ptr)
+#define Notify_KadNode_Deleted(ptr)         MuleNotify::DoNotify(&MuleNotify::KadNode_Deleted, ptr)
 // Partfile conversion: Core -> GUI
 #define Notify_ConvertUpdateProgress(val, text)		Notify_ConvertUpdateProgressFull(val, text, wxEmptyString)
 #define Notify_ConvertUpdateProgressFull(val, text, hdr) MuleNotify::DoNotify(&MuleNotify::ConvertUpdateProgress, val, text, hdr)

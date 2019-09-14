@@ -30,6 +30,7 @@
 #include "MD4Hash.h"		// Needed for CMD4Hash
 #include "SHAHashSet.h"		// Needed for CAICHHash
 
+#include "i2p/CI2PAddress.h"
 
 
 class CMemFile;
@@ -82,8 +83,6 @@ public:
 	{
 		//! Hostname or dot-address.
 		wxString addr;
-		//! The source's TCP-port.
-		uint16 port;
 		//! Client hash for encryption
 		wxString hash;
 		//! Client cryptoptions
@@ -114,16 +113,14 @@ class CED2KServerLink : public CED2KLink
 public:
 	virtual wxString GetLink() const;
 
-	uint32 GetIP() const;
-	uint16 GetPort() const;
+        CI2PAddress GetDest() const;
 
 private:
 	CED2KServerLink(); // Not defined
 	CED2KServerLink(const CED2KServerLink&); // Not defined
 	CED2KServerLink& operator=(const CED2KServerLink&); // Not defined
 
-	uint32 m_ip;
-	uint16 m_port;
+        CI2PAddress m_dest;
 };
 
 

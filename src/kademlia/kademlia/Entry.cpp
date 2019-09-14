@@ -64,25 +64,29 @@ CEntry* CEntry::Copy() const
 	for (FileNameList::const_iterator it = m_filenames.begin(); it != m_filenames.end(); ++it) {
 		entry->m_filenames.push_back(*it);
 	}
-	entry->m_uIP = m_uIP;
-	entry->m_uKeyID = m_uKeyID;
+        entry->m_uKeyID.SetValue(m_uKeyID);
 	entry->m_tLifeTime = m_tLifeTime;
 	entry->m_uSize = m_uSize;
 	entry->m_bSource = m_bSource;
-	entry->m_uSourceID = m_uSourceID;
-	entry->m_uTCPport = m_uTCPport;
-	entry->m_uUDPport = m_uUDPport;
-	for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-		entry->m_taglist.push_back((*it)->CloneTag());
-	}
+        entry->m_uSourceID.SetValue(m_uSourceID);
+        entry->m_tcpdest = m_tcpdest;
+        entry->m_udpdest = m_udpdest;
+        entry->m_taglist = m_taglist;
 	return entry;
 }
 
-bool CEntry::GetIntTagValue(const wxString& tagname, uint64_t& value, bool includeVirtualTags) const
+uint64_t CEntry::GetIntTagValue(uint8_t tagname, bool includeVirtualTags) const
 {
-	for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-		if ((*it)->IsInt() && ((*it)->GetName() == tagname)) {
-			value = (*it)->GetInt();
+        uint64_t result = 0;
+        GetIntTagValue(tagname, result, includeVirtualTags);
+        return result;
+}
+
+bool CEntry::GetIntTagValue(uint8_t tagname, uint64_t& value, bool includeVirtualTags) const
+{
+        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                if ((it)->IsInt() && ((it)->GetID() == tagname)) {
+                        value = (it)->GetInt();
 			return true;
 		}
 	}
@@ -98,11 +102,11 @@ bool CEntry::GetIntTagValue(const wxString& tagname, uint64_t& value, bool inclu
 	return false;
 }
 
-wxString CEntry::GetStrTagValue(const wxString& tagname) const
+wxString CEntry::GetStrTagValue(uint8_t tagname) const
 {
-	for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-		if (((*it)->GetName() == tagname) && (*it)->IsStr()) {
-			return (*it)->GetStr();
+        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                if (((it)->GetID() == tagname) && (it)->IsStr()) {
+                        return (it)->GetStr();
 		}
 	}
 	return wxEmptyString;
@@ -115,6 +119,7 @@ void CEntry::SetFileName(const wxString& name)
 		m_filenames.clear();
 	}
 	sFileNameEntry sFN = { name, 1 };
+	wxASSERT(!name.IsEmpty());
 	m_filenames.push_front(sFN);
 }
 
@@ -137,27 +142,23 @@ wxString CEntry::GetCommonFileName() const
 	return strResult;
 }
 
-void CEntry::WriteTagListInc(CFileDataIO* data, uint32_t increaseTagNumber)
+void CEntry::WriteTagList(CFileDataIO* data)
 {
 	// write taglist and add name + size tag
 	wxCHECK_RET(data != NULL, wxT("data must not be NULL"));
 
-	uint32_t count = GetTagCount() + increaseTagNumber;	// will include name and size tag in the count if needed
+        uint32_t count = GetTagCount();
 	wxASSERT(count <= 0xFF);
-	data->WriteUInt8((uint8_t)count);
+        TagList taglist = m_taglist ;
 
 	if (!GetCommonFileName().IsEmpty()){
-		wxASSERT(count > m_taglist.size());
-		data->WriteTag(CTagString(TAG_FILENAME, GetCommonFileName()));
+                taglist.push_back( CTag(TAG_FILENAME, GetCommonFileName()) );
 	}
 	if (m_uSize != 0){
-		wxASSERT(count > m_taglist.size());
-		data->WriteTag(CTagVarInt(TAG_FILESIZE, m_uSize));
+                taglist.push_back( CTag(TAG_FILESIZE, uint64_t(m_uSize)) );
 	}
 
-	for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-		data->WriteTag(**it);
-	}
+        taglist.WriteTo(data) ;
 }
 
 
@@ -217,7 +218,7 @@ bool CKeyEntry::SearchTermsMatch(const SSearchTerm* searchTerm) const
 
 	if (searchTerm->type == SSearchTerm::MetaTag) {
 		if (searchTerm->tag->GetType() == 2) {	// meta tags with string values
-			if (searchTerm->tag->GetName() == TAG_FILEFORMAT) {
+                        if (searchTerm->tag->GetID() == TAG_FILEFORMAT) {
 				// 21-Sep-2006 []: Special handling for TAG_FILEFORMAT which is already part
 				// of the filename and thus does not need to get published nor stored explicitly,
 				wxString commonFileName(GetCommonFileName());
@@ -226,9 +227,9 @@ bool CKeyEntry::SearchTermsMatch(const SSearchTerm* searchTerm) const
 					return commonFileName.Mid(ext + 1).CmpNoCase(searchTerm->tag->GetStr()) == 0;
 				}
 			} else {
-				for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-					if ((*it)->IsStr() && searchTerm->tag->GetName() == (*it)->GetName()) {
-						return (*it)->GetStr().CmpNoCase(searchTerm->tag->GetStr()) == 0;
+                                for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                        if ((it)->IsStr() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                                return (it)->GetStr().CmpNoCase(searchTerm->tag->GetStr()) == 0;
 					}
 				}
 			}
@@ -236,78 +237,78 @@ bool CKeyEntry::SearchTermsMatch(const SSearchTerm* searchTerm) const
 	} else if (searchTerm->type == SSearchTerm::OpGreaterEqual) {
 		if (searchTerm->tag->IsInt()) {	// meta tags with integer values
 			uint64_t value;
-			if (GetIntTagValue(searchTerm->tag->GetName(), value, true)) {
+                        if (GetIntTagValue(searchTerm->tag->GetID(), value, true)) {
 				return value >= searchTerm->tag->GetInt();
 			}
 		} else if (searchTerm->tag->IsFloat()) {	// meta tags with float values
-			for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-				if ((*it)->IsFloat() && searchTerm->tag->GetName() == (*it)->GetName()) {
-					return (*it)->GetFloat() >= searchTerm->tag->GetFloat();
+                        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                if ((it)->IsFloat() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                        return (it)->GetFloat() >= searchTerm->tag->GetFloat();
 				}
 			}
 		}
 	} else if (searchTerm->type == SSearchTerm::OpLessEqual) {
 		if (searchTerm->tag->IsInt()) {	// meta tags with integer values
 			uint64_t value;
-			if (GetIntTagValue(searchTerm->tag->GetName(), value, true)) {
+                        if (GetIntTagValue(searchTerm->tag->GetID(), value, true)) {
 				return value <= searchTerm->tag->GetInt();
 			}
 		} else if (searchTerm->tag->IsFloat()) {	// meta tags with float values
-			for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-				if ((*it)->IsFloat() && searchTerm->tag->GetName() == (*it)->GetName()) {
-					return (*it)->GetFloat() <= searchTerm->tag->GetFloat();
+                        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                if ((it)->IsFloat() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                        return (it)->GetFloat() <= searchTerm->tag->GetFloat();
 				}
 			}
 		}
 	} else if (searchTerm->type == SSearchTerm::OpGreater) {
 		if (searchTerm->tag->IsInt()) {	// meta tags with integer values
 			uint64_t value;
-			if (GetIntTagValue(searchTerm->tag->GetName(), value, true)) {
+                        if (GetIntTagValue(searchTerm->tag->GetID(), value, true)) {
 				return value > searchTerm->tag->GetInt();
 			}
 		} else if (searchTerm->tag->IsFloat()) {	// meta tags with float values
-			for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-				if ((*it)->IsFloat() && searchTerm->tag->GetName() == (*it)->GetName()) {
-					return (*it)->GetFloat() > searchTerm->tag->GetFloat();
+                        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                if ((it)->IsFloat() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                        return (it)->GetFloat() > searchTerm->tag->GetFloat();
 				}
 			}
 		}
 	} else if (searchTerm->type == SSearchTerm::OpLess) {
 		if (searchTerm->tag->IsInt()) {	// meta tags with integer values
 			uint64_t value;
-			if (GetIntTagValue(searchTerm->tag->GetName(), value, true)) {
+                        if (GetIntTagValue(searchTerm->tag->GetID(), value, true)) {
 				return value < searchTerm->tag->GetInt();
 			}
 		} else if (searchTerm->tag->IsFloat()) {	// meta tags with float values
-			for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-				if ((*it)->IsFloat() && searchTerm->tag->GetName() == (*it)->GetName()) {
-					return (*it)->GetFloat() < searchTerm->tag->GetFloat();
+                        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                if ((it)->IsFloat() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                        return (it)->GetFloat() < searchTerm->tag->GetFloat();
 				}
 			}
 		}
 	} else if (searchTerm->type == SSearchTerm::OpEqual) {
 		if (searchTerm->tag->IsInt()) {	// meta tags with integer values
 			uint64_t value;
-			if (GetIntTagValue(searchTerm->tag->GetName(), value, true)) {
+                        if (GetIntTagValue(searchTerm->tag->GetID(), value, true)) {
 				return value == searchTerm->tag->GetInt();
 			}
 		} else if (searchTerm->tag->IsFloat()) {	// meta tags with float values
-			for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-				if ((*it)->IsFloat() && searchTerm->tag->GetName() == (*it)->GetName()) {
-					return (*it)->GetFloat() == searchTerm->tag->GetFloat();
+                        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                if ((it)->IsFloat() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                        return (it)->GetFloat() == searchTerm->tag->GetFloat();
 				}
 			}
 		}
 	} else if (searchTerm->type == SSearchTerm::OpNotEqual) {
 		if (searchTerm->tag->IsInt()) {	// meta tags with integer values
 			uint64_t value;
-			if (GetIntTagValue(searchTerm->tag->GetName(), value, true)) {
+                        if (GetIntTagValue(searchTerm->tag->GetID(), value, true)) {
 				return value != searchTerm->tag->GetInt();
 			}
 		} else if (searchTerm->tag->IsFloat()) {	// meta tags with float values
-			for (TagPtrList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
-				if ((*it)->IsFloat() && searchTerm->tag->GetName() == (*it)->GetName()) {
-					return (*it)->GetFloat() != searchTerm->tag->GetFloat();
+                        for (TagList::const_iterator it = m_taglist.begin(); it != m_taglist.end(); ++it) {
+                                if ((it)->IsFloat() && searchTerm->tag->GetID() == (it)->GetID()) {
+                                        return (it)->GetFloat() != searchTerm->tag->GetFloat();
 				}
 			}
 		}
@@ -316,11 +317,11 @@ bool CKeyEntry::SearchTermsMatch(const SSearchTerm* searchTerm) const
 	return false;
 }
 
-void CKeyEntry::AdjustGlobalPublishTracking(uint32_t ip, bool increase, const wxString& DEBUG_ONLY(dbgReason))
+void CKeyEntry::AdjustGlobalPublishTracking(uint32_t desthash, bool increase, const wxString& DEBUG_ONLY(dbgReason))
 {
 	uint32_t count = 0;
 	bool found = false;
-	GlobalPublishIPMap::const_iterator it = s_globalPublishIPs.find(ip & 0xFFFFFF00 /* /24 netmask, take care of endian if needed */ );
+        GlobalPublishIPMap::const_iterator it = s_globalPublishIPs.find(desthash);
 	if (it != s_globalPublishIPs.end()) {
 		count = it->second;
 		found = true;
@@ -333,16 +334,16 @@ void CKeyEntry::AdjustGlobalPublishTracking(uint32_t ip, bool increase, const wx
 	}
 
 	if (count > 0) {
-		s_globalPublishIPs[ip & 0xFFFFFF00] = count;
+                s_globalPublishIPs[desthash] = count;
 	} else if (found) {
-		s_globalPublishIPs.erase(ip & 0xFFFFFF00);
+                s_globalPublishIPs.erase(desthash);
 	} else {
 		wxFAIL;
 	}
 #ifdef __DEBUG__
 	if (!dbgReason.IsEmpty()) {
-		AddDebugLogLineN(logKadEntryTracking, CFormat(wxT("%s %s (%s) - (%s), new count %u"))
-			% (increase ? wxT("Adding") : wxT("Removing")) % KadIPToString(ip & 0xFFFFFF00) % KadIPToString(ip) % dbgReason % count);
+                AddDebugLogLineN(logKadEntryTracking, CFormat(wxT("%s 0x%x - (%s), new count %u"))
+                                 % (increase ? wxT("Adding") : wxT("Removing")) % desthash % dbgReason % count);
 	}
 #endif
 }
@@ -374,10 +375,10 @@ void CKeyEntry::MergeIPsAndFilenames(CKeyEntry* fromEntry)
 		fromEntry->m_publishingIPs = NULL;
 		bool fastRefresh = false;
 		for (PublishingIPList::iterator it = m_publishingIPs->begin(); it != m_publishingIPs->end(); ++it) {
-			if (it->m_ip == m_uIP) {
+                        if (it->m_ip == m_udpdest.hashCode()) {
 				refresh = true;
 				if ((time(NULL) - it->m_lastPublish) < (KADEMLIAREPUBLISHTIMES - HR2S(1))) {
-					AddDebugLogLineN(logKadEntryTracking, wxT("FastRefresh publish, ip: ") + KadIPToString(m_uIP));
+                                        AddDebugLogLineN(logKadEntryTracking, wxT("FastRefresh publish, dest: ") + m_udpdest.humanReadable());
 					fastRefresh = true; // refreshed faster than expected, will not count into filenamepopularity index
 				}
 				it->m_lastPublish = time(NULL);
@@ -409,21 +410,23 @@ void CKeyEntry::MergeIPsAndFilenames(CKeyEntry* fromEntry)
 					nameToCopy.m_popularityIndex++;
 				}
 			}
+			wxASSERT(!nameToCopy.m_filename.IsEmpty());
 			m_filenames.push_back(nameToCopy);
 		}
 		if (!duplicate) {
+			wxASSERT(!currentName.m_filename.IsEmpty());
 			m_filenames.push_back(currentName);
 		}
 	}
 
 	// if this was a refresh done, otherwise update the global track map
 	if (!refresh) {
-		wxASSERT(m_uIP != 0);
-		sPublishingIP add = { m_uIP, time(NULL) };
+                wxASSERT(m_udpdest.isValid());
+                sPublishingIP add = { m_udpdest.hashCode(), time(NULL) };
 		m_publishingIPs->push_back(add);
 
-		// add the publisher to the tacking list
-		AdjustGlobalPublishTracking(m_uIP, true, wxT("new publisher"));
+                // add the publisher to the tracking list
+                AdjustGlobalPublishTracking(m_udpdest.hashCode(), true, wxT("new publisher"));
 
 		// we keep track of max 100 IPs, in order to avoid too much time for calculation/storing/loading.
 		if (m_publishingIPs->size() > 100) {
@@ -436,7 +439,7 @@ void CKeyEntry::MergeIPsAndFilenames(CKeyEntry* fromEntry)
 		ReCalculateTrustValue();
 	}
 	AddDebugLogLineN(logKadEntryTracking, CFormat(wxT("Indexed Keyword, Refresh: %s, Current Publisher: %s, Total Publishers: %u, Total different Names: %u, TrustValue: %.2f, file: %s"))
-		% (refresh ? wxT("Yes") : wxT("No")) % KadIPToString(m_uIP) % m_publishingIPs->size() % m_filenames.size() % m_trustValue % m_uSourceID.ToHexString());
+                         % (refresh ? wxT("Yes") : wxT("No")) % m_udpdest.humanReadable() % m_publishingIPs->size() % m_filenames.size() % m_trustValue % m_uSourceID.ToHexString());
 }
 
 void CKeyEntry::ReCalculateTrustValue()
@@ -464,7 +467,7 @@ void CKeyEntry::ReCalculateTrustValue()
 	for (PublishingIPList::iterator it = m_publishingIPs->begin(); it != m_publishingIPs->end(); ++it) {
 		sPublishingIP curEntry = *it;
 		uint32_t count = 0;
-		GlobalPublishIPMap::const_iterator itMap = s_globalPublishIPs.find(curEntry.m_ip & 0xFFFFFF00 /* /24 netmask, take care of endian if needed*/);
+                GlobalPublishIPMap::const_iterator itMap = s_globalPublishIPs.find(curEntry.m_ip);
 		if (itMap != s_globalPublishIPs.end()) {
 			count = itMap->second;
 		}
@@ -507,7 +510,7 @@ void CKeyEntry::CleanUpTrackedPublishers()
 
 void CKeyEntry::WritePublishTrackingDataToFile(CFileDataIO* data)
 {
-	// format: <Names_Count 4><{<Name string><PopularityIndex 4>} Names_Count><PublisherCount 4><{<IP 4><Time 4>} PublisherCount>
+        // format: <Names_Count 4><{<Name string><PopularityIndex 4>} Names_Count><PublisherCount 4><{<Address><Time 4>} PublisherCount>
 	data->WriteUInt32((uint32_t)m_filenames.size());
 	for (FileNameList::const_iterator it = m_filenames.begin(); it != m_filenames.end(); ++it) {
 		data->WriteString(it->m_filename, utf8strRaw, 2);
@@ -535,6 +538,7 @@ void CKeyEntry::ReadPublishTrackingDataFromFile(CFileDataIO* data)
 	for (uint32_t i = 0; i < nameCount; i++) {
 		sFileNameEntry toAdd;
 		toAdd.m_filename = data->ReadString(true, 2);
+		wxASSERT(!toAdd.m_filename.IsEmpty());
 		toAdd.m_popularityIndex = data->ReadUInt32();
 		m_filenames.push_back(toAdd);
 	}
@@ -577,24 +581,38 @@ void CKeyEntry::DirtyDeletePublishData()
 	m_publishingIPs = NULL;
 }
 
+TagList & CEntry::GetTagList()
+{
+        return m_taglist ;
+}
+
+#ifdef old_mule
 void CKeyEntry::WriteTagListWithPublishInfo(CFileDataIO* data)
 {
-	if (m_publishingIPs == NULL || m_publishingIPs->empty()) {
+        GetTagListWithPublishInfo().WriteTo(data);
+}
+
+TagList CKeyEntry::GetTagListWithPublishInfo()
+{
+        if (m_publishingIPs == NULL || m_publishingIPs->size() == 0) {
 		wxFAIL;
-		WriteTagList(data);
-		return;
+                return m_taglist;
 	}
 
 	// here we add a tag including how many publishers this entry has, the trustvalue and how many different names are known
 	// this is supposed to get used in later versions as an indicator for the user how valid this result is (of course this tag
 	// alone cannot be trusted 100%, because we could be a bad node, but it's a part of the puzzle)
 
-	WriteTagListInc(data, 1); // write the standard taglist but increase the tagcount by one
-
 	uint32_t trust = (uint16_t)(GetTrustValue() * 100);
 	uint32_t publishers = m_publishingIPs->size() & 0xFF /*% 256*/;
 	uint32_t names = m_filenames.size() & 0xFF /*% 256*/;
 	// 32 bit tag: <namecount uint8><publishers uint8><trustvalue*100 uint16>
 	uint32_t tagValue = (names << 24) | (publishers << 16) | trust;
-	data->WriteTag(CTagVarInt(TAG_PUBLISHINFO, tagValue));
+
+        TagList tl = m_taglist ;
+        if (!GetCommonFileName().IsEmpty()) tl.push_back(CTag(TAG_FILENAME, this->GetCommonFileName()));
+        if (m_uSize != 0)                   tl.push_back(CTag(TAG_FILESIZE, this->m_uSize));
+        tl.push_back(CTag(TAG_PUBLISHINFO, tagValue));
+        return tl;
 }
+#endif

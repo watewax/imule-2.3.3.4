@@ -23,6 +23,12 @@
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
 //
 
+/* iMule : 5 next lines added for win32 cross compilation */
+#include <wx/config.h>
+// This include must be before amuleDlg.h
+#ifdef __WINDOWS__
+#include <wx/msw/winundef.h>    // Needed for windows compilation
+#endif
 const int versionMajor		= 1;
 const int versionMinor		= 5;
 const int versionRevision	= 1;
@@ -83,7 +89,7 @@ string GetLinksFilePath(const string& configDir)
 		}
 	}
 
-	return strDir + "/aMule/ED2KLinks";
+	return strDir + "/iMule/ED2KLinks";
 
 #elif defined(_WIN32)
 
@@ -95,7 +101,7 @@ string GetLinksFilePath(const string& configDir)
 
 	if (SUCCEEDED(hr)) {
 		if (SHGetPathFromIDListA(pidl, buffer)) {
-			if (PathAppendA(buffer, "aMule\\ED2KLinks")) {
+			if (PathAppendA(buffer, "iMule\\ED2KLinks")) {
 				strDir.assign(buffer);
 			}
 		}
@@ -114,7 +120,7 @@ string GetLinksFilePath(const string& configDir)
 
 #else
 
-	return string( getenv("HOME") ) + "/.aMule/ED2KLinks";
+	return string( getenv("HOME") ) + "/.iMule/ED2KLinks";
 
 #endif
 }
@@ -242,7 +248,7 @@ string getVersion()
 {
 	std::ostringstream v;
 
-	v << "aMule ED2k link parser v"
+	v << "iMule ED2k link parser v"
 		<< versionMajor << "."
 		<< versionMinor << "."
 		<< versionRevision;

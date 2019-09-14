@@ -66,6 +66,9 @@ enum DebugType
 	logClientUDP,
 	//! Warnings/Errors for the download-queue.
 	logDownloadQueue,
+        //! Warnings/Errors for the upload-queue.
+        logUploadQueue,
+	logUploadSlots,
 	//! Warnings/Errors for the IP-Filter.
 	logIPFilter,
 	//! Warnings/Errors for known-files.
@@ -90,6 +93,8 @@ enum DebugType
 	logKadRouting,
 	//! Warning/Errors related to Kademlia Indexing
 	logKadIndex,
+        //! Warning/Errors related to Kademlia Publishing
+        logKadPublish,
 	//! Warning/Errors related to Kademlia Main Thread
 	logKadMain,
 	//! Warning/Errors related to Kademlia Preferences
@@ -116,6 +121,33 @@ enum DebugType
 	logAsio
 	// IMPORTANT NOTE: when you add values to this enum, update the g_debugcats
 	// array in Logger.cpp!
+        //! Warnings/Errors related to ED2K link generation and parsing,
+        ,logED2KLink,
+        //! Warnings/Errors related to I2PDatagramSocket
+        logI2PDatagramSocket,
+        //! Warnings/Errors related to I2PEvents
+        logI2PEvents,
+        //! Warnings/Errors related to I2PSocketClient
+        logI2PSocketClient,
+        //! Warnings/Errors related to I2PSocketBase
+        logI2PSocketBase,
+        //! Warnings/Errors related to I2PServer
+        logI2PRouter,
+        //! Warnings/Errors related to I2PSocketServer
+        logI2PSocketServer,
+        logI2PSocket,
+        logI2PSocketReadThreads,
+        logI2PSocketWriteThreads,
+        logAddress,
+        logMyMutex,
+        logCTag,
+        logI2PClient,
+        logWxEvents,
+        logKadSourceCount,
+        logSamLauncher,
+        logSamSession,
+        logCrypto,
+        logSocketList
 };
 
 
@@ -177,11 +209,11 @@ public:
 	/**
 	 * Returns true if debug-messages should be generated for a specific category.
 	 */
-#ifdef __DEBUG__
+// #ifdef __DEBUG__
 	bool IsEnabled( DebugType ) const;
-#else
-	bool IsEnabled( DebugType ) const	{ return false; }
-#endif
+// #else
+//         bool IsEnabled( DebugType ) const 	{ return false; }
+// #endif
 
 	/**
 	 * Enables or disables debug-messages for a specific category.
@@ -289,7 +321,7 @@ private:
 	wxString m_ApplogBuf;
 	bool m_StdoutLog;
 	int  m_count;			// output line counter
-	wxMutex m_lineLock;
+	wiMutex m_lineLock;
 
 	/**
 	 * Write all waiting log info to the logfile
@@ -436,11 +468,11 @@ public:
 	#define AddLogLineF(...) do {} while (false)
 #else
 // Macros for 'N'on critical logging
-	#ifdef __DEBUG__
+//	#ifdef __DEBUG__
 		#define AddDebugLogLineN(type, string) if (theLogger.IsEnabled(type)) theLogger.AddLogLine(__TFILE__, __LINE__, false, type, string)
-	#else
-		#define AddDebugLogLineN(type, string)	do {} while (false)
-	#endif
+//	#else
+//		#define AddDebugLogLineN(type, string)	do {} while (false)
+//	#endif
 	#define AddLogLineN(string) theLogger.AddLogLine(__TFILE__, __LINE__, false, logStandard, string)
 	#define AddLogLineNS(string) theLogger.AddLogLine(__TFILE__, __LINE__, false, logStandard, string, true)
 // Macros for 'C'ritical logging

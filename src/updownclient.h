@@ -40,6 +40,7 @@
 
 #include <map>
 
+#include "i2p/CI2PAddress.h"
 
 class CPartFile;
 class CClientTCPSocket;
@@ -73,19 +74,20 @@ enum EInfoPacketState {
 	IP_BOTH			= 3
 };
 
-enum EKadState {
-	KS_NONE,
-	KS_QUEUED_FWCHECK,
-	KS_CONNECTING_FWCHECK,
-	KS_CONNECTED_FWCHECK,
-	KS_QUEUED_BUDDY,
-	KS_INCOMING_BUDDY,
-	KS_CONNECTING_BUDDY,
-	KS_CONNECTED_BUDDY,
-	KS_QUEUED_FWCHECK_UDP,
-	KS_FWCHECK_UDP,
-	KS_CONNECTING_FWCHECK_UDP
-};
+// NOTE : not for I2P
+//enum EKadState{
+//KS_NONE,
+//KS_QUEUED_FWCHECK,
+//KS_CONNECTING_FWCHECK,
+//KS_CONNECTED_FWCHECK,
+//KS_QUEUED_BUDDY,
+//KS_INCOMING_BUDDY,
+//KS_CONNECTING_BUDDY,
+//KS_CONNECTED_BUDDY,
+//KS_NONE_LOWID,
+//KS_WAITCALLBACK_LOWID,
+//KS_QUEUE_LOWID
+//};
 
 //! Used to keep track of the state of the client
 enum ClientState
@@ -140,7 +142,7 @@ private:
 public:
 	//base
 	CUpDownClient(CClientTCPSocket* sender = 0);
-	CUpDownClient(uint16 in_port, uint32 in_userid, uint32 in_serverup, uint16 in_serverport,CPartFile* in_reqfile, bool ed2kID, bool checkfriend);
+        CUpDownClient(const CI2PAddress & in_tcpdest, const CI2PAddress & in_serverdest,CPartFile* in_reqfile, bool ed2kID, bool checkfriend);
 
 	/**
 	 * This function is to be called when the client object is to be deleted.
@@ -166,21 +168,21 @@ public:
 	bool		Connect();
 	void		ConnectionEstablished();
 	const wxString&	GetUserName() const		{ return m_Username; }
-	//Only use this when you know the real IP or when your clearing it.
-	void		SetIP( uint32 val );
-	uint32		GetIP() const			{ return m_dwUserIP; }
+        void            SetUDPDest  ( const CI2PAddress & val ) { m_nUDPDest    = val; }
+        const CI2PAddress & GetUDPDest() const          { return m_nUDPDest; }
+        void		SetTCPDest  ( const CI2PAddress & val );
+        const CI2PAddress & GetTCPDest       () const	{ return m_nTCPDest;     }
+
 	bool		HasLowID() const		{ return IsLowID(m_nUserIDHybrid); }
-	wxString	GetFullIP() const		{ return Uint32toStringIP(m_FullUserIP); }
-	uint32		GetConnectIP() const		{ return m_nConnectIP; }
-	uint32		GetUserIDHybrid() const		{ return m_nUserIDHybrid; }
-	void		SetUserIDHybrid(uint32 val);
+        wxString	GetFullIP() const		{ return m_nTCPDest.toString(); }
+        const CI2PAddress & GetConnectIP() const	{ return m_nConnectIP; }
+        const CI2PAddress & GetUserIDHybrid() const	{ return m_nUserIDHybrid; }
+        void		SetUserIDHybrid(const CI2PAddress &  val);
 	uint16_t	GetUserPort() const		{ return m_nUserPort; }
 	void		SetUserPort(uint16_t port)	{ m_nUserPort = port; }
 	uint64		GetTransferredDown() const	{ return m_nTransferredDown; }
-	uint32		GetServerIP() const		{ return m_dwServerIP; }
-	void		SetServerIP(uint32 nIP)		{ m_dwServerIP = nIP; }
-	uint16		GetServerPort()	const		{ return m_nServerPort; }
-	void		SetServerPort(uint16 nPort)	{ m_nServerPort = nPort; }
+        const CI2PAddress & GetServerIP() const		{ return m_nServerDest; }
+        void		SetServerIP(const CI2PAddress & val) { m_nServerDest = val; }
 	const CMD4Hash&	GetUserHash() const		{ return m_UserHash; }
 	void		SetUserHash(const CMD4Hash& userhash);
 	void		ValidateHash()			{ m_HasValidHash = !m_UserHash.IsEmpty(); }
@@ -191,9 +193,7 @@ public:
 	bool		IsEmuleClient()	const		{ return (m_byEmuleVersion > 0);}
 	bool		IsBanned() const;
 	const wxString&	GetClientFilename() const	{ return m_clientFilename; }
-	uint16		GetUDPPort() const		{ return m_nUDPPort; }
-	void		SetUDPPort(uint16 nPort)	{ m_nUDPPort = nPort; }
-	uint8		GetUDPVersion() const		{ return m_byUDPVer; }
+        uint8		GetUDPVersion() const		{ return m_byUDPVer<4 ? 4 : m_byUDPVer; } // iMule v1 complies with version 4 but advertizes version 1
 	uint8		GetExtendedRequestsVersion() const { return m_byExtendedRequestsVer; }
 	bool		IsFriend() const		{ return m_Friend != NULL; }
 	bool		IsML() const			{ return m_bIsML; }
@@ -331,6 +331,8 @@ public:
 	const BitVector& GetPartStatus() const		{ return m_downPartStatus; }
 	const BitVector& GetUpPartStatus() const	{ return m_upPartStatus; }
 	float		GetKBpsDown() const				{ return kBpsDown; }
+        float		GetAvgKBpsDown() const;
+        float		GetAvgKBpsUp() const;
 	float		CalculateKBpsDown();
 	uint16		GetRemoteQueueRank() const	{ return m_nRemoteQueueRank; }
 	uint16		GetOldRemoteQueueRank() const	{ return m_nOldRemoteQueueRank; }
@@ -380,8 +382,8 @@ public:
 	const wxString&	GetSoftVerStr() const		{ return m_clientVerString; }
 	const wxString GetServerName() const;
 
-	uint16		GetKadPort() const		{ return m_nKadPort; }
-	void		SetKadPort(uint16 nPort)	{ m_nKadPort = nPort; }
+	//uint16		GetKadPort() const		{ return m_nKadPort; }
+	//void		SetKadPort(uint16 nPort)	{ m_nKadPort = nPort; }
 
 	// Kry - AICH import
 	void		SetReqFileAICHHash(CAICHHash* val);
@@ -473,26 +475,26 @@ public:
 
 	/* Kad buddy support */
 	// ID
-	const byte*	GetBuddyID() const		{ return m_achBuddyID; }
-	void		SetBuddyID(const byte* m_achTempBuddyID);
-	bool		HasValidBuddyID() const		{ return m_bBuddyIDValid; }
+	//const byte*	GetBuddyID() const		{ return m_achBuddyID; }
+	//void		SetBuddyID(const byte* m_achTempBuddyID);
+	//bool		HasValidBuddyID() const		{ return m_bBuddyIDValid; }
 	/* IP */
-	void		SetBuddyIP( uint32 val )	{ m_nBuddyIP = val; }
-	uint32		GetBuddyIP() const		{ return m_nBuddyIP; }
+	//void		SetBuddyIP( uint32 val )	{ m_nBuddyIP = val; }
+	//uint32		GetBuddyIP() const		{ return m_nBuddyIP; }
 	/* Port */
-	void		SetBuddyPort( uint16 val )	{ m_nBuddyPort = val; }
-	uint16		GetBuddyPort() const		{ return m_nBuddyPort; }
+	//void		SetBuddyPort( uint16 val )	{ m_nBuddyPort = val; }
+	//uint16		GetBuddyPort() const		{ return m_nBuddyPort; }
 
 	//KadIPCheck
-	bool		SendBuddyPingPong()		{ return m_dwLastBuddyPingPongTime < ::GetTickCount(); }
-	bool		AllowIncomeingBuddyPingPong()	{ return m_dwLastBuddyPingPongTime < (::GetTickCount()-(3*60*1000)); }
-	void		SetLastBuddyPingPongTime()	{ m_dwLastBuddyPingPongTime = (::GetTickCount()+(10*60*1000)); }
-	EKadState	GetKadState() const		{ return m_nKadState; }
-	void		SetKadState(EKadState nNewS)	{ m_nKadState = nNewS; }
+	//bool		SendBuddyPingPong()		{ return m_dwLastBuddyPingPongTime < ::GetTickCount(); }
+	//bool		AllowIncomeingBuddyPingPong()	{ return m_dwLastBuddyPingPongTime < (::GetTickCount()-(3*60*1000)); }
+	//void		SetLastBuddyPingPongTime()	{ m_dwLastBuddyPingPongTime = (::GetTickCount()+(10*60*1000)); }
+	//EKadState	GetKadState() const		{ return m_nKadState; }
+	//void		SetKadState(EKadState nNewS)	{ m_nKadState = nNewS; }
 	uint8		GetKadVersion()			{ return m_byKadVersion; }
-	void		ProcessFirewallCheckUDPRequest(CMemFile *data);
+	//void		ProcessFirewallCheckUDPRequest(CMemFile *data);
 	// Kad added by me
-	bool		SendBuddyPing();
+	//bool		SendBuddyPing();
 
 	/* Returns the client hash type (SO_EMULE, mldonkey, etc) */
 	int		GetHashType() const;
@@ -558,7 +560,7 @@ public:
 
 	bool		SupportsLargeFiles() const { return m_fSupportsLargeFiles; }
 
-	EIdentState	GetCurrentIdentState() const { return credits ? credits->GetCurrentIdentState(GetIP()) : IS_NOTAVAILABLE; }
+        EIdentState	GetCurrentIdentState() const { return credits ? credits->GetCurrentIdentState(GetTCPDest()) : IS_NOTAVAILABLE; }
 
 #ifdef __DEBUG__
 	/* Kry - Debug. See connection_reason definition comment below */
@@ -569,7 +571,7 @@ public:
 	bool		SupportsCryptLayer() const			{ return m_fSupportsCryptLayer; }
 	bool		RequestsCryptLayer() const			{ return SupportsCryptLayer() && m_fRequestsCryptLayer; }
 	bool		RequiresCryptLayer() const			{ return RequestsCryptLayer() && m_fRequiresCryptLayer; }
-	bool		SupportsDirectUDPCallback() const		{ return m_fDirectUDPCallback != 0 && HasValidHash() && GetKadPort() != 0; }
+        bool        	SupportsDirectUDPCallback() const       { return m_fDirectUDPCallback != 0 && HasValidHash() && GetUDPDest() != CI2PAddress::null; }
 	uint32_t	GetDirectCallbackTimeout() const		{ return m_dwDirectCallbackTimeout; }
 	bool		HasObfuscatedConnectionBeenEstablished() const	{ return m_hasbeenobfuscatinglately; }
 
@@ -592,7 +594,7 @@ private:
 	sint64		m_addedPayloadQueueSession;
 
 	struct TransferredData {
-		uint32	datalen;
+                uint64	datalen;
 		uint32	timestamp;
 	};
 
@@ -642,22 +644,23 @@ private:
 	void		SendFirewallCheckUDPRequest();
 	void		ClearHelloProperties(); // eMule 0.42
 
-	uint32		m_dwUserIP;
-	uint32		m_nConnectIP;		// holds the supposed IP or (after we had a connection) the real IP
-	uint32		m_dwServerIP;
-	uint32		m_nUserIDHybrid;
+        CI2PAddress     m_nUDPDest;
+        CI2PAddress	m_nTCPDest;
+        CI2PAddress     m_nUserIDHybrid;
+        CI2PAddress	m_nConnectIP;		// holds the supposed TCP IP or (after we had a connection) the real IP
+        CI2PAddress	m_nServerDest;
 	uint16_t	m_nUserPort;
-	int16		m_nServerPort;
+	//int16		m_nServerPort;
 	uint32		m_nClientVersion;
 	uint32		m_cSendblock;
 	uint8		m_byEmuleVersion;
 	uint8		m_byDataCompVer;
 	bool		m_bEmuleProtocol;
 	wxString	m_Username;
-	uint32		m_FullUserIP;
+        wxString	m_FullUserIP;
 	CMD4Hash	m_UserHash;
 	bool		m_HasValidHash;
-	uint16		m_nUDPPort;
+	//uint16		m_nUDPPort;
 	uint8		m_byUDPVer;
 	uint8		m_bySourceExchange1Ver;
 	uint8		m_byAcceptCommentVer;
@@ -673,7 +676,7 @@ private:
 	bool		m_bIsML;
 	bool		m_bSupportsPreview;
 	bool		m_bUnicodeSupport;
-	uint16		m_nKadPort;
+	//uint16		m_nKadPort;
 	bool		m_bMultiPacket;
 	ClientState	m_clientState;
 	CClientTCPSocket*	m_socket;
@@ -682,7 +685,7 @@ private:
 	// Kry - Secure User Ident import
 	ESecureIdentState	m_SecureIdentState;
 	uint8		m_byInfopacketsReceived;		// have we received the edonkeyprot and emuleprot packet already (see InfoPacketsReceived() )
-	uint32		m_dwLastSignatureIP;
+        CI2PAddress	m_dwLastSignatureDest;
 	uint8		m_bySupportSecIdent;
 
 	uint32		m_byCompatibleClient;
@@ -698,7 +701,7 @@ private:
 	uint32		m_dwUploadTime;
 	uint32		m_cAsked;
 	uint32		m_dwLastUpRequest;
-	uint32		m_nCurSessionUp;
+        uint64		m_nCurSessionUp;
 	uint16		m_nUpPartCount;
 	CMD4Hash	m_requpfileid;
 	uint16		m_nUpCompleteSourcesCount;
@@ -739,6 +742,12 @@ private:
 	float		kBpsDown;
 	uint32		msReceivedPrev;
 	uint32		bytesReceivedCycle;
+
+	// iMule download and upload speed calculation
+	uint64		msReceivedTotal;
+	uint32		msSentPrev;
+	uint64		msSentTotal;
+
 	// chat
 	wxString	m_strComment;
 	uint8		m_byChatstate;
@@ -789,12 +798,12 @@ private:
 	ESourceFrom	m_nSourceFrom;
 
 	/* Kad Stuff */
-	byte		m_achBuddyID[16];
-	bool		m_bBuddyIDValid;
-	uint32		m_nBuddyIP;
-	uint16		m_nBuddyPort;
+	//byte		m_achBuddyID[16];
+	//bool		m_bBuddyIDValid;
+	//uint32		m_nBuddyIP;
+	//uint16		m_nBuddyPort;
 
-	EKadState	m_nKadState;
+	//EKadState	m_nKadState;
 
 	uint8		m_byKadVersion;
 	uint32		m_dwLastBuddyPingPongTime;

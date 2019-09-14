@@ -26,9 +26,12 @@
 #include "SafeFile.h"			// Interface declarations.
 #include "MD4Hash.h"			// Needed for CMD4Hash
 #include "kademlia/utils/UInt128.h"	// Needed for CUInt128
-#include "ScopedPtr.h"			// Needed for CScopedPtr and CScopedArray
+//#include "ScopedPtr.h"			// Needed for CScopedPtr and CScopedArray
 #include "Logger.h"
 #include <common/Format.h>		// Needed for CFormat
+#include "i2p/CI2PAddress.h"			// Needed for CI2PAddress
+#include "MemFile.h"
+#include <memory>
 #include "CompilerSpecific.h"		// Needed for __FUNCTION__
 
 
@@ -142,6 +145,22 @@ uint16 CFileDataIO::ReadUInt16() const
 	return ENDIAN_SWAP_16(value);
 }
 
+CI2PAddress CFileDataIO::ReadAddress() const
+{
+        CI2PAddress value;
+        std::unique_ptr<byte[]> bytes(new byte[CI2PAddress::validLength()]);
+        Read(bytes.get(), CI2PAddress::validLength());
+        value.readBytes( bytes.get() );
+        return value;
+}
+
+void CFileDataIO::WriteAddress(const CI2PAddress& value)
+{
+        uint16_t writeLen  = CI2PAddress::validLength();
+        std::unique_ptr<byte[]> bytes(new byte[writeLen]);
+        value.writeBytes(bytes.get());
+        Write(bytes.get(), writeLen);
+}
 
 uint32 CFileDataIO::ReadUInt32() const
 {
@@ -199,7 +218,7 @@ unsigned char* CFileDataIO::ReadBsob(uint8* puSize) const
 
 	*puSize = ReadUInt8();
 
-	CScopedArray<unsigned char> bsob(*puSize);
+        std::unique_ptr<unsigned char[]> bsob(new unsigned char[*puSize]);
 	Read(bsob.get(), *puSize);
 
 	return bsob.release();
@@ -221,7 +240,8 @@ wxString CFileDataIO::ReadString(bool bOptUTF8, uint8 SizeLen, bool SafeRead) co
 		readLen = std::min<uint64>(readLen, GetLength() - GetPosition());
 	}
 
-	return ReadOnlyString(bOptUTF8, readLen);
+		wxASSERT(readLen < 1 << 16);
+        return ReadOnlyString(bOptUTF8, (uint16)readLen);
 }
 
 
@@ -323,6 +343,7 @@ void CFileDataIO::WriteString(const wxString& str, EUtf8Str eEncode, uint8 SizeL
 		case utf8strRaw:
 		case utf8strOptBOM: {
 			Unicode2CharBuf s(unicode2UTF8(str));
+                //                 printf("CFileDataIO::WriteString %s\n", (const char *) s);
 			if (s.data()) {
 				WriteStringCore(s, eEncode, SizeLen);
 				break;
@@ -369,7 +390,7 @@ void CFileDataIO::WriteStringCore(const char *s, EUtf8Str eEncode, uint8 SizeLen
 				}
 			}
 
-			WriteUInt16(real_length);
+                WriteUInt16((uint16)real_length);
 			break;
 
 		case sizeof(uint32):
@@ -396,79 +417,8 @@ void CFileDataIO::WriteStringCore(const char *s, EUtf8Str eEncode, uint8 SizeLen
 CTag *CFileDataIO::ReadTag(bool bOptACP) const
 {
 	CTag *retVal = NULL;
-	wxString name;
-	byte type = 0;
 	try {
-		type = ReadUInt8();
-		name = ReadString(false);
-
-		switch (type)
-		{
-			// NOTE: This tag data type is accepted and stored only to give us the possibility to upgrade
-			// the net in some months.
-			//
-			// And still.. it doesnt't work this way without breaking backward compatibility. To properly
-			// do this without messing up the network the following would have to be done:
-			//	 -	those tag types have to be ignored by any client, otherwise those tags would also be sent (and
-			//		that's really the problem)
-			//
-			//	 -	ignoring means, each client has to read and right throw away those tags, so those tags get
-			//		get never stored in any tag list which might be sent by that client to some other client.
-			//
-			//	 -	all calling functions have to be changed to deal with the 'nr. of tags' attribute (which was
-			//		already parsed) correctly.. just ignoring those tags here is not enough, any taglists have to
-			//		be built with the knowledge that the 'nr. of tags' attribute may get decreased during the tag
-			//		reading..
-			//
-			// If those new tags would just be stored and sent to remote clients, any malicious or just bugged
-			// client could let send a lot of nodes "corrupted" packets...
-			//
-			case TAGTYPE_HASH16:
-			{
-				retVal = new CTagHash(name, ReadHash());
-				break;
-			}
-
-			case TAGTYPE_STRING:
-				retVal = new CTagString(name, ReadString(bOptACP));
-				break;
-
-			case TAGTYPE_UINT64:
-				retVal = new CTagInt64(name, ReadUInt64());
-				break;
-
-			case TAGTYPE_UINT32:
-				retVal = new CTagInt32(name, ReadUInt32());
-				break;
-
-			case TAGTYPE_UINT16:
-				retVal = new CTagInt16(name, ReadUInt16());
-				break;
-
-			case TAGTYPE_UINT8:
-				retVal = new CTagInt8(name, ReadUInt8());
-				break;
-
-			case TAGTYPE_FLOAT32:
-				retVal = new CTagFloat(name, ReadFloat());
-				break;
-
-			// NOTE: This tag data type is accepted and stored only to give us the possibility to upgrade
-			// the net in some months.
-			//
-			// And still.. it doesnt't work this way without breaking backward compatibility
-			case TAGTYPE_BSOB:
-			{
-				uint8 size = 0;
-				CScopedArray<unsigned char> value(ReadBsob(&size));
-
-				retVal = new CTagBsob(name, value.get(), size);
-				break;
-			}
-
-			default:
-				throw wxString(CFormat(wxT("Invalid Kad tag type; type=0x%02x name=%s\n")) % type % name);
-		}
+                retVal = new CTag(*this, bOptACP);
 	} catch(const CMuleException& e) {
 		AddLogLineN(e.what());
 		delete retVal;
@@ -482,72 +432,19 @@ CTag *CFileDataIO::ReadTag(bool bOptACP) const
 }
 
 
-void CFileDataIO::ReadTagPtrList(TagPtrList* taglist, bool bOptACP) const
+void CFileDataIO::ReadTagList(TagList* taglist, bool bOptACP) const
 {
 	MULE_VALIDATE_PARAMS(taglist, wxT("NULL pointer argument in ReadTagPtrList"));
 
-	uint32 count = ReadUInt8();
-	for (uint32 i = 0; i < count; i++)
-	{
-		CTag* tag = ReadTag(bOptACP);
-		taglist->push_back(tag);
-	}
+        TagList tl(*this, bOptACP);
+        *taglist = tl ;
 }
 
 
 void CFileDataIO::WriteTag(const CTag& tag)
 {
-	try
-	{
-		WriteUInt8(tag.GetType());
-
-		if (!tag.GetName().IsEmpty()) {
-			WriteString(tag.GetName(),utf8strNone);
-		} else {
-			WriteUInt16(1);
-			WriteUInt8(tag.GetNameID());
-		}
-
-		switch (tag.GetType())
-		{
-			case TAGTYPE_HASH16:
-				// Do NOT use this to transfer any tags for at least half a year!!
-				WriteHash(CMD4Hash(tag.GetHash()));
-				break;
-			case TAGTYPE_STRING:
-				WriteString(tag.GetStr(), utf8strRaw); // Always UTF8
-				break;
-			case TAGTYPE_UINT64:
-				WriteUInt64(tag.GetInt());
-				break;
-			case TAGTYPE_UINT32:
-				WriteUInt32(tag.GetInt());
-				break;
-			case TAGTYPE_FLOAT32:
-				WriteFloat(tag.GetFloat());
-				break;
-			case TAGTYPE_BSOB:
-				WriteBsob(tag.GetBsob(), tag.GetBsobSize());
-				break;
-			case TAGTYPE_UINT16:
-				WriteUInt16(tag.GetInt());
-				break;
-			case TAGTYPE_UINT8:
-				WriteUInt8(tag.GetInt());
-				break;
-			case TAGTYPE_BLOB:
-				// NOTE: This will break backward compatibility with met files for eMule versions prior to 0.44a
-				// and any aMule prior to SVN 26/02/2005
-				WriteUInt32(tag.GetBlobSize());
-				Write(tag.GetBlob(), tag.GetBlobSize());
-				break;
-			default:
-				//TODO: Support more tag types
-				// With the if above, this should NEVER happen.
-				AddLogLineNS(CFormat(wxT("CFileDataIO::WriteTag: Unknown tag: type=0x%02X")) % tag.GetType());
-				wxFAIL;
-				break;
-		}
+        try {
+                tag.WriteTo(this,utf8strRaw);
 	} catch (...) {
 		AddLogLineNS(wxT("Exception in CDataIO:WriteTag"));
 		throw;
@@ -555,16 +452,9 @@ void CFileDataIO::WriteTag(const CTag& tag)
 }
 
 
-void CFileDataIO::WriteTagPtrList(const TagPtrList& tagList)
+void CFileDataIO::WriteTagList(const TagList& tagList)
 {
-	uint32 count = tagList.size();
-	wxASSERT( count <= 0xFF );
-
-	WriteUInt8(count);
-	TagPtrList::const_iterator it;
-	for (it = tagList.begin(); it != tagList.end(); ++it) {
-		WriteTag(**it);
-	}
+        tagList.WriteTo(this);
 }
 
 uint64 CFileDataIO::GetIntTagValue() const {

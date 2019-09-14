@@ -26,11 +26,15 @@
 #define MULEUDPSOCKET_H
 
 
-#include "Types.h"				// Needed for uint16 and uint32
+#include "Types.h"				// Needed for uint16_t and uint32_t
 #include "ThrottledSocket.h"	// Needed for ThrottledControlSocket
-#include "amuleIPV4Address.h"	// Needed for amuleIPV4Address
+#include "i2p/CI2PAddress.h"
 
-#include <wx/thread.h>		// Needed for wxMutex
+#include <wx/event.h>
+#include <wx/socket.h>
+#include "MuleThread.h"
+
+#include <memory>
 
 class CEncryptedDatagramSocket;
 class CProxyData;
@@ -50,7 +54,7 @@ class CPacket;
  * @see ThrottledControlSocket
  * @see CEncryptedDatagramSocket
  */
-class CMuleUDPSocket : public ThrottledControlSocket
+class CMuleUDPSocket : public ThrottledControlSocket, public wxObject
 {
 
 public:
@@ -62,13 +66,19 @@ public:
 	 * @param address The address where the socket will listen.
 	 * @param ProxyData ProxyData assosiated with the socket.
 	 */
-	CMuleUDPSocket(const wxString& name, int id, const amuleIPV4Address& address, const CProxyData* ProxyData = NULL);
+        CMuleUDPSocket(const wxString& name/*, int id*/, wxString destKeyName,
+                       const CProxyData* ProxyData = NULL);
+
+        bool GetLocal(CI2PAddress &);
+
+        wxString GetPrivKey();
 
 	/**
 	 * Destructor, safely closes the socket if opened.
 	 */
 	virtual ~CMuleUDPSocket();
 
+        virtual bool Destroy();
 
 	/**
 	 * Opens the socket.
@@ -81,8 +91,7 @@ public:
 	/**
 	 * Closes the socket.
 	 *
-	 * The socket can be reopened by calling Open. Closing a
-	 * already closed socket is an illegal operation.
+         * The socket can be reopened by calling Open.
 	 */
 	void Close();
 
@@ -92,7 +101,7 @@ public:
 	/** This function is called by aMule when there are data to be received. */
 	virtual void OnReceive(int errorCode);
 	/** This function is called by aMule when there is an error while receiving. */
-	virtual void OnReceiveError(int errorCode, uint32 ip, uint16 port);
+        virtual void OnReceiveError(int errorCode, const CI2PAddress &);
 	/** This function is called when the socket is lost (see comments in func.) */
 	virtual void OnDisconnected(int errorCode);
 
@@ -110,7 +119,7 @@ public:
 	 *
 	 * Note that CMuleUDPSocket takes ownership of the packet.
 	 */
-	void	SendPacket(CPacket* packet, uint32 IP, uint16 port, bool bEncrypt, const uint8* pachTargetClientHashORKadID, bool bKad, uint32 nReceiverVerifyKey);
+        void    SendPacket(std::unique_ptr<CPacket> packet, const CI2PAddress & dest, bool bEncrypt, const uint8* pachTargetClientHashORKadID, bool bKad, uint32_t nReceiverVerifyKey);
 
 
 	/**
@@ -120,8 +129,17 @@ public:
 	 */
 	bool	Ok();
 
+        /// Socket data management
+        void SetClientData( void *data );
+        void SetEventHandler( wxEvtHandler& handler, int id = -1 );
+        void SetNotify( wxSocketEventFlags flags );
+        void Notify( bool notify );
+
+        /// Returns the name of the socket
+        wxString GetName() { return m_name; }
+
 	/** Read buffer size */
-	static const unsigned UDP_BUFFER_SIZE = 16384;
+	//static const unsigned UDP_BUFFER_SIZE = 16384;
 
 protected:
 	/**
@@ -131,12 +149,13 @@ protected:
 	 * @param buffer The data that has been received.
 	 * @param length The length of the data buffer.
 	 */
-	virtual void OnPacketReceived(uint32 ip, uint16 port, byte* buffer, size_t length) = 0;
+        virtual void OnPacketReceived(const CI2PAddress & addr, byte* buffer, size_t length) = 0;
 
 
 	/** See ThrottledControlSocket::SendControlData */
 	SocketSentBytes  SendControlData(uint32 maxNumberOfBytesToSend, uint32 minFragSize);
 
+        static const uint32_t & maxPacketDataSize();
 private:
 	/**
 	 * Sends a packet to the specified address.
@@ -146,7 +165,7 @@ private:
 	 * @param ip The target ip address.
 	 * @param port The target port.
 	 */
-	bool	SendTo(uint8_t *buffer, uint32_t length, uint32_t ip, uint16_t port);
+        bool	SendTo(uint8_t *buffer, uint32_t length, const CI2PAddress & addr);
 
 
 	/**
@@ -168,13 +187,13 @@ private:
 	//! The name of the socket, used for debugging messages.
 	wxString				m_name;
 	//! The socket-ID, used for event-handling.
-	int						m_id;
+        //         int						m_id;
 	//! The address at which the socket is currently bound.
-	amuleIPV4Address		m_addr;
+        wxString				m_privKey;
 	//! Proxy settings used by the socket ...
 	const CProxyData*		m_proxy;
 	//! Mutex needed due to the use of the UBT.
-	wxMutex					m_mutex;
+        wiMutex					m_mutex;
 	//! The currently opened socket, if any.
 	CEncryptedDatagramSocket*	m_socket;
 
@@ -182,13 +201,11 @@ private:
 	struct UDPPack
 	{
 		//! The packet, which at this point is owned by CMuleUDPSocket.
-		CPacket*	packet;
+                std::unique_ptr<CPacket>	packet;
 		//! The timestamp of when the packet was queued.
 		uint32		time;
-		//! Target IP address.
-		uint32		IP;
-		//! Target port.
-		uint16		port;
+                //! Target destination.
+                CI2PAddress dest;
 		//! If the packet is encrypted.
 		bool	bEncrypt;
 		//! Is it a kad packet?
@@ -201,6 +218,12 @@ private:
 
 	//! The queue of packets waiting to be sent.
 	std::list<UDPPack> m_queue;
+        /// Socket data
+        void *             m_socket_data ;
+        wxEvtHandler *     m_socket_handler;
+        int                m_socket_id;
+        wxSocketEventFlags m_socket_flags;
+        bool               m_socket_notify ;
 };
 
 #endif // CLIENTUDPSOCKET_H

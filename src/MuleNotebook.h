@@ -26,11 +26,18 @@
 #ifndef MULENOTEBOOK_H
 #define MULENOTEBOOK_H
 
-#include <wx/notebook.h>
+#include <wx/aui/auibook.h>
 
 #define MULE_NEEDS_DELETEPAGE_WORKAROUND	wxCHECK_VERSION(3,0,2)
+class wxWindow;
 
-
+/**
+ * This is a NoteBook control which adds additional features above what is
+ * provided by the wxNoteBook widget. Currently it includes:
+ *  - Use of images on the tabs for closing the pages.
+ *  - A popup-menu for closing one or more pages.
+ *  - Events triggered when pages are closed.
+ */
 DECLARE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING, -1)
 DECLARE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED, -1)
 
@@ -52,7 +59,7 @@ DECLARE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_DELETE_PAGE, -1)
 		wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING,					\
 		id,									\
 		-1,									\
-		(wxObjectEventFunction)(wxEventFunction)(wxNotebookEventFunction) &fn,  \
+               (wxObjectEventFunction)(wxEventFunction)(wxAuiNotebookEventFunction) &fn,  \
 		NULL                                                                    \
 	),
 #define EVT_MULENOTEBOOK_ALL_PAGES_CLOSED(id, fn)					\
@@ -60,22 +67,12 @@ DECLARE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_DELETE_PAGE, -1)
 		wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED,				\
 		id,									\
 		-1,									\
-		(wxObjectEventFunction)(wxEventFunction)(wxNotebookEventFunction) &fn,  \
+               (wxObjectEventFunction)(wxEventFunction)(wxAuiNotebookEventFunction) &fn,  \
 		NULL                                                                    \
 	),
 
 
-class wxWindow;
-
-
-/**
- * This is an NoteBook control which adds additional features above what is
- * provided by the wxNoteBook widget. Currently it includes:
- *  - Use of images on the tabs for closing the pages.
- *  - A popup-menu for closing one or more pages.
- *  - Events triggered when pages are closed.
- */
-class CMuleNotebook : public wxNotebook
+class CMuleNotebook : public wxAuiNotebook
 {
 public:
 	/**
@@ -83,7 +80,7 @@ public:
 	 *
 	 * @see wxNotebook::wxNotebook
 	 */
-	CMuleNotebook( wxWindow *parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0, const wxString& name = wxT("notebook") );
+        CMuleNotebook( wxWindow *parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0 );
 
 	/**
 	 * Destructor.
@@ -95,7 +92,7 @@ public:
 	 *
 	 * @param nPage The page to be removed.
 	 */
-	virtual bool DeletePage(int nPage);
+        virtual bool DeletePage(size_t nPage);
 
 	/**
 	 * Deletes and triggers and event for every page.
@@ -130,19 +127,9 @@ private:
 
 protected:
 	/**
-	 * Event handler for left or middle mouse button to press or release (for closing pages)
-	 */
-	void OnMouseButton(wxMouseEvent &event);
-
-	/**
-	 * Event handler for mouse motion (for highlighting the 'x')
-	 */
-	void OnMouseMotion(wxMouseEvent &event);
-
-	/**
 	 * Event-handler for right-clicks that takes care of displaying the popup-menu.
 	 */
-	void OnRMButton(wxMouseEvent& event);
+        void OnRMButton(wxAuiNotebookEvent& event);
 
 	/**
 	 * Event-handler fo the Close item on the popup-menu.
@@ -165,14 +152,13 @@ protected:
 	//! The pointer to the widget which would recieve right-click events or NULL.
 	wxWindow*	m_popup_widget;
 
-	DECLARE_EVENT_TABLE()
 };
 
-#ifdef __WINDOWS__
-	#define MULE_NOTEBOOK_TAB_HEIGHT 26
-#else
-	#define MULE_NOTEBOOK_TAB_HEIGHT 40
-#endif
+//#ifdef __WINDOWS__
+//	#define MULE_NOTEBOOK_TAB_HEIGHT 26
+//#else
+//	#define MULE_NOTEBOOK_TAB_HEIGHT 40
+//#endif
 
 #endif
 // File_checked_for_headers

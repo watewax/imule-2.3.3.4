@@ -33,6 +33,7 @@
 #include "ECSpecialTags.h"	// Needed for CValueMap
 #include "ECID.h"	// Needed for CECID
 
+#include "i2p/CI2PAddress.h"
 /**********************************************************
  *							  *
  *	CECTag class					  *
@@ -49,7 +50,7 @@ const CECTag CECTag::s_theNullTag;
  * @see GetTagByNameSafe
  */
 CECTag::CECTag() :
-	m_tagName(0),
+        m_tagName(EC_TAG_STRING),
 	m_dataType(EC_TAGTYPE_UNKNOWN),
 	m_dataLen(0),
 	m_tagData(NULL)	// All access functions check m_dataType, so no need to allocate a dummy buffer.
@@ -64,7 +65,7 @@ CECTag::CECTag() :
  * @param data	 TAG data
  *
  */
-CECTag::CECTag(ec_tagname_t name, unsigned int length, const void *data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, unsigned int length, const void *data) : m_tagName(name)
 {
 	if (data) {
 		m_dataLen = length;
@@ -87,7 +88,7 @@ CECTag::CECTag(ec_tagname_t name, unsigned int length, const void *data) : m_tag
  *
  * \note TAG data buffer has to be filled with valid data after the ctor
  */
-CECTag::CECTag(ec_tagname_t name, unsigned int length, void **dataptr)  : m_tagName(name)
+CECTag::CECTag(ECTagNames name, unsigned int length, void **dataptr)  : m_tagName(name)
 {
 	m_dataLen = length;
 	NewData();
@@ -105,7 +106,7 @@ CECTag::CECTag(ec_tagname_t name, unsigned int length, void **dataptr)  : m_tagN
  *
  * @see GetIPv4Data()
  */
-CECTag::CECTag(ec_tagname_t name, const EC_IPv4_t& data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, const EC_IPv4_t& data) : m_tagName(name)
 {
 
 	m_dataLen = sizeof(EC_IPv4_t);
@@ -125,7 +126,7 @@ CECTag::CECTag(ec_tagname_t name, const EC_IPv4_t& data) : m_tagName(name)
  *
  * @see GetMD4Data()
  */
-CECTag::CECTag(ec_tagname_t name, const CMD4Hash& data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, const CMD4Hash& data) : m_tagName(name)
 {
 	m_dataLen = 16;
 	NewData();
@@ -142,7 +143,7 @@ CECTag::CECTag(ec_tagname_t name, const CMD4Hash& data) : m_tagName(name)
  *
  * @see GetStringDataSTL()
  */
-CECTag::CECTag(ec_tagname_t name, const std::string& data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, const std::string& data) : m_tagName(name)
 {
 	ConstructStringTag(name, data);
 }
@@ -155,11 +156,11 @@ CECTag::CECTag(ec_tagname_t name, const std::string& data) : m_tagName(name)
  *
  * @see GetStringData()
  */
-CECTag::CECTag(ec_tagname_t name, const wxString& data)
+CECTag::CECTag(ECTagNames name, const wxString& data)
 {
 	ConstructStringTag(name, (const char*)unicode2UTF8(data));
 }
-CECTag::CECTag(ec_tagname_t name, const wxChar* data)
+CECTag::CECTag(ECTagNames name, const wxChar* data)
 {
 	ConstructStringTag(name, (const char*)unicode2UTF8(data));
 }
@@ -183,23 +184,23 @@ CECTag::CECTag(const CECTag& tag)
  *
  * @see GetInt()
  */
-CECTag::CECTag(ec_tagname_t name, bool data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, bool data) : m_tagName(name)
 {
 	InitInt(data);
 }
-CECTag::CECTag(ec_tagname_t name, uint8 data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, uint8 data) : m_tagName(name)
 {
 	InitInt(data);
 }
-CECTag::CECTag(ec_tagname_t name, uint16 data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, uint16 data) : m_tagName(name)
 {
 	InitInt(data);
 }
-CECTag::CECTag(ec_tagname_t name, uint32 data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, uint32 data) : m_tagName(name)
 {
 	InitInt(data);
 }
-CECTag::CECTag(ec_tagname_t name, uint64 data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, uint64 data) : m_tagName(name)
 {
 	InitInt(data);
 }
@@ -249,7 +250,7 @@ void CECTag::InitInt(uint64 data)
  *
  * @see GetDoubleData()
  */
-CECTag::CECTag(ec_tagname_t name, double data) : m_tagName(name)
+CECTag::CECTag(ECTagNames name, double data) : m_tagName(name)
 {
 	std::ostringstream double_str;
 	double_str << data;
@@ -259,6 +260,21 @@ CECTag::CECTag(ec_tagname_t name, double data) : m_tagName(name)
 	NewData();
 	memcpy(m_tagData, double_chr, m_dataLen);
 	m_dataType = EC_TAGTYPE_DOUBLE;
+}
+
+/**
+ * Creates a new CECTag instance, which contains an address
+ *
+ * @param name TAG name
+ * @param data CI2PAddress object
+ *
+ */
+CECTag::CECTag(ECTagNames name, const CI2PAddress& data) : m_tagName(name)
+{
+        m_dataLen = data.size();
+        NewData();
+        data.writeBytes((byte*)m_tagData);
+	m_dataType = EC_TAGTYPE_I2PADDRESS;
 }
 
 /**
@@ -376,7 +392,7 @@ bool CECTag::AddTag(const CECTag& tag, CValueMap* valuemap)
 	return true;
 }
 
-void CECTag::AddTag(ec_tagname_t name, uint64_t data, CValueMap* valuemap)
+void CECTag::AddTag(ECTagNames name, uint64_t data, CValueMap* valuemap)
 {
 	if (valuemap) {
 		valuemap->CreateTag(name, data, this);
@@ -385,7 +401,7 @@ void CECTag::AddTag(ec_tagname_t name, uint64_t data, CValueMap* valuemap)
 	}
 }
 
-void CECTag::AddTag(ec_tagname_t name, const wxString& data, CValueMap* valuemap)
+void CECTag::AddTag(ECTagNames name, const wxString& data, CValueMap* valuemap)
 {
 	if (valuemap) {
 		valuemap->CreateTag(name, data, this);
@@ -394,7 +410,7 @@ void CECTag::AddTag(ec_tagname_t name, const wxString& data, CValueMap* valuemap
 	}
 }
 
-void CECTag::AddTag(ec_tagname_t name, const CMD4Hash& data, CValueMap* valuemap)
+void CECTag::AddTag(ECTagNames name, const CMD4Hash& data, CValueMap* valuemap)
 {
 	if (valuemap) {
 		valuemap->CreateTag(name, data, this);
@@ -403,6 +419,14 @@ void CECTag::AddTag(ec_tagname_t name, const CMD4Hash& data, CValueMap* valuemap
 	}
 }
 
+void CECTag::AddTag(ECTagNames name, const CI2PAddress& data, CValueMap* valuemap)
+{
+        if (valuemap) {
+                valuemap->CreateTag(name, data, this);
+        } else {
+                AddTag(CECTag(name, data));
+        }
+}
 void CECTag::swap(CECTag& t2)
 {
 	std::swap(m_tagName, t2.m_tagName);
@@ -418,7 +442,7 @@ bool CECTag::ReadFromSocket(CECSocket& socket)
 	if (!socket.ReadNumber(&tmp_tagName, sizeof(ec_tagname_t))) {
 		return false;
 	}
-	m_tagName = tmp_tagName >> 1;
+        m_tagName = (ECTagNames) (tmp_tagName >> 1);
 	bool hasChildren = (tmp_tagName & 0x01) != 0;
 
 	if (!socket.ReadNumber(&m_dataType, sizeof(ec_tagtype_t))) {
@@ -451,7 +475,7 @@ bool CECTag::ReadFromSocket(CECSocket& socket)
 
 bool CECTag::WriteTag(CECSocket& socket) const
 {
-	ec_tagname_t tmp_tagName = (m_tagName << 1) | (m_tagList.empty() ? 0 : 1);
+        ec_tagname_t tmp_tagName = (ec_tagname_t) ((m_tagName << 1) | (m_tagList.empty() ? 0 : 1));
 	ec_tagtype_t type = m_dataType;
 	ec_taglen_t tagLen = GetTagLen();
 	EC_ASSERT(type != EC_TAGTYPE_UNKNOWN);
@@ -492,6 +516,7 @@ bool CECTag::ReadChildren(CECSocket& socket)
 
 bool CECTag::WriteChildren(CECSocket& socket) const
 {
+        wxASSERT(m_tagList.size() < 0xFFFF);
 	uint16 tmp = (uint16)m_tagList.size();
 	if (!socket.WriteNumber(&tmp, sizeof(tmp))) return false;
 	for (const_iterator it = begin(); it != end(); ++it) {
@@ -506,7 +531,7 @@ bool CECTag::WriteChildren(CECSocket& socket) const
  * @param name TAG name to look for.
  * @return the tag found, or NULL.
  */
-const CECTag* CECTag::GetTagByName(ec_tagname_t name) const
+const CECTag* CECTag::GetTagByName(ECTagNames name) const
 {
 	for (const_iterator it = begin(); it != end(); ++it) {
 		if (it->m_tagName == name) return & *it;
@@ -520,7 +545,7 @@ const CECTag* CECTag::GetTagByName(ec_tagname_t name) const
  * @param name TAG name to look for.
  * @return the tag found, or NULL.
  */
-CECTag* CECTag::GetTagByName(ec_tagname_t name)
+CECTag* CECTag::GetTagByName(ECTagNames name)
 {
 	for (TagList::iterator it = m_tagList.begin(); it != m_tagList.end(); ++it) {
 		if (it->m_tagName == name) return & *it;
@@ -536,7 +561,7 @@ CECTag* CECTag::GetTagByName(ec_tagname_t name)
  *
  * @see s_theNullTag
  */
-const CECTag* CECTag::GetTagByNameSafe(ec_tagname_t name) const
+const CECTag* CECTag::GetTagByNameSafe(ECTagNames name) const
 {
 	const CECTag* result = GetTagByName(name);
 	if (result == NULL)
@@ -632,7 +657,7 @@ CMD4Hash CECTag::GetMD4Data() const
  *
  * @return EC_IPv4_t class.
  *
- * @see CECTag(ec_tagname_t, const EC_IPv4_t&)
+ * @see CECTag(ECTagNames, const EC_IPv4_t&)
  */
 EC_IPv4_t CECTag::GetIPv4Data() const
 {
@@ -651,6 +676,27 @@ EC_IPv4_t CECTag::GetIPv4Data() const
 }
 
 /**
+ * Returns an I2P CI2PAddress.
+ *
+ * @return The CI2PAddress value of the tag.
+ *
+ * @see CECTag(ECTagNames, CI2PAddress)
+ */
+CI2PAddress CECTag::GetAddressData(void) const
+{
+	if (m_dataType != EC_TAGTYPE_I2PADDRESS) {
+		EC_ASSERT(m_dataType == EC_TAGTYPE_UNKNOWN);
+		return CI2PAddress::null;
+	} else if (m_tagData == NULL) {
+		EC_ASSERT(false);
+		return CI2PAddress::null;
+	}
+        CI2PAddress dest;
+        dest.readBytes( (byte *)m_tagData );
+        return dest;
+}
+
+/**
  * Returns a double value.
  *
  * @note The returned value is what we get by converting the string form
@@ -658,7 +704,7 @@ EC_IPv4_t CECTag::GetIPv4Data() const
  *
  * @return The double value of the tag.
  *
- * @see CECTag(ec_tagname_t, double)
+ * @see CECTag(ECTagNames, double)
  */
 double CECTag::GetDoubleData(void) const
 {
@@ -678,7 +724,7 @@ double CECTag::GetDoubleData(void) const
 }
 
 
-void CECTag::ConstructStringTag(ec_tagname_t name, const std::string& data)
+void CECTag::ConstructStringTag(ECTagNames name, const std::string& data)
 {
 	m_tagName = name;
 	m_dataLen = (ec_taglen_t)strlen(data.c_str()) + 1;
@@ -696,7 +742,7 @@ void CECTag::SetStringData(const wxString& s)
 }
 
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, bool *target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, bool *target) const
 {
 	bool ret = false;
 	const CECTag *tag = GetTagByName(tagname);
@@ -709,7 +755,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, bool *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, bool &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, bool &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -719,7 +765,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, bool &target) const
 	return false;
 }
 
-uint8_t CECTag::AssignIfExist(ec_tagname_t tagname, uint8_t *target) const
+uint8_t CECTag::AssignIfExist(ECTagNames tagname, uint8_t *target) const
 {
 	uint8_t ret = 0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -733,7 +779,7 @@ uint8_t CECTag::AssignIfExist(ec_tagname_t tagname, uint8_t *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, uint8_t &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, uint8_t &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -744,7 +790,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, uint8_t &target) const
 	return false;
 }
 
-uint16_t CECTag::AssignIfExist(ec_tagname_t tagname, uint16_t *target) const
+uint16_t CECTag::AssignIfExist(ECTagNames tagname, uint16_t *target) const
 {
 	uint16_t ret = 0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -762,7 +808,7 @@ uint16_t CECTag::AssignIfExist(ec_tagname_t tagname, uint16_t *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, uint16_t &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, uint16_t &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -777,7 +823,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, uint16_t &target) const
 	return false;
 }
 
-uint32_t CECTag::AssignIfExist(ec_tagname_t tagname, uint32_t *target) const
+uint32_t CECTag::AssignIfExist(ECTagNames tagname, uint32_t *target) const
 {
 	uint32_t ret = 0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -796,7 +842,7 @@ uint32_t CECTag::AssignIfExist(ec_tagname_t tagname, uint32_t *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, uint32_t &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, uint32_t &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -812,7 +858,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, uint32_t &target) const
 	return false;
 }
 
-uint64_t CECTag::AssignIfExist(ec_tagname_t tagname, uint64_t *target) const
+uint64_t CECTag::AssignIfExist(ECTagNames tagname, uint64_t *target) const
 {
 	uint64_t ret = 0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -825,7 +871,7 @@ uint64_t CECTag::AssignIfExist(ec_tagname_t tagname, uint64_t *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, uint64_t &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, uint64_t &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -835,7 +881,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, uint64_t &target) const
 	return false;
 }
 
-time_t CECTag::AssignIfExist(ec_tagname_t tagname, time_t *target) const
+time_t CECTag::AssignIfExist(ECTagNames tagname, time_t *target) const
 {
 	time_t ret = 0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -848,7 +894,7 @@ time_t CECTag::AssignIfExist(ec_tagname_t tagname, time_t *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, time_t &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, time_t &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -858,7 +904,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, time_t &target) const
 	return false;
 }
 
-double CECTag::AssignIfExist(ec_tagname_t tagname, double *target) const
+double CECTag::AssignIfExist(ECTagNames tagname, double *target) const
 {
 	double ret = 0.0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -871,7 +917,7 @@ double CECTag::AssignIfExist(ec_tagname_t tagname, double *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, double &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, double &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -881,7 +927,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, double &target) const
 	return false;
 }
 
-float CECTag::AssignIfExist(ec_tagname_t tagname, float *target) const
+float CECTag::AssignIfExist(ECTagNames tagname, float *target) const
 {
 	float ret = 0.0;
 	const CECTag *tag = GetTagByName(tagname);
@@ -894,7 +940,7 @@ float CECTag::AssignIfExist(ec_tagname_t tagname, float *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, float &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, float &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -904,7 +950,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, float &target) const
 	return false;
 }
 
-CMD4Hash CECTag::AssignIfExist(ec_tagname_t tagname, CMD4Hash *target) const
+CMD4Hash CECTag::AssignIfExist(ECTagNames tagname, CMD4Hash *target) const
 {
 	CMD4Hash ret;
 	const CECTag *tag = GetTagByName(tagname);
@@ -917,7 +963,7 @@ CMD4Hash CECTag::AssignIfExist(ec_tagname_t tagname, CMD4Hash *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, CMD4Hash &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, CMD4Hash &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -927,7 +973,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, CMD4Hash &target) const
 	return false;
 }
 
-std::string CECTag::AssignIfExist(ec_tagname_t tagname, std::string *target) const
+std::string CECTag::AssignIfExist(ECTagNames tagname, std::string *target) const
 {
 	std::string ret;
 	const CECTag *tag = GetTagByName(tagname);
@@ -940,7 +986,7 @@ std::string CECTag::AssignIfExist(ec_tagname_t tagname, std::string *target) con
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, std::string &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, std::string &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -951,7 +997,7 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, std::string &target) const
 }
 
 #ifdef USE_WX_EXTENSIONS
-wxString CECTag::AssignIfExist(ec_tagname_t tagname, wxString *target) const
+wxString CECTag::AssignIfExist(ECTagNames tagname, wxString *target) const
 {
 	wxString ret;
 	const CECTag *tag = GetTagByName(tagname);
@@ -964,7 +1010,7 @@ wxString CECTag::AssignIfExist(ec_tagname_t tagname, wxString *target) const
 	return ret;
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, wxString &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, wxString &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {
@@ -975,6 +1021,30 @@ bool CECTag::AssignIfExist(ec_tagname_t tagname, wxString &target) const
 }
 #endif
 
+CI2PAddress CECTag::AssignIfExist(ECTagNames tagname, CI2PAddress *target) const
+{
+        CI2PAddress ret;
+        const CECTag *tag = GetTagByName(tagname);
+        if (tag) {
+                EC_ASSERT(tag->GetType() == EC_TAGTYPE_I2PADDRESS);
+                ret = tag->GetAddressData();
+                if (target) {
+                        *target = ret;
+                }
+        }
+        return ret;
+}
+
+bool CECTag::AssignIfExist(ECTagNames tagname, CI2PAddress &target) const
+{
+        const CECTag *tag = GetTagByName(tagname);
+        if (tag) {
+                EC_ASSERT(tag->GetType() == EC_TAGTYPE_I2PADDRESS);
+                target = tag->GetAddressData();
+                return true;
+        }
+        return false;
+}
 
 #ifdef	__DEBUG__
 void CECTag::DebugPrint(int level, bool print_empty) const
@@ -1026,6 +1096,9 @@ void CECTag::DebugPrint(int level, bool print_empty) const
 							}
 						}
 						break;
+			case EC_TAGTYPE_I2PADDRESS:
+				s2 = GetAddressData().humanReadable();
+				break;
 					default:
 						s2 = GetDebugNameECTagTypes(m_dataType);
 				}
@@ -1047,7 +1120,7 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  *
  * \return CMD4Hash class.
  *
- * \sa CECTag(ec_tagname_t, const CMD4Hash&)
+ * \sa CECTag(ECTagNames, const CMD4Hash&)
  */
 
 /*!
@@ -1095,7 +1168,7 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  */
 
 /*!
- * \fn ec_tagname_t CECTag::GetTagName(void) const
+ * \fn ECTagNames CECTag::GetTagName(void) const
  *
  * \brief Returns TAGNAME.
  *
@@ -1110,13 +1183,13 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  * Returns a wxString created from TAGDATA. It is automatically
  * converted from UTF-8 to the internal application encoding.
  * Should be used with care (only on tags created with the
- * CECTag(ec_tagname_t, const wxString&) constructor),
+ * CECTag(ECTagNames, const wxString&) constructor),
  * becuse it does not perform any check to see if the tag really contains a
  * string object.
  *
  * \return The string data of the tag.
  *
- * \sa CECTag(ec_tagname_t, const wxString&)
+ * \sa CECTag(ECTagNames, const wxString&)
  */
 
 /*!
@@ -1128,7 +1201,7 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  *
  * \return The uint8 data of the tag.
  *
- * \sa CECTag(ec_tagname_t, uint8)
+ * \sa CECTag(ECTagNames, uint8)
  */
 
 /*!
@@ -1140,7 +1213,7 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  *
  * \return The uint16 data of the tag.
  *
- * \sa CECTag(ec_tagname_t, uint16)
+ * \sa CECTag(ECTagNames, uint16)
  */
 
 /*!
@@ -1152,7 +1225,7 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  *
  * \return The uint32 data of the tag.
  *
- * \sa CECTag(ec_tagname_t, uint32)
+ * \sa CECTag(ECTagNames, uint32)
  */
 
 /*!
@@ -1164,7 +1237,7 @@ void CECTag::DebugPrint(int level, bool print_empty) const
  *
  * \return The uint64 data of the tag.
  *
- * \sa CECTag(ec_tagname_t, uint64)
+ * \sa CECTag(ECTagNames, uint64)
  */
 
 uint32 CECID::s_IDCounter = 0;

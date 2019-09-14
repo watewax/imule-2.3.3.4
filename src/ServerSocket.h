@@ -32,6 +32,7 @@
 
 #include "EMSocket.h"		// Needed for CEMSocket
 #include "ServerConnect.h"
+#include "i2p/wxI2PEvents.h"
 
 //------------------------------------------------------------------------------
 // CServerSocket
@@ -44,7 +45,7 @@ class CServerSocket : public CEMSocket
 	friend class CServerConnect;
 public:
 
-	CServerSocket(CServerConnect* in_serverconnect, const CProxyData *ProxyData = NULL);
+        CServerSocket(CServerConnect* in_serverconnect);
 	virtual ~CServerSocket();
 
 	void	ConnectToServer(CServer* server, bool bNoCrypt = false);
@@ -52,6 +53,7 @@ public:
 	uint32  GetLastTransmission() const	{ return m_dwLastTransmission; }
 	wxString info;
 
+	void    ServerSocketHandler(CI2PSocketEvent&);
 	void	OnClose(int nErrorCode);
 	void	OnConnect(int nErrorCode);
 	void	OnReceive(int nErrorCode);
@@ -59,10 +61,10 @@ public:
 	bool	PacketReceived(CPacket* packet);
 	void	SendPacket(CPacket* packet, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0);
 	bool	IsSolving() const { return m_IsSolving;};
-	void	OnHostnameResolved(uint32 ip);
+        void	OnHostnameResolved(const CI2PAddress & dest);
 	CServer *GetServerConnected() const { return serverconnect->GetCurrentServer(); }
 
-	uint32 GetServerIP() const;
+        CI2PAddress GetServerDest() const;
 
 private:
 	bool	ProcessPacket(const byte* packet, uint32 size, int8 opcode);

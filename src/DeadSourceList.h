@@ -31,6 +31,7 @@
 
 #include "Types.h"
 
+#include "i2p/CI2PAddress.h"
 
 class CUpDownClient;
 
@@ -101,7 +102,7 @@ private:
 		 *  * For lowid sources, ServerIP must be specified.
 		 *
 		 */
-		CDeadSource(uint32 ID, uint16 Port, uint32 ServerIP, uint16 KadPort);
+                CDeadSource(uint32 Dest, const uint32 ServerDest, const uint32 KadDest);
 
 
 		/**
@@ -121,14 +122,12 @@ private:
 		uint32	GetTimeout() const;
 
 	private:
-		//! The ID/IP of the client.
-		uint32			m_ID;
 		//! The TCP port of the client
-		uint16			m_Port;
+                uint32             m_Dest;
 		//! The Kad port of the client.
-		uint16			m_KadPort;
+                uint32             m_KadDest;
 		//! The IP of the server the client is connected to.
-		uint32			m_ServerIP;
+                uint32             m_ServerDest;
 		//! The timestamp of DOOM!
 		uint32			m_TimeStamp;
 	};

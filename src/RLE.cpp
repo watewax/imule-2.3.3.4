@@ -24,7 +24,8 @@
 
 #include "RLE.h"
 #include "ArchSpecific.h"
-#include "ScopedPtr.h"
+
+#include <memory>
 #include <ec/cpp/ECTag.h>		// Needed for CECTag
 
 /*
@@ -221,7 +222,7 @@ const uint8 * RLE_Data::Encode(const ArrayOfUInts16 &data, int &outlen, bool &ch
 	if (size == 0) {
 		return Encode(0, 0, outlen, changed);
 	}
-	CScopedArray<uint8> buf(size);
+        std::unique_ptr<uint8[]> buf(new uint8[size]);
 	uint8 * bufPtr = buf.get();
 
 	for (int i = 0; i < size; i++) {
@@ -242,16 +243,15 @@ const uint8 * RLE_Data::Encode(const ArrayOfUInts64 &data, int &outlen, bool &ch
 	if (size == 0) {
 		return Encode(0, 0, outlen, changed);
 	}
-	CScopedArray<uint8> buf(size * 8);
-	uint8 * bufPtr = buf.get();
+        std::unique_ptr<uint8[]> buf(new uint8[size * 8]);
 	for (int i = 0; i < size; i++) {
 		uint64 u = data[i];
 		for (int j = 0; j < 8; j++) {
-			bufPtr[i + j * size] = u & 0xff;
+                        buf[i + j * size] = u & 0xff;
 			u >>= 8;
 		}
 	}
-	return Encode(bufPtr, size * 8, outlen, changed);
+        return Encode(buf.get(), size * 8, outlen, changed);
 }
 
 void RLE_Data::Decode(const uint8 *data, int len, ArrayOfUInts64 &outdata)

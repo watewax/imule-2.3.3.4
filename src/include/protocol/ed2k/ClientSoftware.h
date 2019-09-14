@@ -34,6 +34,7 @@ enum EClientSoftware {
 	SO_SHAREAZA			= 4,
 	SO_EMULEPLUS		= 5,
 	SO_HYDRANODE		= 6,
+        SO_IMULE            = 7,
 	SO_NEW2_MLDONKEY	= 0x0a,
 	SO_LPHANT			= 0x14,
 	SO_NEW2_SHAREAZA	= 0x28,

@@ -133,7 +133,8 @@ protected:
 	bool m_inc_tags;
 
 	// command that will be used in full request
-	int m_full_req_cmd, m_full_req_tag;
+        ec_opcode_t m_full_req_cmd; 
+		ECTagNames m_full_req_tag;
 
 	virtual void HandlePacket(const CECPacket *packet)
 	{
@@ -219,7 +220,7 @@ public:
 	bool FullReload(int cmd)
 	{
 		CECPacket req(cmd);
-		CScopedPtr<const CECPacket> reply(this->m_conn->SendRecvPacket(&req));
+        	std::unique_ptr<const CECPacket> reply(this->m_conn->SendRecvPacket(&req));
 		if ( !reply.get() ) {
 			return false;
 		}
@@ -256,8 +257,7 @@ public:
 	// Following are like basicly same code as in webserver. Eventually it must
 	// be same class
 	//
-	void DoRequery(int cmd, int tag)
-	{
+        void DoRequery(ec_opcode_t cmd, ECTagNames tag) {
 		if ( this->m_state != IDLE ) {
 			return;
 		}
@@ -277,7 +277,7 @@ public:
 
 		//
 		// Phase 1: request status
-		CScopedPtr<const CECPacket> reply(this->m_conn->SendRecvPacket(&req_sts));
+        	std::unique_ptr<const CECPacket> reply(this->m_conn->SendRecvPacket(&req_sts));
 		if ( !reply.get() ) {
 			return false;
 		}
@@ -331,8 +331,7 @@ public:
 		m_items.erase(it);
 	}
 
-	virtual void ProcessUpdate(const CECTag *reply, CECPacket *full_req, int req_type)
-	{
+        virtual void ProcessUpdate(const CECTag *reply, CECPacket *full_req, ECTagNames req_type) {
 		std::set<I> core_files;
 		for (CECPacket::const_iterator it = reply->begin(); it != reply->end(); ++it) {
 			const G *tag = static_cast<const G *>(&*it);
@@ -390,6 +389,8 @@ public:
 class CServerConnectRem {
 	CRemoteConnect *m_Conn;
 	uint32 m_ID;
+        CI2PAddress m_udpdest;
+        CI2PAddress m_tcpdest;
 
 	CServer *m_CurrServer;
 
@@ -400,9 +401,11 @@ public:
 
 	bool IsConnected() { return (m_ID != 0) && (m_ID != 0xffffffff); }
 	bool IsConnecting() { return m_ID == 0xffffffff; }
-	bool IsLowID() { return m_ID < 16777216; }
+        bool IsLowID() { return false; }
 	uint32 GetClientID() { return m_ID; }
 	CServer *GetCurrentServer() { return m_CurrServer; }
+        CI2PAddress GetClientUdpDest() {return m_udpdest;}
+        CI2PAddress GetClientTcpDest() {return m_tcpdest;}
 
 	//
 	// Actions
@@ -427,8 +430,8 @@ public:
 
 	void UpdateUserFileStatus(CServer *server);
 
-	CServer* GetServerByAddress(const wxString& address, uint16 port) const;
-	CServer* GetServerByIPTCP(uint32 nIP, uint16 nPort) const;
+        CServer* GetServerByAddress(const wxString& address, uint16 port=0) const;
+        CServer* GetServerByDest(const CI2PAddress & tcpdest) const; // I2P
 
 	//
 	// Actions
@@ -477,7 +480,7 @@ public:
 	void AutoPrio(CPartFile *file, bool flag);
 	void Category(CPartFile *file, uint8 cat);
 
-	void SendFileCommand(CPartFile *file, ec_tagname_t cmd);
+        void SendFileCommand(CPartFile *file, ec_opcode_t cmd);
 	//
 	// Actions
 	//
@@ -519,7 +522,7 @@ public:
 	CKnownFile *FindKnownFileByID(uint32 id) { return GetByID(id); }
 
 	uint16 requested;
-	uint32 transferred;
+        uint64 transferred;
 	uint16 accepted;
 
 	//
@@ -530,7 +533,7 @@ public:
 	uint32 GetItemID(CKnownFile *);
 	void ProcessItemUpdate(const CEC_SharedFile_Tag *, CKnownFile *);
 	bool Phase1Done(const CECPacket *) { return true; }
-	void ProcessUpdate(const CECTag *reply, CECPacket *full_req, int req_type);
+        void ProcessUpdate(const CECTag *reply, CECPacket *full_req, ECTagNames req_type);
 
 	void ProcessItemUpdatePartfile(const CEC_PartFile_Tag *, CPartFile *);
 };
@@ -585,7 +588,7 @@ public:
 	CFriendListRem(CRemoteConnect *);
 
 	void		AddFriend(const CClientRef& toadd);
-	void		AddFriend(const CMD4Hash& userhash, uint32 lastUsedIP, uint32 lastUsedPort, const wxString& name);
+        void		AddFriend(const CMD4Hash& userhash, const CI2PAddress&, const wxString& name);
 	void		RemoveFriend(CFriend* toremove);
 	void		RequestSharedFileList(CFriend* Friend);
 	void		RequestSharedFileList(CClientRef& client);
@@ -618,6 +621,11 @@ class CListenSocketRem {
 	uint32 m_peak_connections;
 public:
 	uint32 GetPeakConnections() { return m_peak_connections; }
+};
+
+class CKadRoutingZoneRem : public CECPacketHandlerBase
+{
+        virtual void HandlePacket(const CECPacket *);
 };
 
 class CamuleRemoteGuiApp : public wxApp, public CamuleGuiBase, public CamuleAppCommon {
@@ -672,12 +680,13 @@ public:
 	CFriendListRem *friendlist;
 	CListenSocketRem *listensocket;
 	CStatTreeRem * stattree;
+        CKadRoutingZoneRem *kadroutingzone;
 
 	CStatistics *m_statistics;
 
 	bool AddServer(CServer *srv, bool fromUser = false);
 
-	uint32 GetPublicIP();
+// 	uint32 GetPublicIP(); I2P : we have to chose between GetUdpDest and GetTcpDest
 
 	wxString GetLog(bool reset = false);
 	wxString GetServerLog(bool reset = false);
@@ -695,6 +704,8 @@ public:
 		return ((m_ConnState & CONNECTED_KAD_OK)
 				|| (m_ConnState & CONNECTED_KAD_FIREWALLED));
 	}
+        bool NetworkStarting() {return (m_ConnState & CONNECTED_NETWORK_STARTING) != 0;}
+        bool NetworkStarted() {return  (m_ConnState & CONNECTED_NETWORK_STARTED) != 0;}
 	bool IsFirewalledKad() const { return (m_ConnState & CONNECTED_KAD_FIREWALLED) != 0; }
 
 	bool IsKadRunning() const { return ((m_ConnState & CONNECTED_KAD_OK)
@@ -721,18 +732,24 @@ public:
 
 	void StartKad();
 	void StopKad();
+        void StartNetwork();
+        void StopNetwork();
+        void RestartNetworkIfStarted();
 
 	/** Bootstraps kad from the specified IP (must be in hostorder). */
-	void BootstrapKad(uint32 ip, uint16 port);
+        void BootstrapKad(const CI2PAddress & dest);
 	/** Updates the nodes.dat file from the specified url. */
 	void UpdateNotesDat(const wxString& str);
+        /** requests a string containing bootstrap kad contacts */
+        void exportKadContactsOnFile(const wxString& filename);
 
 	void DisconnectED2K();
 
 	bool CryptoAvailable() const;
 
 	uint32 GetED2KID() const;
-	uint32 GetID() const;
+        CI2PAddress GetUdpDest() const;
+        CI2PAddress GetTcpDest() const;
 	void ShowUserCount();
 
 	uint8 m_ConnState;
@@ -747,6 +764,7 @@ public:
 	DECLARE_EVENT_TABLE()
 };
 
+typedef CamuleRemoteGuiApp AMULE_APP;
 DECLARE_APP(CamuleRemoteGuiApp)
 
 extern CamuleRemoteGuiApp *theApp;

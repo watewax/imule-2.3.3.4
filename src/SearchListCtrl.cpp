@@ -22,6 +22,11 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
 //
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include "SearchListCtrl.h"	// Interface declarations
 
@@ -69,6 +74,7 @@ enum SearchListColumns {
 
 CSearchListCtrl::CSearchListCtrl(
 	wxWindow *parent,
+        bool stopable,
 	wxWindowID winid,
 	const wxPoint &pos,
 	const wxSize &size,
@@ -79,7 +85,8 @@ CSearchListCtrl::CSearchListCtrl(
 CMuleListCtrl(parent, winid, pos, size, style | wxLC_OWNERDRAW, validator, name),
 m_filterKnown(false),
 m_invert(false),
-m_filterEnabled(false)
+        m_filterEnabled(false),
+        m_stopable(stopable)
 {
 	// Setting the sorter function.
 	SetSortFunc( SortProc );
@@ -226,7 +233,7 @@ void CSearchListCtrl::AddResult(CSearchFile* toshow)
 	if (toshow->GetKadPublishInfo() == 0) {
 		temp += wxT(" | -");
 	} else {
-		temp += CFormat(wxT(" | N:%u, P:%u, T:%0.2f"))
+                temp += CFormat(wxT(" | N:%" PRIu32 ", P:%" PRIu32 ", T:%0.2lf"))
 			% ((toshow->GetKadPublishInfo() & 0xFF000000) >> 24)
 			% ((toshow->GetKadPublishInfo() & 0x00FF0000) >> 16)
 			% ((toshow->GetKadPublishInfo() & 0x0000FFFF) / 100.0);
@@ -285,7 +292,7 @@ void CSearchListCtrl::UpdateResult(CSearchFile* toupdate)
 		if (toupdate->GetKadPublishInfo() == 0) {
 			temp += wxT(" | -");
 		} else {
-			temp += CFormat(wxT(" | N:%u, P:%u, T:%0.2f"))
+                        temp += CFormat(wxT(" | N:%" PRIu32 ", P:%" PRIu32 ", T:%0.2lf"))
 				% ((toupdate->GetKadPublishInfo() & 0xFF000000) >> 24)
 				% ((toupdate->GetKadPublishInfo() & 0x00FF0000) >> 16)
 				% ((toupdate->GetKadPublishInfo() & 0x0000FFFF) / 100.0);
@@ -324,9 +331,9 @@ void CSearchListCtrl::UpdateItemColor(long index)
 
 		CSearchFile* file = reinterpret_cast<CSearchFile*>(GetItemData(index));
 
-		int red		= newcol.Red();
-		int green	= newcol.Green();
-		int blue	= newcol.Blue();
+                byte red		= newcol.Red();
+				byte green	= newcol.Green();
+				byte blue	= newcol.Blue();
 
 		switch (file->GetDownloadStatus()) {
 		case CSearchFile::DOWNLOADED:
@@ -380,6 +387,15 @@ wxUIntPtr CSearchListCtrl::GetSearchId()
 	return m_nResultsID;
 }
 
+bool CSearchListCtrl::GetStopable() const
+{
+        return m_stopable;
+}
+
+void CSearchListCtrl::SetStopable ( bool stopable )
+{
+        m_stopable = stopable;
+}
 
 void CSearchListCtrl::SetFilter(const wxString& regExp, bool invert, bool filterKnown)
 {
@@ -466,7 +482,7 @@ bool CSearchListCtrl::IsFiltered(const CSearchFile* file)
 }
 
 
-int CSearchListCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
+int CSearchListCtrl::SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData)
 {
 	CSearchFile* file1 = reinterpret_cast<CSearchFile*>(item1);
 	CSearchFile* file2 = reinterpret_cast<CSearchFile*>(item2);
@@ -792,7 +808,7 @@ void CSearchListCtrl::DownloadSelected(int category)
 	long index = GetNextItem(-1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
 	while (index > -1) {
 		CSearchFile* file = reinterpret_cast<CSearchFile*>(GetItemData(index));
-		CoreNotify_Search_Add_Download(file, category);
+		CoreNotify_Search_Add_Download(file, (uint8)category);
 		index = GetNextItem(index, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
 	}
 	// Listcontrol gets updated by notification when download is started
@@ -812,7 +828,7 @@ void CSearchListCtrl::OnDrawItem(
 
 	// Define text-color and background
 	if (highlighted) {
-		if (GetFocus()) {
+                if (HasFocus()) {
 			dc->SetBackground(GetBrush(wxSYS_COLOUR_HIGHLIGHT));
 			dc->SetTextForeground(CMuleColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
 		} else {

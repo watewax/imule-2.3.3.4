@@ -51,6 +51,9 @@ private:
 	void OnBnClickedResetLog(wxCommandEvent& evt);
 	void OnBnClickedResetServerLog(wxCommandEvent& evt);
 
+#ifdef INTERNAL_ROUTER
+        void OnBnClickedUpdateRouterStatus(wxCommandEvent& evt);
+#endif
 	DECLARE_EVENT_TABLE()
 };
 

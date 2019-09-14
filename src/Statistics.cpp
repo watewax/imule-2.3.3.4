@@ -66,7 +66,7 @@
 
 void CPreciseRateCounter::CalculateRate(uint64_t now)
 {
-	wxMutexLocker lock(m_mutex);
+        wiMutexLocker lock(m_mutex);
 
 	m_total += m_tmp_sum;
 	m_byte_history.push_back(m_tmp_sum);
@@ -321,7 +321,9 @@ void CStatistics::Load()
 			}
 		}
 	} catch (const CSafeIOException& e) {
-		AddLogLineN(e.what());
+		//AddLogLineN(e.what());
+		AddLogLineC( CFormat(wxT("Error while reading statistics.dat : %s")) % e.what() );
+		s_totalSent = s_totalReceived = 0;
 	}
 
 	// Load old values from config
@@ -829,7 +831,7 @@ void CStatistics::UpdateStatsTree()
 	s_foundSources->ReSortChildren();
 	// TODO: sort OS_Info subtrees.
 
-	s_avgConnections->SetValue(theApp->listensocket->GetAverageConnections());
+        s_avgConnections->SetValue(theApp->NetworkStarted() ? theApp->listensocket->GetAverageConnections() : 0);
 
 	// get serverstats
 	// TODO: make these realtime, too

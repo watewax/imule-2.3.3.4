@@ -82,7 +82,7 @@ public:
 	 *
 	 * @param depth A value in the range from 1 to 5.
 	 */
-	void Set3dDepth(unsigned depth);
+        void Set3dDepth(uint8 depth);
 
 	/**
 	 * Sets a new filesize.
@@ -147,7 +147,7 @@ private:
 	//! Pointer to array of modifers used to create 3D effect. Size is (m_Height+1)/2 when set.
 	double*	m_Modifiers;
 	//! The current 3d level
-	uint16	m_used3dlevel;
+        uint8	m_used3dlevel;
 
 	// color for each pixel across the width is stored here
 	std::vector<CMuleColour> m_Content;

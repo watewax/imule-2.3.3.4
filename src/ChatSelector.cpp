@@ -110,8 +110,9 @@ CChatSelector::CChatSelector(wxWindow* parent, wxWindowID id, const wxPoint& pos
 	AssignImageList(imagelist);
 }
 
-CChatSession* CChatSelector::StartSession(uint64 client_id, const wxString& client_name, bool show)
+CChatSession* CChatSelector::StartSession(const CI2PAddress & client_dest, const wxString& client_name, bool show)
 {
+        uint64 client_id = GUI_ID(client_dest,0);
 	// Check to see if we've already opened a session for this user
 	if ( GetPageByClientID( client_id ) ) {
 		if ( show ) {
@@ -123,13 +124,13 @@ CChatSession* CChatSelector::StartSession(uint64 client_id, const wxString& clie
 
 	CChatSession* chatsession = new CChatSession(this);
 
+        chatsession->m_client_dest = client_dest;
 	chatsession->m_client_id = client_id;
 
 	wxString text;
-	text = wxT(" *** ") + (CFormat(_("Chat-Session Started: %s (%s:%u) - %s %s"))
+        text = wxT(" *** ") + (CFormat(_("Chat-Session Started: %s (%x) - %s %s"))
 			% client_name
-			% Uint32toStringIP(IP_FROM_GUI_ID(client_id))
-			% PORT_FROM_GUI_ID(client_id)
+                               % IP_FROM_GUI_ID(client_id)
 			% wxDateTime::Now().FormatISODate()
 			% wxDateTime::Now().FormatISOTime());
 
@@ -170,8 +171,9 @@ int CChatSelector::GetTabByClientID(uint64 client_id)
 }
 
 
-bool CChatSelector::ProcessMessage(uint64 sender_id, const wxString& message)
+bool CChatSelector::ProcessMessage(const CI2PAddress& sender_dest, const wxString& message)
 {
+        uint64		sender_id 	= GUI_ID(sender_dest,0);
 	CChatSession* session = GetPageByClientID(sender_id);
 
 	// Try to get the name (core sent it?)
@@ -194,11 +196,10 @@ bool CChatSelector::ProcessMessage(uint64 sender_id, const wxString& message)
 			// Core did not send us the name.
 			// This must NOT happen.
 			// Build a client name based on the ID
-			uint32 ip = IP_FROM_GUI_ID(sender_id);
-			client_name = CFormat(wxT("IP: %s Port: %u")) % Uint32toStringIP(ip) % PORT_FROM_GUI_ID(sender_id);
+                        client_name =  CFormat(wxT("DEST: %x")) % sender_id;
 		}
 
-		session = StartSession( sender_id, client_name, true );
+                session = StartSession( sender_dest, client_name, true );
 	}
 
 	// Other client connected after disconnection or a new session
@@ -215,7 +216,7 @@ bool CChatSelector::ProcessMessage(uint64 sender_id, const wxString& message)
 	return newtab;
 }
 
-bool CChatSelector::SendMessage( const wxString& message, const wxString& client_name, uint64 to_id )
+bool CChatSelector::SendMessage( const wxString& message, const wxString& client_name, const CI2PAddress & to_dest )
 {
 	// Dont let the user send empty messages
 	// This is also a user-fix for people who mash the enter-key ...
@@ -223,9 +224,9 @@ bool CChatSelector::SendMessage( const wxString& message, const wxString& client
 		return false;
 	}
 
-	if (to_id) {
+        if (to_dest.isValid()) {
 		// Checks if there's a page with this client, and selects it or creates it
-		StartSession(to_id, client_name, true);
+                StartSession(to_dest, client_name, true);
 	}
 
 	int usedtab = GetSelection();
@@ -244,7 +245,7 @@ bool CChatSelector::SendMessage( const wxString& message, const wxString& client
 	//#warning EC needed here.
 
 	#ifndef CLIENT_GUI
-	if (theApp->clientlist->SendChatMessage(ci->m_client_id, message)) {
+        if (theApp->clientlist->SendChatMessage(ci->m_client_dest, message)) {
 		ci->AddText( thePrefs::GetUserNick(), COLOR_GREEN, false );
 		ci->AddText( wxT(": ") + message, COLOR_BLACK );
 	} else {

@@ -27,8 +27,12 @@
 
 
 #include <wx/event.h>	// Needed for wxEvent
+#include <wx/string.h>
 
 
+DECLARE_LOCAL_EVENT_TYPE(wxEVT_CORE_FILE_HASHING_FINISHED, wxEVT_USER_FIRST+FILE_HASHING_FINISHED)
+DECLARE_LOCAL_EVENT_TYPE(wxEVT_CORE_FILE_HASHING_SHUTDOWN, wxEVT_USER_FIRST+FILE_HASHING_SHUTDOWN)
+DECLARE_LOCAL_EVENT_TYPE(wxEVT_CORE_FINISHED_FILE_COMPLETION, wxEVT_USER_FIRST+FILE_COMPLETION_FINISHED)
 DECLARE_LOCAL_EVENT_TYPE(wxEVT_CORE_FINISHED_HTTP_DOWNLOAD, wxEVT_USER_FIRST+HTTP_DOWNLOAD_FINISHED)
 
 DECLARE_LOCAL_EVENT_TYPE(wxEVT_CORE_SOURCE_DNS_DONE, wxEVT_USER_FIRST+SOURCE_DNS_DONE)
@@ -75,10 +79,18 @@ public:
 		return m_ptr;
 	}
 
+        void SetString(const wxString & str) {
+                m_str = str;
+        }
+
+        wxString GetString() const {
+                return m_str;
+        }
 private:
 	void*	m_ptr;
 	long	m_value;
 	int		m_commandInt;
+        wxString m_str;
 };
 
 
@@ -92,4 +104,3 @@ typedef void (wxEvtHandler::*MuleInternalEventFunction)(CMuleInternalEvent&);
 
 
 #endif /* INTERNALEVENTS_H */
-// File_checked_for_headers

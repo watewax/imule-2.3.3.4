@@ -26,14 +26,15 @@
 #include "StateMachine.h"
 
 #include <common/StringFunctions.h>
+#include "MuleThread.h"
 
 CStateMachine::CStateMachine(
 		const wxString &name,
 		const unsigned int maxStates,
 		const t_sm_state initialState )
 :
-m_stateMutex(wxMUTEX_RECURSIVE),
-m_queueMutex(wxMUTEX_RECURSIVE),
+m_stateMutex(wiMUTEX_RECURSIVE),
+m_queueMutex(wiMUTEX_RECURSIVE),
 m_name(name),
 m_maxStates(maxStates)
 {
@@ -63,7 +64,7 @@ void CStateMachine::Clock()
 	}
 
 	/* State changes can only happen here */
-	wxMutexLocker lock(m_stateMutex);
+        wiMutexLocker lock(m_stateMutex);
 	m_state = next_state( event );
 
 //#if 0
@@ -73,7 +74,7 @@ void CStateMachine::Clock()
 	if( state_entry )
 	{
 		m_clocksInCurrentState = 0;
-		printf( "%s(%04d): %d -> %d\n",
+                printf( "%s(%04u): %u -> %u\n",
 			(const char *)unicode2char(m_name),
 			m_clockCounter, old_state, m_state);
 	}
@@ -93,7 +94,7 @@ void CStateMachine::Clock()
 /* In multithreaded implementations, this must be locked */
 void CStateMachine::Schedule(t_sm_event event)
 {
-	wxMutexLocker lock(m_queueMutex);
+        wiMutexLocker lock(m_queueMutex);
 	m_queue.push(event);
 }
 

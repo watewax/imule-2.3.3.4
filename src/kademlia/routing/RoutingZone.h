@@ -1,5 +1,5 @@
 //								-*- C++ -*-
-// This file is part of the aMule Project.
+// This file is part of the iMule Project.
 //
 // Copyright (c) 2004-2011 Angel Vidal ( kry@amule.org )
 // Copyright (c) 2004-2011 aMule Team ( admin@amule.org / http://www.amule.org )
@@ -41,6 +41,7 @@ there client on the eMule forum..
 
 #include "Maps.h"
 #include "../utils/UInt128.h"
+#include "i2p/CI2PAddress.h"
 
 class CFileDataIO;
 
@@ -63,6 +64,8 @@ class CKadUDPKey;
  */
 class CRoutingZone
 {
+        friend class CRoutingBin;
+        friend class CContact;
 public:
 
 	CRoutingZone();
@@ -72,31 +75,32 @@ public:
 	void	 OnSmallTimer();
 	uint32_t Consolidate();
 
-	bool	 Add(const CUInt128 &id, uint32_t ip, uint16_t port, uint16_t tport, uint8_t version, const CKadUDPKey& key, bool& ipVerified, bool update, bool fromHello);
-	bool	 AddUnfiltered(const CUInt128 &id, uint32_t ip, uint16_t port, uint16_t tport, uint8_t version, const CKadUDPKey& key, bool& ipVerified, bool update, bool fromHello);
-	bool	 Add(CContact *contact, bool& update, bool& outIpVerified);
+        bool     Add(CContact contact, bool& destVerified, bool update, bool fromNodesDat, bool fromHello);
+        bool     AddUnfiltered(CContact contact, bool & destVerified, bool update, bool fromNodesDat, bool fromHello);
+        bool     Add(CContact contact, bool& update, bool & outDestVerified);
 
 	void	 ReadFile(const wxString& specialNodesdat = wxEmptyString);
 
-	bool	 VerifyContact(const CUInt128& id, uint32_t ip);
-	CContact *GetContact(const CUInt128& id) const throw();
-	CContact *GetContact(uint32_t ip, uint16_t port, bool tcpPort) const throw();
-	CContact *GetRandomContact(uint32_t maxType, uint32_t minKadVersion) const;
+        bool     VerifyContact(const CUInt128& id, const CI2PAddress & dest);
+        CContact GetContact(const CUInt128& id) const throw();
+        CContact GetContact(uint32 dest, bool tcpDest) const throw();
+        CContact GetRandomContact(uint32_t maxType, uint32_t minKadVersion) const;
 	uint32_t GetNumContacts() const throw();
 	void	 GetNumContacts(uint32_t& nInOutContacts, uint32_t& nInOutFilteredContacts, uint8_t minVersion) const throw();
+        static size_t GetTotalContactsNumber() { return s_ContactsSet.size(); }
 
 	// Check if we know a contact with the same IP or ID but not matching IP/ID and other limitations, similar checks like when adding a node to the table except allowing duplicates
-	bool	IsAcceptableContact(const CContact *toCheck) const;
+        bool    IsAcceptableContact(const CContact toCheck) const;
 
 	// Returns a list of all contacts in all leafs of this zone.
-	void	 GetAllEntries(ContactList *result, bool emptyFirst = true) const;
+        void GetAllEntries(ContactList & result, bool emptyFirst = true) const;
 
 	// Returns the *maxRequired* tokens that are closest to the target within this zone's subtree.
-	void	 GetClosestTo(uint32_t maxType, const CUInt128& target, const CUInt128& distance, uint32_t maxRequired, ContactMap *result, bool emptyFirst = true, bool setInUse = false) const;
+        void GetClosestToTarget(uint32_t maxType, const CUInt128 &distance, uint32_t maxRequired, TargetContactMap & result, bool emptyFirst = true ) const;
 
 	// Ideally: Returns all contacts that are in buckets of common range between us and the asker.
 	// In practice: returns the contacts from the top (2^{logBase+1}) buckets.
-	uint32_t GetBootstrapContacts(ContactList *results, uint32_t maxRequired) const;
+        uint32_t GetBootstrapContacts(ContactList &results, uint32_t maxRequired) const;
 
 	uint32_t EstimateCount() const;
 	bool	 HasOnlyLANNodes() const throw();
@@ -104,6 +108,13 @@ public:
 	time_t	 m_nextBigTimer;
 	time_t	 m_nextSmallTimer;
 
+        wxString exportContacts(uint32 maxstrsize=(uint32)(-1)) ;
+
+
+        bool wouldLikeToAdd( const CUInt128 &id ) const;
+        bool wouldLikeToAddByDistance( const CUInt128 & distance, const CUInt128 & id ) const;
+        void remove(const CUInt128 &id);
+        bool setAlive(const CI2PAddress & dest);
 private:
 
 	CRoutingZone(CRoutingZone *super_zone, int level, const CUInt128& zone_index) { Init(super_zone, level, zone_index); }
@@ -119,12 +130,12 @@ private:
 	bool CanSplit() const throw();
 
 	// Returns all contacts from this zone tree that are no deeper than *depth* from the current zone.
-	void TopDepth(int depth, ContactList *result, bool emptyFirst = true) const;
+        void TopDepth(int depth, ContactList &result, bool emptyFirst = true) const;
 
 	// Returns the maximum depth of the tree as the number of edges of the longest path to a leaf.
 	uint32_t GetMaxDepth() const throw();
 
-	void RandomBin(ContactList *result, bool emptyFirst = true) const;
+        void RandomBin(ContactList & result, bool emptyFirst = true) const;
 
 	void Split();
 
@@ -168,6 +179,11 @@ private:
 
 	/** List of contacts, if this zone is a leaf zone. */
 	CRoutingBin *m_bin;
+        /** Set of contacts, whatever zone */
+        static ContactSet s_ContactsSet ;
+
+        /** number of contacts read or written from/to nodes.dat */
+        static size_t s_nodes_dat_size ;
 };
 
 } // End namespace

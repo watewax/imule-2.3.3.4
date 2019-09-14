@@ -1,5 +1,5 @@
 //								-*- C++ -*-
-// This file is part of the aMule Project.
+// This file is part of the iMule Project.
 //
 // Copyright (c) 2004-2011 Angel Vidal ( kry@amule.org )
 // Copyright (c) 2004-2011 aMule Team ( admin@amule.org / http://www.amule.org )
@@ -43,6 +43,7 @@ there client on the eMule forum..
 #include "../../Types.h"
 #include "../kademlia/Defines.h"
 #include "Contact.h"
+#include "i2p/CI2PAddress.h"
 
 ////////////////////////////////////////
 namespace Kademlia {
@@ -58,31 +59,32 @@ public:
 	{}
 	~CRoutingBin();
 
-	bool	  AddContact(CContact *contact);
-	void	  SetAlive(CContact *contact);
-	void	  SetTCPPort(uint32_t ip, uint16_t port, uint16_t tcpPort);
-	void	  RemoveContact(CContact *contact, bool noTrackingAdjust = false)	{ if (!noTrackingAdjust) AdjustGlobalTracking(contact->GetIPAddress(), false); m_entries.remove(contact); }
-	CContact *GetContact(const CUInt128 &id) const throw();
-	CContact *GetContact(uint32_t ip, uint16_t port, bool tcpPort) const throw();
-	CContact *GetOldest() const throw()		{ return m_entries.size() ? m_entries.front() : NULL; }
+        bool        AddContact(CContact contact);
+        void        SetAlive(CContact contact);
+        void        SetTCPPort(const CI2PAddress & dest, const CI2PAddress & tcpDest);
+        void        RemoveContact(CContact contact, bool noTrackingAdjust = false)	{ if (!noTrackingAdjust) AdjustGlobalTracking(contact.GetIPAddress(), false); contact.RemovedFromKadNodes(); m_entries.remove(contact); }
+        CContact    GetContact(const CUInt128 &id) const throw();
+        CContact    GetContact(uint32 dest, bool tcpPort) const throw();
+        CContact    GetOldest() const throw() { return m_entries.size() ? m_entries.front() : CContact(); }
 
 	uint32_t  GetSize() const throw()		{ return m_entries.size(); }
 	void	  GetNumContacts(uint32_t& nInOutContacts, uint32_t& nInOutFilteredContacts, uint8_t minVersion) const throw();
 	uint32_t  GetRemaining() const throw()		{ return K - m_entries.size(); }
-	void	  GetEntries(ContactList *result, bool emptyFirst = true) const;
-	void	  GetClosestTo(uint32_t maxType, const CUInt128 &target, uint32_t maxRequired, ContactMap *result, bool emptyFirst = true, bool setInUse = false) const;
-	bool	  ChangeContactIPAddress(CContact *contact, uint32_t newIP);
-	void	  PushToBottom(CContact *contact); // puts an existing contact from X to the end of the list
-	CContact *GetRandomContact(uint32_t maxType, uint32_t minKadVersion) const;
+        void	  GetEntries(ContactList &result, bool emptyFirst = true) const;
+        //void    GetClosestTo(uint32_t maxType, const CUInt128 &target, uint32_t maxRequired, ContactMap &result, bool emptyFirst = true) const;
+        void      GetClosestToTarget(uint32_t maxType, uint32_t maxRequired, TargetContactMap &result, bool emptyFirst = true) const;
+        bool	  ChangeContactIPAddress(CContact *contact, const CI2PAddress & newIP);
+        void	  PushToBottom(CContact contact); // puts an existing contact from X to the end of the list
+        CContact  GetRandomContact(uint32_t maxType, uint32_t minKadVersion) const;
 	void	  SetAllContactsVerified();
 	bool	  HasOnlyLANNodes() const throw();
 
-	static bool	CheckGlobalIPLimits(uint32_t ip, uint16_t port);
+        static bool	CheckGlobalIPLimits(const CI2PAddress & ip);
 
 	bool	m_dontDeleteContacts;
 
 protected:
-	static void AdjustGlobalTracking(uint32_t ip, bool increase);
+        static void AdjustGlobalTracking(const CI2PAddress & ip, bool increase);
 
 private:
 	ContactList m_entries;

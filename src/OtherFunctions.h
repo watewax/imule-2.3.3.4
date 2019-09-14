@@ -323,16 +323,31 @@ void DumpMem(const void *buff, int n, const wxString& msg = wxEmptyString, bool 
 void DumpMem_DW(const uint32 *ptr, int count);
 
 // Returns special source ID for GUI.
-// It's actually IP<<16+Port
-#define GUI_ID(x,y) (uint64)((((uint64)x)<<16) + (uint64)y)
-// And so...
-#define PORT_FROM_GUI_ID(x) (x & 0xFFFF)
-#define IP_FROM_GUI_ID(x) (x >> 16)
+#define GUI_ID(x,y) (x.hashCode())
+#define PORT_FROM_GUI_ID(x) (0)
+#define IP_FROM_GUI_ID(x) ((uint32) x)
 
 
+inline long int make_full_ed2k_version(int a, int b, int c, int d=0)
+{
+        return ((a << 17) | (b << 10) | (c << 7) | d);
+}
 
-inline long int make_full_ed2k_version(int a, int b, int c) {
-	return ((a << 17) | (b << 10) | (c << 7));
+inline long int get_full_ed2k_version()
+{
+#ifdef PACKAGE_VERSION
+        int a, b, c, d=0 ;
+        sscanf( PACKAGE_VERSION, "%d.%d.%d.%d", &a, &b, &c, &d);
+        return make_full_ed2k_version(a,b,c,d);
+#else
+	#ifdef VERSION
+		int a, b, c, d=0 ;
+		sscanf( VERSION, "%d.%d.%d.%d", &a, &b, &c, &d);
+		return make_full_ed2k_version(a,b,c,d);
+	#else
+		return make_full_ed2k_version(VERSION_MJR, VERSION_MIN, VERSION_UPDATE);
+	#endif
+#endif
 }
 
 

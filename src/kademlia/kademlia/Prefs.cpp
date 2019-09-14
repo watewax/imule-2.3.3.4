@@ -49,14 +49,24 @@ there client on the eMule forum..
 #include "../../Logger.h"
 #include "../../ArchSpecific.h"
 #include "../../RandomFunctions.h"		// Needed for GetRandomUint128()
+#include "Kademlia.h"
 
 
 ////////////////////////////////////////
 using namespace Kademlia;
 ////////////////////////////////////////
 
-#define EXTERNAL_PORT_ASKIPS	3
+CPrefs * CPrefs::instance = NULL ;
 
+CPrefs * CPrefs::getInstance()
+{
+        if (instance == NULL) {
+                instance = new CPrefs() ;
+        }
+        return instance ;
+}
+
+#define EXTERNAL_PORT_ASKIPS	0
 
 CPrefs::CPrefs()
 {
@@ -68,6 +78,7 @@ CPrefs::~CPrefs()
 	if (!m_filename.IsEmpty()) {
 		WriteFile();
 	}
+        instance = NULL ;
 }
 
 void CPrefs::Init(const wxString& filename)
@@ -84,8 +95,8 @@ void CPrefs::Init(const wxString& filename)
 	m_totalStoreNotes = 0;
 	m_Publish = false;
 	m_clientHash.SetValueBE(thePrefs::GetUserHash().GetHash());
-	m_ip = 0;
-	m_ipLast = 0;
+        m_ip = CI2PAddress::null;
+        m_ipLast = CI2PAddress::null;
 	m_findBuddy = false;
 	m_kademliaUsers	= 0;
 	m_kademliaFiles	= 0;
@@ -99,8 +110,8 @@ void CPrefs::Init(const wxString& filename)
 	m_statsTCPFirewalledNodes = 0;
 	m_statsKadV8LastChecked = 0;
 	m_statsKadV8Ratio = 0;
-	m_externPortIPs.reserve(EXTERNAL_PORT_ASKIPS);
-	m_externPorts.reserve(EXTERNAL_PORT_ASKIPS);
+	//m_externPortIPs.reserve(EXTERNAL_PORT_ASKIPS);
+	//m_externPorts.reserve(EXTERNAL_PORT_ASKIPS);
 	ReadFile();
 }
 
@@ -111,7 +122,7 @@ void CPrefs::ReadFile()
 	try {
 		CFile file;
 		if (path.FileExists() && file.Open(path, CFile::read)) {
-			m_ip = file.ReadUInt32();
+			//m_ip = file.ReadUInt32();
 			file.ReadUInt16();
 			m_clientID = file.ReadUInt128();
 			// get rid of invalid kad IDs which may have been stored by older versions
@@ -129,7 +140,7 @@ void CPrefs::WriteFile()
 	try {
 		CFile file;
 		if (file.Open(m_filename, CFile::write)) {
-			file.WriteUInt32(m_ip);
+			//file.WriteUInt32(m_ip);
 			file.WriteUInt16(0); //This is no longer used.
 			file.WriteUInt128(m_clientID);
 			file.WriteUInt8(0); //This is to tell older clients there are no tags..
@@ -140,7 +151,7 @@ void CPrefs::WriteFile()
 	}
 }
 
-void CPrefs::SetIPAddress(uint32_t val) throw()
+void CPrefs::SetIPAddress(const CI2PAddress & val) throw()
 {
 	//This is our first check on connect, init our IP..
 	if ( !val || !m_ipLast ) {
@@ -196,17 +207,17 @@ void CPrefs::SetKademliaFiles()
 	uint32_t nServerAverage = theApp->serverlist->GetAvgFile();
 	uint32_t nKadAverage = Kademlia::CKademlia::GetIndexed()->GetFileKeyCount();
 
-	DEBUG_ONLY( wxString method; )
+        wxString method;
 
 	if (nServerAverage > nKadAverage) {
-		DEBUG_ONLY( method = CFormat(wxT("Kad file estimate used Server avg(%u)")) % nServerAverage; )
+                method = CFormat(wxT("Kad file estimate used Server avg(%u)")) % nServerAverage;
 		nKadAverage = nServerAverage;
 	} else {
-		DEBUG_ONLY( method = CFormat(wxT("Kad file estimate used Kad avg(%u)")) % nKadAverage; )
+                method = CFormat(wxT("Kad file estimate used Kad avg(%u)")) % nKadAverage;
 	}
 
 	if( nKadAverage < 108 ) {
-		DEBUG_ONLY( method = wxString(wxT("Kad file estimate used default avg(108, min value)")); )
+                method = wxString(wxT("Kad file estimate used default avg(108, min value)"));
 		nKadAverage = 108;
 	}
 
@@ -214,7 +225,7 @@ void CPrefs::SetKademliaFiles()
 	m_kademliaFiles = nKadAverage * m_kademliaUsers;
 }
 
-uint8_t CPrefs::GetMyConnectOptions(bool encryption, bool callback)
+uint8_t CPrefs::GetMyConnectOptions(bool encryption, bool WXUNUSED(callback))
 {
        // Connect options Tag
        // 4 Reserved (!)
@@ -225,10 +236,9 @@ uint8_t CPrefs::GetMyConnectOptions(bool encryption, bool callback)
 
        // direct callback is only possible if connected to kad, tcp firewalled and verified UDP open (for example on a full cone NAT)
 
-       return    (callback && theApp->IsFirewalled() && CKademlia::IsRunning() && !CUDPFirewallTester::IsFirewalledUDP(true) && CUDPFirewallTester::IsVerified()) ? 0x08 : 0
-	       | (thePrefs::IsClientCryptLayerRequired() && encryption) ? 0x04 : 0
-	       | (thePrefs::IsClientCryptLayerRequested() && encryption) ? 0x02 : 0
-	       | (thePrefs::IsClientCryptLayerSupported() && encryption) ? 0x01 : 0;
+        return    ((thePrefs::IsClientCryptLayerRequired() && encryption) ? 0x04 : 0)
+                  | ((thePrefs::IsClientCryptLayerRequested() && encryption) ? 0x02 : 0)
+                  | ((thePrefs::IsClientCryptLayerSupported() && encryption) ? 0x01 : 0);
 }
 
 uint32_t CPrefs::GetUDPVerifyKey(uint32_t targetIP)
@@ -286,16 +296,16 @@ void CPrefs::SetExternKadPort(uint16_t port, uint32_t fromIP)
 			}
 		}
 		m_externPortIPs.push_back(fromIP);
-		AddDebugLogLineN(logKadPrefs, CFormat(wxT("Received possible external Kad port %u from %s")) % port % KadIPToString(fromIP));
+                AddDebugLogLineN(logKadPrefs, CFormat(wxT("Received possible external Kad port %u from %u")) % port % fromIP);
 		// if 2 out of 3 tries result in the same external port it's fine, otherwise consider it unreliable
 		for (unsigned i = 0; i < m_externPorts.size(); i++) {
 			if (m_externPorts[i] == port) {
 				m_externKadPort = port;
 				AddDebugLogLineN(logKadPrefs, CFormat(wxT("Set external Kad port to %u")) % port);
-				while (m_externPortIPs.size() < EXTERNAL_PORT_ASKIPS) {
-					// add empty entries so we know the check has finished even if we asked less than max IPs
-					m_externPortIPs.push_back(0);
-				}
+				//while (m_externPortIPs.size() < EXTERNAL_PORT_ASKIPS) {
+				//	// add empty entries so we know the check has finished even if we asked less than max IPs
+				//	m_externPortIPs.push_back(0);
+				//}
 				return;
 			}
 		}
@@ -310,10 +320,15 @@ void CPrefs::SetExternKadPort(uint16_t port, uint32_t fromIP)
 bool CPrefs::FindExternKadPort(bool reset)
 {
 	if (!reset) {
-		return m_externPortIPs.size() < EXTERNAL_PORT_ASKIPS && !CKademlia::IsRunningInLANMode();
+                return false; // m_externPortIPs.size() < EXTERNAL_PORT_ASKIPS && !CKademlia::IsRunningInLANMode();
 	} else {
 		m_externPortIPs.clear();
 		m_externPorts.clear();
 		return true;
 	}
+}
+
+bool CPrefs::GetUseExternKadPort() const
+{
+        return m_useExternKadPort && !Kademlia::CKademlia::IsRunningInLANMode();
 }

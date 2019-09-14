@@ -276,7 +276,7 @@ void CWebServerBase::StartServer()
 			webInterface->m_WebserverPort,
 			"TCP",
 			true,
-			"aMule TCP Webserver Socket");
+			"iMule TCP Webserver Socket");
 		m_upnp = new CUPnPControlPoint(m_upnpTCPPort);
 		m_upnp->AddPortMappings(m_upnpMappings);
 	}
@@ -535,7 +535,7 @@ void CWebServerBase::Send_Server_Cmd(uint32 ip, uint16 port, wxString cmd)
 }
 
 void CWebServerBase::Send_Search_Cmd(wxString search, wxString extention, wxString type,
-	EC_SEARCH_TYPE search_type, uint32 avail, uint32 min_size, uint32 max_size)
+                                     EC_SEARCH_TYPE search_type, uint32 avail, uint64 min_size, uint64 max_size)
 {
 	CECPacket search_req(EC_OP_SEARCH_START);
 	search_req.AddTag(CEC_Search_Tag (search, search_type,
@@ -1937,7 +1937,7 @@ void CScriptWebServer::ProcessURL(ThreadData Data)
 		session->m_vars["content_type"] = "application/json";
 		httpOut = ProcessHtmlRequest(unicode2char(req_file), httpOutLen);
 	} else {
-		httpOut = GetErrorPage("aMuleweb doesn't handle the requested file type ", httpOutLen);
+		httpOut = GetErrorPage("iMuleweb doesn't handle the requested file type ", httpOutLen);
 	}
 
 	bool isUseGzip = webInterface->m_UseGzip;

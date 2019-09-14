@@ -1,4 +1,4 @@
-SUBDIRS =
+SUBDIRS = i2p
 
 if COMPILE_LIB_COMMON
 SUBDIRS += common

@@ -34,9 +34,9 @@
 #define	KADEMLIATOTALFILE		5		//Total files to search sources for.
 #define	KADEMLIAREASKTIME		HR2MS(1)	//1 hour
 #define	KADEMLIAPUBLISHTIME		SEC(2)		//2 second
-#define	KADEMLIATOTALSTORENOTES		1		//Total hashes to store.
-#define	KADEMLIATOTALSTORESRC		3		//Total hashes to store.
-#define	KADEMLIATOTALSTOREKEY		2		//Total hashes to store.
+#define	KADEMLIATOTALSTORENOTES		1 //(SEARCHSTORENOTES_LIFETIME * KADEMLIAASKTIME)	//1		//Total hashes to store.
+#define	KADEMLIATOTALSTORESRC		60 // (SEARCHSTOREFILE_LIFETIME * KADEMLIAASKTIME)        // 3		//Total hashes to store.
+#define	KADEMLIATOTALSTOREKEY		60 // (SEARCHSTOREKEYWORD_LIFETIME * KADEMLIAASKTIME)		// 2		//Total hashes to store.
 #define	KADEMLIAREPUBLISHTIMES		HR2S(5)		//5 hours
 #define	KADEMLIAREPUBLISHTIMEN		HR2S(24)	//24 hours
 #define	KADEMLIAREPUBLISHTIMEK		HR2S(24)	//24 hours
@@ -45,7 +45,7 @@
 #define	KADEMLIAMAXENTRIES		60000		//Total keyword entries.
 #define	KADEMLIAMAXSOURCEPERFILE	1000		//Max number of sources per file in index.
 #define	KADEMLIAMAXNOTESPERFILE		150		//Max number of notes per entry in index.
-#define	KADEMLIAFIREWALLCHECKS		4		//Firewallcheck Request at a time
+#define	KADEMLIAFIREWALLCHECKS		0		//Firewallcheck Request at a time
 // MOD Note: end
 
 // Kad parameters

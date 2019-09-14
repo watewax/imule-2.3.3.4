@@ -102,7 +102,7 @@ void CCommentDialogLst::UpdateList()
 	if (count == 0) {
 		info = _("No comments");
 	} else {
-		info = CFormat(wxPLURAL("%u comment", "%u comments", count)) % count;
+                info = CFormat(wxPLURAL("%d comment", "%d comments", count)) % count;
 	}
 
 	FindWindow(IDC_CMSTATUS)->SetLabel(info);
@@ -123,7 +123,7 @@ void CCommentDialogLst::ClearList()
 }
 
 
-int CCommentDialogLst::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
+int CCommentDialogLst::SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData)
 {
 	SFileRating* file1 = reinterpret_cast<SFileRating*>(item1);
 	SFileRating* file2 = reinterpret_cast<SFileRating*>(item2);

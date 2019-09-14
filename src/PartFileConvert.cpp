@@ -35,6 +35,7 @@
 #include "Preferences.h"
 #include "SharedFileList.h"
 #include <common/FileFunctions.h>
+#include <protocol/ed2k/Constants.h>
 #include "OtherFunctions.h"
 #include "GuiEvents.h"
 #include "DataToText.h"
@@ -47,9 +48,10 @@ struct ConvertJob {
 	CPath		folder;
 	CPath		filename;
 	wxString	filehash;
+        int		format;
 	ConvStatus	state;
-	uint32_t	size;
-	uint32_t	spaceneeded;
+        uint64_t	size;
+        uint64_t	spaceneeded;
 	uint8		partmettype;
 	bool		removeSource;
 	ConvertJob(const CPath& file, bool deleteSource, ConvStatus status)
@@ -64,10 +66,9 @@ ConvertInfo::ConvertInfo(ConvertJob *job)
 {}
 
 
-wxThread*		CPartFileConvert::s_convertPfThread = NULL;
+CPartFileConvert*	CPartFileConvert::s_instance= NULL;
 std::list<ConvertJob*>	CPartFileConvert::s_jobs;
 ConvertJob*		CPartFileConvert::s_pfconverting = NULL;
-wxMutex			CPartFileConvert::s_mutex;
 
 
 int CPartFileConvert::ScanFolderToAdd(const CPath& folder, bool deletesource)
@@ -106,9 +107,10 @@ void CPartFileConvert::ConvertToeMule(const CPath& file, bool deletesource)
 		return;
 	}
 
-	ConvertJob* newjob = new ConvertJob(file, deletesource, CONV_QUEUE);
-
-	wxMutexLocker lock(s_mutex);
+        ConvertJob* newjob = new ConvertJob();
+        newjob->folder = file;
+        newjob->removeSource = deletesource;
+        newjob->state = CONV_QUEUE;
 
 	s_jobs.push_back(newjob);
 
@@ -119,287 +121,281 @@ void CPartFileConvert::ConvertToeMule(const CPath& file, bool deletesource)
 
 void CPartFileConvert::StartThread()
 {
-	if (!s_convertPfThread) {
-		s_convertPfThread = new CPartFileConvert();
+        if (!s_instance) {
+                s_instance = new CPartFileConvert();
 
-		switch ( s_convertPfThread->Create() ) {
-			case wxTHREAD_NO_ERROR:
 				AddDebugLogLineN( logPfConvert, wxT("A new thread has been created.") );
-				break;
-			case wxTHREAD_RUNNING:
-				AddDebugLogLineC( logPfConvert, wxT("Error, attempt to create an already running thread!") );
-				break;
-			case wxTHREAD_NO_RESOURCE:
-				AddDebugLogLineC( logPfConvert, wxT("Error, attempt to create a thread without resources!") );
-				break;
-			default:
-				AddDebugLogLineC( logPfConvert, wxT("Error, unknown error attempting to create a thread!") );
-		}
-
-		// The thread shouldn't hog the CPU, as it will already be hogging the HD
-		s_convertPfThread->SetPriority(WXTHREAD_MIN_PRIORITY);
-
-		s_convertPfThread->Run();
+                s_instance->Bind(wxEVT_IDLE, &CPartFileConvert::Run, s_instance);
 	}
 }
 
 void CPartFileConvert::StopThread()
 {
-	if (s_convertPfThread) {
-		s_convertPfThread->Delete();
+        DeleteContents(s_jobs);
+        if (s_instance) {
+                s_instance->Unbind(wxEVT_IDLE, &CPartFileConvert::Run, s_instance);
+                delete s_instance;
+                s_instance = NULL;
 	} else {
 		return;
 	}
-
-	AddLogLineNS(_("Waiting for partfile convert thread to die..."));
-	while (s_convertPfThread) {
-		wxSleep(1);
-	}
 }
 
-wxThread::ExitCode CPartFileConvert::Entry()
+void CPartFileConvert::Run(wxIdleEvent & /*evt*/)
 {
-	int imported = 0;
+        cr_begin(run);
+        run.imported = 0;
 
-	for (;;)
-	{
+        while (true) {
 		// search next queued job and start it
-		{
-			wxMutexLocker lock(s_mutex);
 			s_pfconverting = NULL;
 			for (std::list<ConvertJob*>::iterator it = s_jobs.begin(); it != s_jobs.end(); ++it) {
 				if ((*it)->state == CONV_QUEUE) {
 					s_pfconverting = *it;
 					break;
-				}
 			}
 		}
 
 		if (s_pfconverting) {
-			{
-				wxMutexLocker lock(s_mutex);
 				s_pfconverting->state = CONV_INPROGRESS;
-			}
 
 			Notify_ConvertUpdateJobInfo(s_pfconverting);
 
-			ConvStatus convertResult = performConvertToeMule(s_pfconverting->folder);
-			{
-				wxMutexLocker lock(s_mutex);
-				s_pfconverting->state = convertResult;
-			}
+                        cr_redo(run);
+                        s_pfconverting->state = performConvertToeMule(s_pfconverting->folder);
 
+                        if (s_pfconverting->state == CONV_INPROGRESS) {
+                                return;
+                        }
 			if (s_pfconverting->state == CONV_OK) {
-				++imported;
+                                ++run.imported;
 			}
 
 			Notify_ConvertUpdateJobInfo(s_pfconverting);
 
 			AddLogLineC(CFormat(_("Importing %s: %s")) % s_pfconverting->folder % GetConversionState(s_pfconverting->state));
 
-			if (TestDestroy()) {
-				wxMutexLocker lock(s_mutex);
-				DeleteContents(s_jobs);
-				break;
-			}
 		} else {
 			break; // nothing more to do now
 		}
+                // for high cpu usage, requesting a continuous flow of idle events
+                //                 evt.RequestMore();
+                cr_return(,run);
 	}
 
 	// clean up
 	Notify_ConvertClearInfos();
 
-	if (imported) {
+        if (run.imported) {
 		theApp->sharedfiles->PublishNextTurn();
 	}
 
 	AddDebugLogLineN(logPfConvert, wxT("No more jobs on queue, exiting from thread."));
+        StopThread();
 
-	s_convertPfThread = NULL;
-
-	return NULL;
+        cr_end(run);
 }
+
+static struct ConvertCtx {
+        wxString filepartindex, buffer;
+        unsigned fileindex;
+
+        CPath folder   ;
+        CDirIterator * finder;
+        CPath partfile ;
+	CPath newfilename;
+        CPartFile* file ;
+        CPath oldfile ;
+        CPath oldFile ;
+        char *ba;
+        CFile inputfile;
+        unsigned maxindex;
+        unsigned partfilecount ;
+        CPath filePath ;
+        float stepperpart;
+        sint64 freespace;
+        unsigned curindex ;
+        CPath filename ;
+        uint64 toReadWrite;
+        uint32 chunkstart ;
+        bool ret;
+        cr_context(ConvertCtx);
+        void reinit() {
+                if (ba) delete[] ba;
+                if (file) file->Delete();
+                if (finder) delete finder;
+                __s = 0;
+        };
+} cvt;
 
 ConvStatus CPartFileConvert::performConvertToeMule(const CPath& fileName)
 {
-	wxString filepartindex;
-
-	CPath folder	= fileName.GetPath();
-	CPath partfile	= fileName.GetFullName();
-	CPath newfilename;
-
-	CDirIterator finder(folder);
+        try {                        // just count
+                cr_begin(cvt);
+                cvt.ba = NULL;
+                cvt.folder    = fileName.GetPath();
+                cvt.partfile  = fileName.GetFullName();
+                cvt.finder = new CDirIterator(cvt.folder);
 
 	Notify_ConvertUpdateProgressFull(0, _("Reading temp folder"), s_pfconverting->folder.GetPrintable());
 
-	filepartindex = partfile.RemoveAllExt().GetRaw();
+                cvt.filepartindex = cvt.partfile.RemoveAllExt().GetRaw();
 
 	Notify_ConvertUpdateProgress(4, _("Retrieving basic information from download info file"));
+                cr_return(CONV_INPROGRESS,cvt);
 
-	CPartFile* file = new CPartFile();
-	s_pfconverting->partmettype = file->LoadPartFile(folder, partfile, false, true);
+                cvt.file = new CPartFile();
+                s_pfconverting->partmettype = cvt.file->LoadPartFile(cvt.folder, cvt.partfile, false, true);
 
 	switch (s_pfconverting->partmettype) {
 		case PMT_UNKNOWN:
 		case PMT_BADFORMAT:
-			delete file;
+                                cvt.reinit();
 			return CONV_BADFORMAT;
 	}
 
-	CPath oldfile = folder.JoinPaths(partfile.RemoveExt());
-
-	{
-		wxMutexLocker lock(s_mutex);
-		s_pfconverting->size = file->GetFileSize();
-		s_pfconverting->filename = file->GetFileName();
-		s_pfconverting->filehash = file->GetFileHash().Encode();
-	}
+                cvt.oldfile = cvt.folder.JoinPaths(cvt.partfile.RemoveExt());
+                s_pfconverting->size = cvt.file->GetFileSize();
+                s_pfconverting->filename = cvt.file->GetFileName();
+                s_pfconverting->filehash = cvt.file->GetFileHash().Encode();
 
 	Notify_ConvertUpdateJobInfo(s_pfconverting);
+                cr_return(CONV_INPROGRESS,cvt);
 
-	if (theApp->downloadqueue->GetFileByID(file->GetFileHash())) {
-		delete file;
+                if (theApp->downloadqueue->GetFileByID(cvt.file->GetFileHash())) {
+                        cvt.reinit();                                
 		return CONV_ALREADYEXISTS;
 	}
 
 	if (s_pfconverting->partmettype == PMT_SPLITTED) {
-		unsigned fileindex;
-		char *ba = new char [PARTSIZE];
+                        cvt.ba = new char [PARTSIZE];
 
-		try {
-			CFile inputfile;
-
-			// just count
-			unsigned maxindex = 0;
-			unsigned partfilecount = 0;
-			CPath filePath = finder.GetFirstFile(CDirIterator::File, filepartindex + wxT(".*.part"));
-			while (filePath.IsOk()) {
+                        cvt.maxindex = 0;
+                        cvt.partfilecount = 0;
+                        cvt.filePath = cvt.finder->GetFirstFile(CDirIterator::File, cvt.filepartindex + wxT(".*.part"));
+                        while (cvt.filePath.IsOk()) {
 				long l;
-				++partfilecount;
-				filePath.GetFullName().RemoveExt().GetExt().ToLong(&l);
-				fileindex = (unsigned)l;
-				filePath = finder.GetNextFile();
-				if (fileindex > maxindex) maxindex = fileindex;
+                                ++cvt.partfilecount;
+                                cvt.filePath.GetFullName().RemoveExt().GetExt().ToLong(&l);
+                                cvt.fileindex = (unsigned)l;
+                                cvt.filePath = cvt.finder->GetNextFile();
+                                if (cvt.fileindex > cvt.maxindex) cvt.maxindex = cvt.fileindex;
 			}
-			float stepperpart;
-			{
-				wxMutexLocker lock(s_mutex);
-				if (partfilecount > 0) {
-					stepperpart = (80.0f / partfilecount);
-					if (maxindex * PARTSIZE <= s_pfconverting->size) {
-						s_pfconverting->spaceneeded = maxindex * PARTSIZE;
+                        if (cvt.partfilecount > 0) {
+                                cvt.stepperpart = (80.0f / cvt.partfilecount);
+                                if (cvt.maxindex * PARTSIZE <= s_pfconverting->size) {
+                                        s_pfconverting->spaceneeded = cvt.maxindex * PARTSIZE;
 					} else {
 						s_pfconverting->spaceneeded = s_pfconverting->size;
 					}
 				} else {
-					stepperpart = 80.0f;
+                                cvt.stepperpart = 80.0f;
 					s_pfconverting->spaceneeded = 0;
-				}
 			}
 
 			Notify_ConvertUpdateJobInfo(s_pfconverting);
+                        cr_return(CONV_INPROGRESS,cvt);
 
-			sint64 freespace = CPath::GetFreeSpaceAt(thePrefs::GetTempDir());
-			if (freespace != wxInvalidOffset) {
-				if (static_cast<uint64>(freespace) < maxindex * PARTSIZE) {
-					delete file;
-					delete [] ba;
+                        cvt.freespace = CPath::GetFreeSpaceAt(thePrefs::GetTempDir());
+                        if (cvt.freespace != wxInvalidOffset) {
+                                if (static_cast<uint64>(cvt.freespace) < cvt.maxindex * PARTSIZE) {
+                                        cvt.reinit();
 					return CONV_OUTOFDISKSPACE;
 				}
 			}
 
 			// create new partmetfile, and remember the new name
-			file->CreatePartFile(true);
-			newfilename = file->GetFullName();
+                        cvt.file->CreatePartFile();
+                        cvt.newfilename = cvt.file->GetFullName();
 
 			Notify_ConvertUpdateProgress(8, _("Creating destination file"));
+                        cr_return(CONV_INPROGRESS,cvt);
 
-			file->m_hpartfile.SetLength( s_pfconverting->spaceneeded );
+                        cvt.file->m_hpartfile.SetLength( s_pfconverting->spaceneeded );
 
-			unsigned curindex = 0;
-			CPath filename = finder.GetFirstFile(CDirIterator::File, filepartindex + wxT(".*.part"));
-			while (filename.IsOk()) {
+                        cvt.curindex = 0;
+                        cvt.filename = cvt.finder->GetFirstFile(CDirIterator::File, cvt.filepartindex + wxT(".*.part"));
+                        while (cvt.filename.IsOk()) {
 				// stats
-				++curindex;
+                                ++cvt.curindex;
+                                cvt.buffer = CFormat(_("Loading data from old download file (%u of %u)")) % cvt.curindex % cvt.partfilecount;
 
-				Notify_ConvertUpdateProgress(10 + (curindex * stepperpart), CFormat(_("Loading data from old download file (%u of %u)")) % curindex % partfilecount);
+                                Notify_ConvertUpdateProgress(10 + (cvt.curindex * cvt.stepperpart), cvt.buffer);
+                                cr_return(CONV_INPROGRESS,cvt);
 
+                                {
 				long l;
-				filename.GetFullName().RemoveExt().GetExt().ToLong(&l);
-				fileindex = (unsigned)l;
-				if (fileindex == 0) {
-					filename = finder.GetNextFile();
+                                        cvt.filename.GetFullName().RemoveExt().GetExt().ToLong(&l);
+                                        cvt.fileindex = (unsigned)l;
+                                }
+                                if (cvt.fileindex == 0) {
+                                        cvt.filename = cvt.finder->GetNextFile();
 					continue;
 				}
 
-				uint32 chunkstart = (fileindex - 1) * PARTSIZE;
+                                cvt.chunkstart = (cvt.fileindex - 1) * PARTSIZE;
 
 				// open, read data of the part-part-file into buffer, close file
-				inputfile.Open(filename, CFile::read);
-				uint64 toReadWrite = std::min<uint64>(PARTSIZE, inputfile.GetLength());
-				inputfile.Read(ba, toReadWrite);
-				inputfile.Close();
+                                cvt.inputfile.Open(cvt.filename, CFile::read);
+                                cvt.toReadWrite = std::min<uint64>(PARTSIZE, cvt.inputfile.GetLength());
+                                cvt.inputfile.Read(cvt.ba, cvt.toReadWrite);
+                                cvt.inputfile.Close();
 
-				Notify_ConvertUpdateProgress(10 + (curindex * stepperpart), CFormat(_("Saving data block into new single download file (%u of %u)")) % curindex % partfilecount);
+                                cvt.buffer = CFormat(_("Saving data block into new single download file (%u of %u)")) % cvt.curindex % cvt.partfilecount;
+                                
+                                Notify_ConvertUpdateProgress(10 + (cvt.curindex * cvt.stepperpart), cvt.buffer);
+                                cr_return(CONV_INPROGRESS,cvt);
 
 				// write the buffered data
-				file->m_hpartfile.WriteAt(ba, chunkstart, toReadWrite);
+                                cvt.file->m_hpartfile.WriteAt(cvt.ba, cvt.chunkstart, cvt.toReadWrite);
 
-				filename = finder.GetNextFile();
+                                cvt.filename = cvt.finder->GetNextFile();
+                                cr_return(CONV_INPROGRESS,cvt);
 			}
-			delete[] ba;
-		} catch (const CSafeIOException& e) {
-			AddDebugLogLineC(logPfConvert, wxT("IO error while converting partfiles: ") + e.what());
+                        delete[] cvt.ba;
 
-			delete[] ba;
-			file->Delete();
-			return CONV_IOERROR;
-		}
-
-		file->m_hpartfile.Close();
+                        cvt.file->m_hpartfile.Close();
 	}
 	// import an external common format partdownload
-	else //if (pfconverting->partmettype==PMT_DEFAULTOLD || pfconverting->partmettype==PMT_NEWOLD || Shareaza  )
-	{
+                else { //if (pfconverting->partmettype==PMT_DEFAULTOLD || pfconverting->partmettype==PMT_NEWOLD || Shareaza  )
 		if (!s_pfconverting->removeSource) {
-			wxMutexLocker lock(s_mutex);
-			s_pfconverting->spaceneeded = oldfile.GetFileSize();
+                                s_pfconverting->spaceneeded = cvt.oldfile.GetFileSize();
 		}
 
 		Notify_ConvertUpdateJobInfo(s_pfconverting);
+                        cr_return(CONV_INPROGRESS,cvt);
 
-		sint64 freespace = CPath::GetFreeSpaceAt(thePrefs::GetTempDir());
-		if (freespace == wxInvalidOffset) {
-			delete file;
+                        cvt.freespace = CPath::GetFreeSpaceAt(thePrefs::GetTempDir());
+                        if (cvt.freespace == wxInvalidOffset) {
+                                cvt.reinit();
 			return CONV_IOERROR;
-		} else if (freespace < s_pfconverting->spaceneeded) {
-			delete file;
+                        } else if (cvt.freespace < (signed) s_pfconverting->spaceneeded) {
+                                cvt.reinit();
 			return CONV_OUTOFDISKSPACE;
 		}
 
-		file->CreatePartFile(true);
-		newfilename = file->GetFullName();
+                        cvt.file->CreatePartFile();
+                        cvt.newfilename = cvt.file->GetFullName();
 
-		file->m_hpartfile.Close();
+                        cvt.file->m_hpartfile.Close();
 
-		bool ret = false;
+                        cvt.ret = false;
 
 		Notify_ConvertUpdateProgress(92, _("Copy"));
+                        cr_return(CONV_INPROGRESS,cvt);
 
-		CPath::RemoveFile(newfilename.RemoveExt());
-		if (!oldfile.FileExists()) {
+                        CPath::RemoveFile(cvt.newfilename.RemoveExt());
+                        if (!cvt.oldfile.FileExists()) {
 			// data file does not exist. well, then create a 0 byte big one
 			CFile datafile;
-			ret = datafile.Create(newfilename.RemoveExt());
+                                cvt.ret = datafile.Create(cvt.newfilename.RemoveExt());
 		} else if (s_pfconverting->removeSource) {
-			ret = CPath::RenameFile(oldfile, newfilename.RemoveExt());
+                                cvt.ret = CPath::RenameFile(cvt.oldfile, cvt.newfilename.RemoveExt());
 		} else {
-			ret = CPath::CloneFile(oldfile, newfilename.RemoveExt(), false);
+                                cvt.ret = CPath::CloneFile(cvt.oldfile, cvt.newfilename.RemoveExt(), false);
 		}
-		if (!ret) {
-			file->Delete();
-			//delete file;
+                        if (!cvt.ret) {
+                                cvt.reinit();
 			return CONV_FAILED;
 		}
 
@@ -407,56 +403,64 @@ ConvStatus CPartFileConvert::performConvertToeMule(const CPath& fileName)
 
 	Notify_ConvertUpdateProgress(94, _("Retrieving source downloadfile information"));
 
-	CPath::RemoveFile(newfilename);
+                cr_return(CONV_INPROGRESS, cvt);
+                CPath::RemoveFile(cvt.newfilename);
 	if (s_pfconverting->removeSource) {
-		CPath::RenameFile(folder.JoinPaths(partfile), newfilename);
+                        CPath::RenameFile(cvt.folder.JoinPaths(cvt.partfile), cvt.newfilename);
 	} else {
-		CPath::CloneFile(folder.JoinPaths(partfile), newfilename, false);
+                        CPath::CloneFile(cvt.folder.JoinPaths(cvt.partfile), cvt.newfilename, false);
 	}
 
-	file->m_hashlist.clear();
+                cvt.file->m_hashlist.clear();
 
-	if (!file->LoadPartFile(thePrefs::GetTempDir(), file->GetPartMetFileName(), false)) {
-		//delete file;
-		file->Delete();
+
+                if (!cvt.file->LoadPartFile(thePrefs::GetTempDir(), cvt.file->GetPartMetFileName(), false)) {
+                        cvt.reinit();
 		return CONV_BADFORMAT;
 	}
 
 	if (s_pfconverting->partmettype == PMT_NEWOLD || s_pfconverting->partmettype == PMT_SPLITTED) {
-		file->SetCompletedSize(file->transferred);
-		file->m_iGainDueToCompression = 0;
-		file->m_iLostDueToCorruption = 0;
+                        cvt.file->SetCompletedSize(cvt.file->transferred);
+                        cvt.file->m_iGainDueToCompression = 0;
+                        cvt.file->m_iLostDueToCorruption = 0;
 	}
 
 	Notify_ConvertUpdateProgress(100, _("Adding download and saving new partfile"));
+                cr_return(CONV_INPROGRESS, cvt);
+                theApp->downloadqueue->AddDownload(cvt.file, thePrefs::AddNewFilesPaused(), 0);
+                cvt.file->SavePartFile();
 
-	theApp->downloadqueue->AddDownload(file, thePrefs::AddNewFilesPaused(), 0);
-	file->SavePartFile();
-
-	if (file->GetStatus(true) == PS_READY) {
-		theApp->sharedfiles->SafeAddKFile(file); // part files are always shared files
+                if (cvt.file->GetStatus(true) == PS_READY) {
+                        theApp->sharedfiles->SafeAddKFile(cvt.file); // part files are always shared files
 	}
 
 	if (s_pfconverting->removeSource) {
-		CPath oldFile = finder.GetFirstFile(CDirIterator::File, filepartindex + wxT(".*"));
-		while (oldFile.IsOk()) {
-			CPath::RemoveFile(folder.JoinPaths(oldFile));
-			oldFile = finder.GetNextFile();
+                        cvt.oldFile = cvt.finder->GetFirstFile(CDirIterator::File, cvt.filepartindex + wxT(".*"));
+                        while (cvt.oldFile.IsOk()) {
+                                CPath::RemoveFile(cvt.folder.JoinPaths(cvt.oldFile));
+                                cr_return(CONV_INPROGRESS,cvt);
+                                cvt.oldFile = cvt.finder->GetNextFile();
 		}
 
 		if (s_pfconverting->partmettype == PMT_SPLITTED) {
-			CPath::RemoveDir(folder);
+                                CPath::RemoveDir(cvt.folder);
 		}
 	}
 
+                delete cvt.finder;
+                cr_end(cvt);
 	return CONV_OK;
+        } catch (const CSafeIOException& e) {
+                AddDebugLogLineC(logPfConvert, wxT("IO error while converting partfiles: ") + e.what());
+                cvt.reinit();
+                return CONV_IOERROR;
+        }
 }
 
 // Notification handlers
 
 void CPartFileConvert::RemoveJob(unsigned id)
 {
-	wxMutexLocker lock(s_mutex);
 	for (std::list<ConvertJob*>::iterator it = s_jobs.begin(); it != s_jobs.end(); ++it) {
 		if ((*it)->id == id && (*it)->state != CONV_INPROGRESS) {
 			ConvertJob *job = *it;
@@ -470,7 +474,6 @@ void CPartFileConvert::RemoveJob(unsigned id)
 
 void CPartFileConvert::RetryJob(unsigned id)
 {
-	wxMutexLocker lock(s_mutex);
 	for (std::list<ConvertJob*>::iterator it = s_jobs.begin(); it != s_jobs.end(); ++it) {
 		if ((*it)->id == id && (*it)->state != CONV_INPROGRESS && (*it)->state != CONV_OK) {
 			(*it)->state = CONV_QUEUE;
@@ -483,7 +486,6 @@ void CPartFileConvert::RetryJob(unsigned id)
 
 void CPartFileConvert::ReaddAllJobs()
 {
-	wxMutexLocker lock(s_mutex);
 	for (std::list<ConvertJob*>::iterator it = s_jobs.begin(); it != s_jobs.end(); ++it) {
 		Notify_ConvertUpdateJobInfo(*it);
 	}

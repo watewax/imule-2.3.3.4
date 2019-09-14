@@ -28,6 +28,7 @@
 
 #include "KnownFile.h"	// Needed for CAbstractFile
 
+#include <i2p/CI2PAddress.h>
 
 class CMemFile;
 class CMD4Hash;
@@ -69,17 +70,15 @@ public:
 	 * @param data Source of results-packet.
 	 * @param optUTF8 Specifies if text-strings are to be read as UTF8.
 	 * @param searchID searchID The
-	 * @param serverIP The IP of the server that sent this result.
-	 * @param serverPort The port of the server that sent this result.
+         * @param dest The Destination of the server that sent this result.
 	 * @param directory If from a clients shared files, the directory this file is in.
 	 * @param kademlia Specifies if this was from a kad-search.
 	 */
 	CSearchFile(
 		const CMemFile& data,
-		bool optUTF8,
+		//bool optUTF8,
 		wxUIntPtr searchID,
-		uint32_t serverIP = 0,
-		uint16_t serverPort = 0,
+                const CI2PAddress & serverDest = CI2PAddress::null,
 		const wxString& directory = wxEmptyString,
 		bool kademlia = false);
 
@@ -147,31 +146,27 @@ public:
 
 	struct ClientStruct {
 		ClientStruct()
-			: m_ip(0), m_port(0), m_serverIP(0), m_serverPort(0)
+                        : m_dest(CI2PAddress::null), m_serverDest(CI2PAddress::null)
 		{}
 
-		ClientStruct(uint32_t ip, uint16_t port, uint32_t serverIP, uint16_t serverPort)
-			: m_ip(ip), m_port(port), m_serverIP(serverIP), m_serverPort(serverPort)
+                ClientStruct(const CI2PAddress & dest, const CI2PAddress & serverDest)
+                        : m_dest(dest), m_serverDest(serverDest)
 		{}
 
-		uint32_t m_ip;
-		uint16_t m_port;
-		uint32_t m_serverIP;
-		uint32_t m_serverPort;
+                CI2PAddress m_dest;
+                CI2PAddress m_serverDest;
 	};
 
 	void	 AddClient(const ClientStruct& client);
 	const std::list<ClientStruct>& GetClients() const	{ return m_clients; }
 
-	uint32_t GetClientID() const throw()			{ return m_clientID; }
-	void	 SetClientID(uint32_t clientID) throw()		{ m_clientID = clientID; }
-	uint16_t GetClientPort() const throw()			{ return m_clientPort; }
-	void	 SetClientPort(uint16_t port) throw()		{ m_clientPort = port; }
-	uint32_t GetClientServerIP() const throw()		{ return m_clientServerIP; }
-	void	 SetClientServerIP(uint32_t serverIP) throw()	{ m_clientServerIP = serverIP; }
-	uint16_t GetClientServerPort() const throw()		{ return m_clientServerPort; }
-	void	 SetClientServerPort(uint16_t port) throw()	{ m_clientServerPort = port; }
-	int	 GetClientsCount() const			{ return ((GetClientID() && GetClientPort()) ? 1 : 0) + m_clients.size(); }
+        CI2PAddress GetClientDest() const throw()                       { return m_clientDest; }
+        void        SetClientDest(CI2PAddress clientDest) throw()       { m_clientDest = clientDest; }
+        CI2PAddress GetClientServerDest() const throw()                 { return m_clientServerDest; }
+        void        SetClientServerDest(CI2PAddress serverDest) throw()   { m_clientServerDest = serverDest; }
+        size_t      GetClientsCount() const                             {
+                return ((GetClientDest().isValid()) ? 1 : 0) + m_clients.size();
+        }
 
 	void	 SetKadPublishInfo(uint32_t val) throw()	{ m_kadPublishInfo = val; }
 	uint32_t GetKadPublishInfo() const throw()		{ return m_kadPublishInfo; }
@@ -211,10 +206,8 @@ private:
 	wxString		m_directory;
 
 	std::list<ClientStruct>	m_clients;
-	uint32_t		m_clientID;
-	uint16_t		m_clientPort;
-	uint32_t		m_clientServerIP;
-	uint16_t		m_clientServerPort;
+        CI2PAddress             m_clientDest;
+        CI2PAddress             m_clientServerDest;
 
 	//! Kademlia publish information.
 	uint32_t		m_kadPublishInfo;

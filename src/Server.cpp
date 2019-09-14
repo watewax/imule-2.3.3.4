@@ -24,6 +24,7 @@
 //
 
 #include "Server.h"		// Interface declarations.
+#include "Tag.h"		// Needed for CTag
 
 #include <tags/ServerTags.h>
 
@@ -33,25 +34,23 @@
 
 CServer::CServer(ServerMet_Struct* in_data)
 {
-	port = in_data->port;
-	ip = in_data->ip;
+        dest = in_data->dest;
 
 	Init();
 }
 
-CServer::CServer(uint16 in_port, const wxString& i_addr)
+CServer::CServer ( const CI2PAddress & in_dest )
 {
 
-	port = in_port;
-	ip = StringIPtoUint32(i_addr);
+        dest = in_dest;
 
 	Init();
 
 	// GonoszTopi - Init() would clear dynip !
 	// Check that the ip isn't in fact 0.0.0.0
-	if (!ip && !StringIPtoUint32( i_addr, ip ) ) {
+        if (!dest) {
 		// If ip == 0, the address is a hostname
-		dynip = i_addr;
+                dynip = dest.getAlias();
 	}
 }
 
@@ -61,16 +60,14 @@ CServer::CServer(CServer* pOld) : CECID(pOld->ECID())
 {
 	wxASSERT(pOld != NULL);
 
-	TagPtrList::iterator it = pOld->m_taglist.begin();
+        TagList::iterator it = pOld->m_taglist.begin();
 	for ( ; it != pOld->m_taglist.end(); ++it ) {
-		m_taglist.push_back((*it)->CloneTag());
+                m_taglist.push_back ( *it );
 	}
-	port = pOld->port;
-	ip = pOld->ip;
-	realport = pOld->realport;
+        dest = pOld->dest;
+        realdest = pOld->realdest;
 	staticservermember=pOld->IsStaticMember();
 	tagcount = pOld->tagcount;
-	ipfull = pOld->ipfull;
 	files = pOld->files;
 	users = pOld->users;
 	preferences = pOld->preferences;
@@ -102,15 +99,12 @@ CServer::CServer(CServer* pOld) : CECID(pOld->ECID())
 
 CServer::~CServer()
 {
-	deleteTagPtrListEntries(&m_taglist);
-	m_taglist.clear();
 }
 
 void CServer::Init() {
 
-	ipfull = Uint32toStringIP(ip);
 
-	realport = 0;
+        realdest = CI2PAddress::null;
 	tagcount = 0;
 	files = 0;
 	users = 0;
@@ -152,10 +146,11 @@ bool CServer::AddTagFromFile(CFileDataIO* servermet)
 	if (servermet == NULL) {
 		return false;
 	}
+        TagList taglist(*servermet);
+        for ( TagList::const_iterator it = taglist.begin(); it != taglist.end(); it++ ) {
+        const CTag & tag = *it ;
 
-	CTag tag(*servermet, true);
-
-	switch(tag.GetNameID()){
+        switch ( tag.GetID() ) {
 	case ST_SERVERNAME:
 		if (listname.IsEmpty()) {
 			listname = tag.GetStr();
@@ -222,11 +217,7 @@ bool CServer::AddTagFromFile(CFileDataIO* servermet)
 	case ST_AUXPORTSLIST:
 		m_auxPorts = tag.GetStr();
 
-		// Some server.mets contain empty ST_AUXPORTSLIST tags
-		if (!m_auxPorts.IsEmpty()) {
-			realport = port;
-			port = StrToULong(m_auxPorts.BeforeFirst(','));
-		}
+                realdest = dest;
 		break;
 
 	case ST_LOWIDUSERS:
@@ -249,14 +240,13 @@ bool CServer::AddTagFromFile(CFileDataIO* servermet)
 		m_nObfuscationPortUDP = (uint16)tag.GetInt();
 		break;
 
-	default:
-		if (!tag.GetName().IsEmpty()) {
-			if (tag.GetName() == wxT("files")) {
+        case ST_FILES:
 				files = tag.GetInt();
-			} else if (tag.GetName() == wxT("users")) {
+                break;
+        case ST_USERS:
 				users = tag.GetInt();
-			}
-		} else {
+                break;
+        default:
 			wxFAIL;
 		}
 	}
@@ -299,7 +289,7 @@ void CServer::SetLastDescPingedCount(bool bReset)
 
 uint32 CServer::GetServerKeyUDP(bool bForce) const
 {
-	if ((m_dwIPServerKeyUDP != 0 && m_dwIPServerKeyUDP == theApp->GetPublicIP()) || bForce) {
+        if ( (m_dwIPServerKeyUDP != 0 && m_dwIPServerKeyUDP == theApp->GetUdpDest()) || bForce) {
 		return m_dwServerKeyUDP;
 	} else {
 		return 0;
@@ -308,8 +298,8 @@ uint32 CServer::GetServerKeyUDP(bool bForce) const
 
 void CServer::SetServerKeyUDP(uint32 dwServerKeyUDP)
 {
-	wxASSERT( theApp->GetPublicIP() != 0 || dwServerKeyUDP == 0 );
+        wxASSERT( theApp->GetUdpDest().isValid() || dwServerKeyUDP == 0 );
 	m_dwServerKeyUDP = dwServerKeyUDP;
-	m_dwIPServerKeyUDP = theApp->GetPublicIP();
+        m_dwIPServerKeyUDP = theApp->GetUdpDest().hashCode();
 }
 // File_checked_for_headers

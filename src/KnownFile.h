@@ -32,6 +32,7 @@
 #include "SHAHashSet.h"
 
 #include <protocol/ed2k/Constants.h>
+#include <protocol/kad/Constants.h>
 #include <common/Path.h>
 
 #include "kademlia/kademlia/Indexed.h"
@@ -60,7 +61,7 @@ namespace Kademlia
 typedef vector<CMD4Hash> ArrayOfCMD4Hash;
 
 
-typedef vector<CTag> ArrayOfCTag;
+//typedef vector<CTag> ArrayOfCTag;
 
 
 class CFileStatistic
@@ -117,19 +118,19 @@ public:
 	virtual void SetFileName(const CPath& filename);
 
 	/* Tags and Notes handling */
-	uint32 GetIntTagValue(uint8 tagname) const;
-	uint32 GetIntTagValue(const wxString& tagname) const;
-	bool GetIntTagValue(uint8 tagname, uint32& ruValue) const;
+        uint64 GetIntTagValue(uint8 tagname) const;
+        bool GetIntTagValue(uint8 tagname, uint64& ruValue) const;
 	const wxString& GetStrTagValue(uint8 tagname) const;
-	const wxString& GetStrTagValue(const wxString& tagname) const;
-	const CTag *GetTag(const wxString& tagname) const;
-	const CTag *GetTag(const wxString& tagname, uint8 tagtype) const;
-	const CTag *GetTag(uint8 tagname) const;
-	const CTag *GetTag(uint8 tagname, uint8 tagtype) const;
+        const CTag &GetTag(uint8 tagname) const;
+        const CTag &GetTag(uint8 tagname, uint8 tagtype) const;
+
+
+
+
 	void AddTagUnique(const CTag &pTag);
-	const ArrayOfCTag& GetTags() const { return m_taglist; }
-	void AddNote(Kademlia::CEntry* pEntry);
-	const CKadEntryPtrList& getNotes() const { return m_kadNotes; }
+        const TagList& GetTags() const { return m_taglist; }
+        bool AddNote(Kademlia::CEntry& pEntry);
+        const CKadEntriesList& getNotes() const { return m_kadNotes; }
 
 	/* Comment and rating */
 	virtual const wxString&	GetFileComment() const { return m_strComment; }
@@ -139,6 +140,8 @@ public:
 	bool	HasRating() const		{ return (m_iUserRating != 0); }
 	int8	UserRating() const		{ return m_iUserRating; }
 
+//         uint32_t GetSourceCount() const;
+//         uint32_t GetCompleteSourceCount() const;
 protected:
 	//! CAbstractFile is not assignable.
 	CAbstractFile& operator=(const CAbstractFile);
@@ -150,8 +153,8 @@ protected:
 	mutable	int8		m_iRating;
 	bool		m_hasComment;
 	int8		m_iUserRating;
-	ArrayOfCTag	m_taglist;
-	CKadEntryPtrList m_kadNotes;
+        TagList     m_taglist;
+        CKadEntriesList  m_kadNotes;
 
 private:
 	uint64		m_nFileSize;
@@ -217,6 +220,7 @@ public:
 	uint16	GetQueuedCount() const { return (uint16) m_ClientUploadList.size(); }
 #endif
 
+        bool	WriteHashsetToFile (      CFileDataIO* file);
 	bool	LoadHashsetFromFile(const CFileDataIO* file, bool checkhash);
 	void	AddUploadingClient(CUpDownClient* client);
 	void	RemoveUploadingClient(CUpDownClient* client);
@@ -236,9 +240,8 @@ public:
 	const Kademlia::WordList& GetKadKeywords() const { return wordlist; }
 	// KAD TODO: If we add the proper column to SharedFilesCtrl, this is the funtion.
 	uint32	GetLastPublishTimeKadSrc() const { return m_lastPublishTimeKadSrc; }
-	void	SetLastPublishTimeKadSrc(uint32 time, uint32 buddyip) { m_lastPublishTimeKadSrc = time; m_lastBuddyIP = buddyip;}
-	// Another unused function, useful for the shared files control column
-	uint32	GetLastPublishBuddy() const { return m_lastBuddyIP; }
+        void	SetLastPublishTimeKadSrc(uint32 time) { m_lastPublishTimeKadSrc = time; }
+        time_t  GetNextPublishTimeKadSrc() const { return m_lastPublishTimeKadSrc + KADEMLIAREPUBLISHTIMES; }
 	void	SetLastPublishTimeKadNotes(uint32 time) {m_lastPublishTimeKadNotes = time;}
 	uint32	GetLastPublishTimeKadNotes() const { return m_lastPublishTimeKadNotes; }
 
@@ -258,9 +261,10 @@ public:
 	CFileStatistic statistic;
 
 	time_t m_nCompleteSourcesTime;
-	uint16 m_nCompleteSourcesCount;
-	uint16 m_nCompleteSourcesCountLo;
-	uint16 m_nCompleteSourcesCountHi;
+		uint32 m_nSourcesCount;
+        uint32 m_nCompleteSourcesCount;
+        uint32 m_nCompleteSourcesCountLo;
+        uint32 m_nCompleteSourcesCountHi;
 
 	// Common for part and known files.
 	typedef std::set<CClientRef> SourceSet;
@@ -300,8 +304,6 @@ public:
 	void	SetShowPeers( bool val )	{ m_showPeers = val; }
 	bool	ShowPeers()	const			{ return m_showPeers; }
 
-	virtual	void SetHashingProgress(uint16) const {}	// does something for CPartFile only
-	uint16	GetHashingProgress() const	{ return m_hashingProgress; }
 
 #ifdef CLIENT_GUI
 	CKnownFile(const CEC_SharedFile_Tag *);
@@ -326,7 +328,9 @@ protected:
 	CAICHHashSet*	m_pAICHHashSet;
 #endif
 
+        bool	WriteTagsToFile (      CFileDataIO* file, TagList additional_tags = TagList() );
 	bool	LoadTagsFromFile(const CFileDataIO* file);
+        bool	WriteDateToFile (      CFileDataIO* file);
 	bool	LoadDateFromFile(const CFileDataIO* file);
 	void	LoadComment() const;
 	ArrayOfCMD4Hash m_hashlist;
@@ -343,17 +347,12 @@ protected:
 	uint8	m_iUpPriority;
 	bool	m_bAutoUpPriority;
 	bool	m_PublishedED2K;
-	// Index of part being hashed, 0: no hashing in progress.
-	// The known file is const in the hashing thread, so rather drill this little hole by making it mutable
-	// than opening it all up.
-	mutable	uint16 m_hashingProgress;
 
 	/* Kad stuff */
 	Kademlia::WordList wordlist;
 	uint32	kadFileSearchID;
 	uint32	m_lastPublishTimeKadSrc;
 	uint32	m_lastPublishTimeKadNotes;
-	uint32	m_lastBuddyIP;
 
 	bool	m_showSources;
 	bool	m_showPeers;

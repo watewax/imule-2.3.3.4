@@ -28,6 +28,7 @@
 
 #include "ObservableQueue.h"
 
+#include "i2p/CI2PAddress.h"
 class CServer;
 class CPacket;
 
@@ -49,10 +50,9 @@ public:
 	void		ResetServerPos()	{m_serverpos = m_servers.begin();}
 	CServer*	GetNextServer(bool bOnlyObfuscated = false);
 	size_t		GetServerCount()	{return m_servers.size();}
-	CServer*	GetServerByAddress(const wxString& address, uint16 port) const;
-	CServer*	GetServerByIP(uint32 nIP) const;
-	CServer*	GetServerByIPTCP(uint32 nIP, uint16 nPort) const;
-	CServer*	GetServerByIPUDP(uint32 nIP, uint16 nUDPPort, bool bObfuscationPorts = true) const;
+        CServer*	GetServerByAddress(const wxString& address);
+        CServer*	GetServerByDest(const CI2PAddress & nDest);
+        CServer*	GetServerByDestHash(uint32 nDestHash);
 	CServer*	GetServerByECID(uint32 ecid) const;
 	void		GetStatus(uint32 &failed, uint32 &user, uint32 &file, uint32 &tuser, uint32 &tfile, float &occ);
 	void		GetUserFileStatus( uint32 &user, uint32 &file);

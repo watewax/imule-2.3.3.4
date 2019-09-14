@@ -29,6 +29,7 @@
 #include <wx/panel.h>		// Needed for wxPanel
 #include <wx/notebook.h>		// Needed for wxNotebookEvent
 #include "Types.h"
+#include <i2p/CI2PAddress.h>
 
 class CFriend;
 class CChatSelector;
@@ -46,10 +47,10 @@ public:
 	void	UpdateFriend(CFriend* toupdate);
 	void	RemoveFriend(CFriend* todel);
 
-	void	ProcessMessage(uint64 sender, const wxString& message);
+        void	ProcessMessage(const CI2PAddress & sender, const wxString& message);
 	void	ConnectionResult(bool success, const wxString& message, uint64 id);
 
-	void	SendMessage(const wxString& message, const wxString& client_name = wxEmptyString, uint64 to_id = 0);
+        void	SendMessage(const wxString& message, const wxString& client_name = wxEmptyString, const CI2PAddress & dest = CI2PAddress::null);
 
 	bool	IsIdValid(uint64 id);
 	void	ShowCaptchaResult(uint64 id, bool ok);

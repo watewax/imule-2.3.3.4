@@ -26,6 +26,7 @@
 #ifndef OTHERSTRUCTS_H
 #define OTHERSTRUCTS_H
 
+#include "i2p/CI2PAddress.h"
 #include <common/Path.h>
 
 // Defined in <zlib.h>
@@ -94,22 +95,21 @@ struct Gap_Struct{
 };
 
 #if defined(_MSC_VER) || defined(__SUNPRO_CC)
-#pragma pack(1)
+// #pragma pack(1)
 #endif
 struct ServerMet_Struct {
-	uint32	ip;
-	uint16	port;
+        CI2PAddress 	dest;
 	uint32	tagcount;
 }
 #if defined(_MSC_VER) || defined(__SUNPRO_CC)
 ;
 #pragma pack()
 #else
-__attribute__((__packed__));
+/*__attribute__((__packed__))*/;
 #endif
 
 struct TransferredData {
-	uint32	datalen;
+        uint64	datalen;
 	uint32	timestamp;
 };
 

@@ -40,8 +40,7 @@ class CECPacket : public CECEmptyTag {
 	friend class CECSocket;
 	public:
 		CECPacket(ec_opcode_t opCode, EC_DETAIL_LEVEL detail_level = EC_DETAIL_FULL)
-		: CECEmptyTag(0), m_opCode(opCode)
-		{
+                : CECEmptyTag(EC_TAG_STRING), m_opCode(opCode) {
 			// since EC_DETAIL_FULL is default - no point transmit it
 			if ( detail_level != EC_DETAIL_FULL ) {
 				AddTag(CECTag(EC_TAG_DETAIL_LEVEL, (uint64)detail_level));

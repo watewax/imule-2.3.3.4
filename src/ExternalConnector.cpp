@@ -211,7 +211,7 @@ CaMuleExternalConnector::CaMuleExternalConnector()
 	  m_strFullVersion(NULL),
 	  m_strOSDescription(NULL)
 {
-	SetAppName(wxT("aMule"));	// Do not change!
+	SetAppName(wxT("iMule"));	// Do not change!
 }
 
 CaMuleExternalConnector::~CaMuleExternalConnector()
@@ -418,10 +418,10 @@ void CaMuleExternalConnector::OnInitCmdLine(wxCmdLineParser& parser, const char*
 		_("Show this help text."),
 		wxCMD_LINE_PARAM_OPTIONAL);
 	parser.AddOption(wxT("h"), wxT("host"),
-		_("Host where aMule is running. (default: localhost)"),
+		_("Host where iMule is running. (default: localhost)"),
 		wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
 	parser.AddOption(wxT("p"), wxT("port"),
-		_("aMule's port for External Connection. (default: 4712)"),
+		_("iMule's port for External Connection. (default: 4712)"),
 		wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL);
 	parser.AddOption(wxT("P"), wxT("password"),
 		_("External Connection password."),

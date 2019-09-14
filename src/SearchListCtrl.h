@@ -59,6 +59,7 @@ public:
 	 */
 	 CSearchListCtrl(
 	            wxWindow *parent,
+                bool stopable,
                 wxWindowID winid = -1,
                 const wxPoint &pos = wxDefaultPosition,
                 const wxSize &size = wxDefaultSize,
@@ -123,6 +124,18 @@ public:
 	wxUIntPtr	GetSearchId();
 
 	/**
+         * Returns if the associated search can be stopped.
+         *
+         * @return True or False
+         */
+        bool GetStopable() const;
+        
+        /**
+         * Sets the stopable state
+         */
+        void SetStopable(bool);
+        
+        /**
 	 * Sets the filter which decides which results should be shown.
 	 *
 	 * @param regExp A regular expression targeting the filenames.
@@ -199,7 +212,7 @@ protected:
 	 * @see CMuleListCtrl::SetSortFunc
 	 * @see wxListCtrl::SortItems
 	 */
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+        static int wxCALLBACK SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData);
 
 	/** @see CMuleListCtrl::AltSortAllowed */
 	virtual bool AltSortAllowed(unsigned column) const;
@@ -239,6 +252,9 @@ protected:
 
 	//! The ID of the search-results which the list is displaying or zero if unset.
 	wxUIntPtr m_nResultsID;
+
+        //! The state of the search (stopped or started)
+        bool m_stopable;
 
 	//! Custom drawing, needed to display children of search-results.
 	void OnDrawItem(int item, wxDC* dc, const wxRect& rect, const wxRect& rectHL, bool highlighted);

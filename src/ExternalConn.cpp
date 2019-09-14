@@ -350,8 +350,6 @@ ExternalConn::ExternalConn(amuleIPV4Address addr, wxString *msg)
 
 ExternalConn::~ExternalConn()
 {
-	KillAllSockets();
-	delete m_ECServer;
 	delete m_ec_notifier;
 }
 
@@ -375,13 +373,18 @@ void ExternalConn::KillAllSockets()
 	AddDebugLogLineN(logGeneral,
 		CFormat(wxT("ExternalConn::KillAllSockets(): %d sockets to destroy.")) %
 			socket_list.size());
-	SocketSet::iterator it = socket_list.begin();
-	while (it != socket_list.end()) {
-		CECServerSocket *s = *(it++);
+        for (CECServerSocket * s: socket_list)
+        {
 		s->Close();
 		s->Destroy();
 	}
-	socket_list.clear();
+		if (m_ECServer)
+		{
+			m_ECServer->Notify(false);
+			m_ECServer->Close();
+			m_ECServer->Destroy();
+		}
+		m_ECServer = nullptr;
 }
 
 
@@ -612,16 +615,6 @@ static CECPacket *Get_EC_Response_StatRequest(const CECPacket *request, CLoggerA
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_INDEXED_LOAD, Kademlia::CKademlia::GetIndexed()->m_totalIndexLoad));
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_IP_ADRESS, wxUINT32_SWAP_ALWAYS(Kademlia::CKademlia::GetPrefs()->GetIPAddress())));
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_IN_LAN_MODE, Kademlia::CKademlia::IsRunningInLANMode()));
-				response->AddTag(CECTag(EC_TAG_STATS_BUDDY_STATUS, theApp->clientlist->GetBuddyStatus()));
-				uint32 BuddyIP = 0;
-				uint16 BuddyPort = 0;
-				CUpDownClient * Buddy = theApp->clientlist->GetBuddy();
-				if (Buddy) {
-					BuddyIP = Buddy->GetIP();
-					BuddyPort = Buddy->GetUDPPort();
-				}
-				response->AddTag(CECTag(EC_TAG_STATS_BUDDY_IP, BuddyIP));
-				response->AddTag(CECTag(EC_TAG_STATS_BUDDY_PORT, BuddyPort));
 			}
 		case EC_DETAIL_UPDATE:
 			break;
@@ -727,7 +720,7 @@ static CECPacket *Get_EC_Response_GetUpdate(CFileEncoderMap &encoders, CObjTagMa
 	return response;
 }
 
-static CECPacket *Get_EC_Response_GetClientQueue(const CECPacket *request, CObjTagMap &tagmap, int op)
+static CECPacket *Get_EC_Response_GetClientQueue(const CECPacket *request, CObjTagMap &tagmap, ec_opcode_t op)
 {
 	CECPacket *response = new CECPacket(op);
 
@@ -874,12 +867,11 @@ static CECPacket *Get_EC_Response_Server_Add(const CECPacket *request)
 	wxString full_addr = request->GetTagByNameSafe(EC_TAG_SERVER_ADDRESS)->GetStringData();
 	wxString name = request->GetTagByNameSafe(EC_TAG_SERVER_NAME)->GetStringData();
 
-	wxString s_ip = full_addr.Left(full_addr.Find(':'));
-	wxString s_port = full_addr.Mid(full_addr.Find(':') + 1);
 
-	long port = StrToULong(s_port);
-	CServer* toadd = new CServer(port, s_ip);
-	toadd->SetListName(name.IsEmpty() ? full_addr : name);
+        CI2PAddress s_ip = full_addr;
+
+        CServer* toadd = new CServer(s_ip);
+        toadd->SetListName(name.IsEmpty() ? s_ip.humanReadable() : name);
 
 	if ( theApp->AddServer(toadd, true) ) {
 		response = new CECPacket(EC_OP_NOOP);
@@ -898,7 +890,7 @@ static CECPacket *Get_EC_Response_Server(const CECPacket *request)
 	const CECTag *srv_tag = request->GetTagByName(EC_TAG_SERVER);
 	CServer *srv = 0;
 	if ( srv_tag ) {
-		srv = theApp->serverlist->GetServerByIPTCP(srv_tag->GetIPv4Data().IP(), srv_tag->GetIPv4Data().m_port);
+                srv = theApp->serverlist->GetServerByDestHash(srv_tag->GetInt());
 		// server tag passed, but server not found
 		if ( !srv ) {
 			response = new CECPacket(EC_OP_FAILED);
@@ -962,8 +954,8 @@ static CECPacket *Get_EC_Response_Friend(const CECPacket *request)
 			const CECTag *iptag		= tag->GetTagByName(EC_TAG_FRIEND_IP);
 			const CECTag *porttag	= tag->GetTagByName(EC_TAG_FRIEND_PORT);
 			const CECTag *nametag	= tag->GetTagByName(EC_TAG_FRIEND_NAME);
-			if (hashtag && iptag && porttag && nametag) {
-				theApp->friendlist->AddFriend(hashtag->GetMD4Data(), iptag->GetInt(), porttag->GetInt(), nametag->GetStringData());
+                        if (hashtag && iptag && nametag) {
+                                theApp->friendlist->AddFriend(hashtag->GetMD4Data(), iptag->GetAddressData(), nametag->GetStringData());
 				response = new CECPacket(EC_OP_NOOP);
 			}
 		}
@@ -1097,7 +1089,7 @@ static CECPacket *Get_EC_Response_Search(const CECPacket *request)
 
 	EC_SEARCH_TYPE search_type = search_request->SearchType();
 	SearchType core_search_type = LocalSearch;
-	uint32 op = EC_OP_FAILED;
+        ec_opcode_t op = EC_OP_FAILED;
 	switch (search_type) {
 		case EC_SEARCH_GLOBAL:
 			core_search_type = GlobalSearch;
@@ -1154,6 +1146,31 @@ static CECPacket *Get_EC_Response_Set_SharedFile_Prio(const CECPacket *request)
 	return response;
 }
 
+CECPacket *Get_EC_Response_Kad_Connect(const CECPacket *request)
+{
+        CECPacket *response;
+        if (thePrefs::GetNetworkKademlia()) {
+                response = new CECPacket(EC_OP_NOOP);
+                if ( !Kademlia::CKademlia::IsRunning() ) {
+                        Kademlia::CKademlia::Start();
+                        theApp->ShowConnectionState();
+                }
+                const CECTag *addrtag = request->GetFirstTagSafe();
+                if ( addrtag ) {
+                        //uint32_t ip = addrtag->GetIPv4Data().IP();
+                        //uint16_t port = addrtag->GetIPv4Data().m_port;
+                        //Kademlia::CKademlia::bootstrap(ip, port);
+                        CI2PAddress dest = addrtag->GetAddressData();
+                        AddDebugLogLineN(logGeneral, CFormat(wxT("ExternalConn::Get_EC_Response_Kad_Connect(): bootstrap on %d.")) % dest.hashCode());
+                        Kademlia::CKademlia::Bootstrap(dest);
+                }
+        } else {
+                response = new CECPacket(EC_OP_FAILED);
+                response->AddTag(CECTag(EC_TAG_STRING, wxTRANSLATE("Kad is disabled in preferences.")));
+        }
+
+        return response;
+}
 void CPartFile_Encoder::Encode(CECTag *parent)
 {
 	//
@@ -1341,10 +1358,12 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 {
 
 	if ( !request ) {
+                AddLogLineC(wxT("External Connection: ProcessRequest2 without request"));
 		return 0;
 	}
 
 	CECPacket *response = NULL;
+        AddLogLineN(CFormat(wxT("External Connection: ProcessRequest2 with opcode %x")) % request->GetOpCode());
 
 	switch (request->GetOpCode()) {
 		//
@@ -1378,7 +1397,7 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 					category = cattag->GetInt();
 				}
 				AddLogLineC(CFormat(_("ExternalConn: adding link '%s'.")) % link);
-				if ( theApp->downloadqueue->AddLink(link, category) ) {
+                        if ( theApp->downloadqueue->AddLink(link, (uint8)category) ) {
 					response = new CECPacket(EC_OP_NOOP);
 				} else {
 					// Error messages are printed by the add function.
@@ -1422,6 +1441,9 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 		case EC_OP_GET_ULOAD_QUEUE:
 			response = Get_EC_Response_GetClientQueue(request, m_obj_tagmap, EC_OP_ULOAD_QUEUE);
 			break;
+        case EC_OP_PARTFILE_REMOVE_NO_NEEDED:
+        case EC_OP_PARTFILE_REMOVE_FULL_QUEUE:
+        case EC_OP_PARTFILE_REMOVE_HIGH_QUEUE:
 		case EC_OP_PARTFILE_SWAP_A4AF_THIS:
 		case EC_OP_PARTFILE_SWAP_A4AF_THIS_AUTO:
 		case EC_OP_PARTFILE_SWAP_A4AF_OTHERS:
@@ -1769,6 +1791,18 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 			theApp->ShowConnectionState();
 			response = new CECPacket(EC_OP_NOOP);
 			break;
+        case EC_OP_START_NETWORK:
+                theApp->StartNetwork();
+                response = new CECPacket(EC_OP_NOOP);
+                break;
+        case EC_OP_STOP_NETWORK:
+                theApp->StopNetwork();
+                response = new CECPacket(EC_OP_NOOP);
+                break;
+        case EC_OP_RESTART_NETWORK_IF_STARTED:
+                theApp->RestartNetworkIfStarted();
+                response = new CECPacket(EC_OP_NOOP);
+                break;
 		case EC_OP_KAD_UPDATE_FROM_URL: {
 			wxString url = request->GetFirstTagSafe()->GetStringData();
 
@@ -1782,8 +1816,7 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 		}
 		case EC_OP_KAD_BOOTSTRAP_FROM_IP:
 			if (thePrefs::GetNetworkKademlia()) {
-				theApp->BootstrapKad(request->GetTagByNameSafe(EC_TAG_BOOTSTRAP_IP)->GetInt(),
-									 request->GetTagByNameSafe(EC_TAG_BOOTSTRAP_PORT)->GetInt());
+                        theApp->BootstrapKad(request->GetTagByNameSafe(EC_TAG_BOOTSTRAP_IP)->GetAddressData());
 				theApp->ShowConnectionState();
 				response = new CECPacket(EC_OP_NOOP);
 			} else {
@@ -1792,6 +1825,13 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 			}
 			break;
 
+        case EC_OP_KAD_GET_CONTACTS_STRING:
+                if (request->GetTagByName(EC_TAG_KADEMLIA_FILENAME)!=0) {
+                        response = new CECPacket(EC_OP_KAD_CONTACTS_STRING);
+                        response->AddTag(CECTag(EC_TAG_KADEMLIA_FILENAME, request->GetTagByName(EC_TAG_KADEMLIA_FILENAME)->GetStringData()));
+                        response->AddTag(CECTag(EC_TAG_STRING, theApp->GetKadContacts()));
+                }
+                break;
 		//
 		// Networks
 		// These requests are currently used only in the text client

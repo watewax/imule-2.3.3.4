@@ -114,7 +114,7 @@ void php_native_download_file_cmd(PHP_VALUE_NODE *)
 }
 
 /*
- * Usage amule_kad_connect($bootstrap_ip, $bootstrap_port)
+ * Usage amule_kad_connect($bootstrap_dest)
  */
 void php_native_kad_connect(PHP_VALUE_NODE *)
 {
@@ -123,20 +123,12 @@ void php_native_kad_connect(PHP_VALUE_NODE *)
 		php_report_error(PHP_ERROR, "Missing or bad argument 1: $bootstrap_ip_addr");
 		return;
 	}
-	cast_value_dnum(&si->var->value);
-	unsigned int ipaddr = si->var->value.int_val;
-
-	si = get_scope_item(g_current_scope, "__param_1");
-	if ( !si ) {
-		php_report_error(PHP_ERROR, "Missing or bad argument 2: $bootstrap_ip_port");
-		return;
-	}
-	cast_value_dnum(&si->var->value);
-	unsigned int ipport = si->var->value.int_val;
+        cast_value_str(&si->var->value);
+        char* ipaddr = si->var->value.str_val;
+        CI2PAddress dest( ipaddr );
 
 	CECPacket req(EC_OP_KAD_BOOTSTRAP_FROM_IP);
-	req.AddTag(CECTag(EC_TAG_BOOTSTRAP_IP, ipaddr));
-	req.AddTag(CECTag(EC_TAG_BOOTSTRAP_PORT, ipport));
+        req.AddTag(CECTag(EC_TAG_BOOTSTRAP_IP, dest));
 	CPhPLibContext::g_curr_context->WebServer()->Send_Discard_V2_Request(&req);
 }
 
@@ -1135,6 +1127,10 @@ PHP_BLTIN_FUNC_DEF amule_lib_funcs[] = {
 	{
 		"amule_get_version",
 		0, amule_version,
+        },
+        {
+                "amule_kad_connect",
+                1, php_native_kad_connect,
 	},
 	{ 0, 0, 0, },
 };

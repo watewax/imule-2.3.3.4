@@ -31,6 +31,7 @@
 #include <common/DataFileVersion.h>
 #include <common/FileFunctions.h>	// Needed for GetFileSize
 
+#include <NetworkFunctions.h>
 
 #include "GetTickCount.h"	// Needed for GetTickCount
 #include "Preferences.h"	// Needed for thePrefs
@@ -45,6 +46,8 @@
 #define CLIENTS_MET_BAK_FILENAME	wxT("clients.met.bak")
 #define CRYPTKEY_FILENAME		wxT("cryptkey.dat")
 
+
+static CryptoPP::RandomPool rng;
 
 CClientCreditsList::CClientCreditsList()
 {
@@ -123,11 +126,9 @@ void CClientCreditsList::LoadList()
 			CreditStruct* newcstruct = new CreditStruct();
 
 			newcstruct->key					= file.ReadHash();
-			newcstruct->uploaded            = file.ReadUInt32();
-			newcstruct->downloaded          = file.ReadUInt32();
+                        newcstruct->uploaded            = file.ReadUInt64();
+                        newcstruct->downloaded          = file.ReadUInt64();
 			newcstruct->nLastSeen           = file.ReadUInt32();
-			newcstruct->uploaded            += static_cast<uint64>(file.ReadUInt32()) << 32;
-			newcstruct->downloaded          += static_cast<uint64>(file.ReadUInt32()) << 32;
 			newcstruct->nReserved3          = file.ReadUInt16();
 			newcstruct->nKeySize            = file.ReadUInt8();
 			file.Read(newcstruct->abySecureIdent, MAXPUBKEYSIZE);
@@ -155,10 +156,10 @@ void CClientCreditsList::LoadList()
 			m_mapClients[newcredits->GetKey()] = newcredits;
 		}
 
-		AddLogLineN(CFormat(wxPLURAL("Creditfile loaded, %u client is known", "Creditfile loaded, %u clients are known", count - cDeleted)) % (count - cDeleted));
+                AddDebugLogLineN(logCredits, CFormat(wxPLURAL("Creditfile loaded, %" PRIu32 " client is known", "Creditfile loaded, %" PRIu32 " clients are known", count - cDeleted)) % (count - cDeleted));
 
 		if (cDeleted) {
-			AddLogLineN(CFormat(wxPLURAL(" - Credits expired for %u client!", " - Credits expired for %u clients!", cDeleted)) % cDeleted);
+                        AddDebugLogLineN(logCredits, CFormat(wxPLURAL(" - Credits expired for %" PRIu32 " client!", " - Credits expired for %" PRIu32 " clients!", cDeleted)) % cDeleted);
 		}
 	} catch (const CSafeIOException& e) {
 		AddDebugLogLineC(logCredits, wxT("IO error while loading clients.met file: ") + e.what());
@@ -194,11 +195,9 @@ void CClientCreditsList::SaveList()
 				if ( cur_credit->GetUploadedTotal() || cur_credit->GetDownloadedTotal() ) {
 					const CreditStruct* const cstruct = cur_credit->GetDataStruct();
 					file.WriteHash(cstruct->key);
-					file.WriteUInt32(static_cast<uint32>(cstruct->uploaded));
-					file.WriteUInt32(static_cast<uint32>(cstruct->downloaded));
+                                        file.WriteUInt64(cstruct->uploaded);
+                                        file.WriteUInt64(cstruct->downloaded);
 					file.WriteUInt32(cstruct->nLastSeen);
-					file.WriteUInt32(static_cast<uint32>(cstruct->uploaded >> 32));
-					file.WriteUInt32(static_cast<uint32>(cstruct->downloaded >> 32));
 					file.WriteUInt16(cstruct->nReserved3);
 					file.WriteUInt8(cstruct->nKeySize);
 					// Doesn't matter if this saves garbage, will be fixed on load.
@@ -249,7 +248,7 @@ void CClientCreditsList::Process()
 bool CClientCreditsList::CreateKeyPair()
 {
 	try {
-		CryptoPP::AutoSeededX917RNG<CryptoPP::DES_EDE3> rng;
+                //CryptoPP::AutoSeededX917RNG<CryptoPP::DES_EDE3> rng;
 		CryptoPP::InvertibleRSAFunction privkey;
 		privkey.Initialize(rng, RSAKEYSIZE);
 
@@ -315,6 +314,12 @@ void CClientCreditsList::InitalizeCrypting()
 		pubkey.GetMaterial().Save(asink);
 		m_nMyPublicKeyLen = asink.TotalPutLength();
 		asink.MessageEnd();
+
+                // initialize random number generator
+                if (rng.CanIncorporateEntropy()) {
+                        wxMilliClock_t mt = wxGetLocalTimeMillis();
+                        rng.IncorporateEntropy((byte*)&mt, sizeof(wxMilliClock_t));
+                }
 	} catch (const CryptoPP::Exception& e) {
 		delete static_cast<CryptoPP::RSASSA_PKCS1v15_SHA_Signer *>(m_pSignkey);
 		m_pSignkey = NULL;
@@ -344,7 +349,7 @@ uint8 CClientCreditsList::CreateSignature(CClientCredits* pTarget, byte* pachOut
 
 	try {
 		CryptoPP::SecByteBlock sbbSignature(signer->SignatureLength());
-		CryptoPP::AutoSeededX917RNG<CryptoPP::DES_EDE3> rng;
+                //CryptoPP::AutoSeededX917RNG<CryptoPP::DES_EDE3> rng;
 		byte abyBuffer[MAXPUBKEYSIZE+9];
 		uint32 keylen = pTarget->GetSecIDKeyLen();
 		memcpy(abyBuffer,pTarget->GetSecureIdent(),keylen);
@@ -403,16 +408,16 @@ bool CClientCreditsList::VerifyIdent(CClientCredits* pTarget, const byte* pachSi
 					break;
 				case CRYPT_CIP_REMOTECLIENT:
 					// Ignore local ip...
-					if (!theApp->GetPublicIP(true)) {
+                                	if (!theApp->GetPublicDest(true)) {
 						if (::IsLowID(theApp->GetED2KID())){
 							AddDebugLogLineN(logCredits, wxT("Warning: Maybe SecureHash Ident fails because LocalIP is unknown"));
 							// Fallback to local ip...
-							ChallengeIP = theApp->GetPublicIP();
+                                                ChallengeIP = theApp->GetPublicDest();
 						} else {
 							ChallengeIP = theApp->GetED2KID();
 						}
 					} else {
-						ChallengeIP = theApp->GetPublicIP();
+                                        ChallengeIP = theApp->GetPublicDest();
 					}
 					break;
 				case CRYPT_CIP_NONECLIENT: // maybe not supported in future versions
@@ -450,7 +455,7 @@ bool CClientCreditsList::CryptoAvailable() const
 #ifdef _DEBUG
 bool CClientCreditsList::Debug_CheckCrypting(){
 	// create random key
-	CryptoPP::AutoSeededX917RNG<CryptoPP::DES_EDE3> rng;
+        //CryptoPP::AutoSeededX917RNG<CryptoPP::DES_EDE3> rng;
 
 	CryptoPP::RSASSA_PKCS1v15_SHA_Signer priv(rng, 384);
 	CryptoPP::RSASSA_PKCS1v15_SHA_Verifier pub(priv);

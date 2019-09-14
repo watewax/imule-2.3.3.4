@@ -27,12 +27,17 @@
 #define CLIENTTAGS_H
 
 enum client_tags {
-	CT_NAME				= 0x01,
+        // client info tags
+        CT_NAME = 16,
+        CT_VERSION,
+        CT_SERVER_FLAGS,                // currently only used to inform a server about supported features
+        CT_EMULECOMPAT_OPTIONS,
+        CT_EMULE_MISCOPTIONS1,
+        CT_EMULE_VERSION,
+        CT_DEST,
+        CT_EMULE_MISCOPTIONS2,
 	CT_SERVER_UDPSEARCH_FLAGS	= 0x0E,
 	CT_PORT				= 0x0F,
-	CT_VERSION			= 0x11,
-	CT_SERVER_FLAGS			= 0x20,	// currently only used to inform a server about supported features
-	CT_EMULECOMPAT_OPTIONS		= 0xEF,
 	CT_EMULE_RESERVED1		= 0xF0,
 	CT_EMULE_RESERVED2		= 0xF1,
 	CT_EMULE_RESERVED3		= 0xF2,
@@ -43,27 +48,22 @@ enum client_tags {
 	CT_EMULE_RESERVED8		= 0xF7,
 	CT_EMULE_RESERVED9		= 0xF8,
 	CT_EMULE_UDPPORTS		= 0xF9,
-	CT_EMULE_MISCOPTIONS1		= 0xFA,
-	CT_EMULE_VERSION		= 0xFB,
-	CT_EMULE_BUDDYIP		= 0xFC,
-	CT_EMULE_BUDDYUDP		= 0xFD,
-	CT_EMULE_MISCOPTIONS2		= 0xFE,
 	CT_EMULE_RESERVED13		= 0xFF
 };
 
 // Old MuleInfo tags
 enum MuleInfo_tags {
-	ET_COMPRESSION		= 0x20u,
-	ET_UDPPORT		= 0x21u,
-	ET_UDPVER		= 0x22u,
-	ET_SOURCEEXCHANGE	= 0x23u,
-	ET_COMMENTS		= 0x24u,
-	ET_EXTENDEDREQUEST	= 0x25u,
-	ET_COMPATIBLECLIENT	= 0x26u,
-	ET_FEATURES		= 0x27u,	//! bit 0: SecIdent v1 - bit 1: SecIdent v2
-	ET_MOD_VERSION		= 0x55u,
-	// ET_FEATURESET	= 0x54u,	// int - [Bloodymad Featureset] // UNUSED
-	ET_OS_INFO		= 0x94u		// Reused rand tag (MOD_OXY), because the type is unknown
+        ET_COMPRESSION = 24             ,
+        ET_UDPDEST                      ,
+        ET_UDPVER                       ,
+        ET_SOURCEEXCHANGE               ,
+        ET_COMMENTS                     ,
+        ET_EXTENDEDREQUEST              ,
+        ET_COMPATIBLECLIENT             ,
+        ET_FEATURES                     ,       //! bit 0: SecIdent v1 - bit 1: SecIdent v2
+        ET_MOD_VERSION                  ,
+        ET_FEATURESET                       ,   // int - [Bloodymad Featureset]
+        ET_OS_INFO                      ,       // Reused rand tag (MOD_OXY), because the type is unknown
 };
 
 // Server capabilities, values for CT_SERVER_FLAGS

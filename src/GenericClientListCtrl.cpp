@@ -542,12 +542,12 @@ void CGenericClientListCtrl::OnSendMessage( wxCommandEvent& WXUNUSED(event) )
 		// These values are cached, since calling wxGetTextFromUser will
 		// start an event-loop, in which the client may be deleted.
 		wxString userName = source.GetUserName();
-		uint64 userID = GUI_ID(source.GetIP(), source.GetUserPort());
+		const CI2PAddress & userTCPDest = source.GetTCPDest();
 
 		wxString message = ::wxGetTextFromUser(_("Send message to user"),
 			_("Message to send:"));
 		if ( !message.IsEmpty() ) {
-			theApp->amuledlg->m_chatwnd->SendMessage(message, userName, userID);
+			theApp->amuledlg->m_chatwnd->SendMessage(message, userName, userTCPDest);
 		}
 	}
 }
@@ -602,7 +602,7 @@ void CGenericClientListCtrl::OnMouseRightClick(wxListEvent& evt)
 	// Only enable the Swap option for A4AF sources
 	m_menu->Enable(MP_CHANGE2FILE, (item->GetType() == A4AF_SOURCE));
 	// We need a valid IP if we are to message the client
-	m_menu->Enable(MP_SENDMESSAGE, (client.GetIP() != 0));
+	m_menu->Enable(MP_SENDMESSAGE, (client.GetTCPDest().isValid()));
 
 	m_menu->Enable(MP_SHOWLIST, !client.HasDisabledSharedFiles());
 
@@ -650,7 +650,7 @@ void CGenericClientListCtrl::OnDrawItem(
 	// and the border of the drawn area
 	if (highlighted) {
 		CMuleColour colour;
-		if (GetFocus()) {
+		if (HasFocus()) {
 			dc->SetBackground(m_hilightBrush);
 			colour = m_hilightBrush.GetColour();
 		} else {
@@ -766,6 +766,7 @@ void CGenericClientListCtrl::DrawClientItem(wxDC* dc, int nColumn, const wxRect&
 				} else {
 					switch ( client.GetClientSoft() ) {
 						case SO_AMULE:
+                                                case SO_IMULE:
 							clientImage = Client_aMule_Smiley;
 							break;
 						case SO_MLDONKEY:
@@ -992,7 +993,7 @@ void CGenericClientListCtrl::DrawClientItem(wxDC* dc, int nColumn, const wxRect&
 						if ( qrDiff > 0 ) {
 							dc->SetTextForeground(*wxRED);
 						}
-						buffer = CFormat(_("On Queue: %u (%i)")) % rank % qrDiff;
+						buffer = CFormat(_("On Queue: %u (%i)")) % (unsigned int)rank % (int)qrDiff;
 					} else {
 						buffer = _("On Queue");
 					}
@@ -1023,7 +1024,7 @@ void CGenericClientListCtrl::DrawClientItem(wxDC* dc, int nColumn, const wxRect&
 					if (nRank == 0) {
 						buffer = _("Waiting for upload slot");
 					} else {
-						buffer = CFormat(_("On Queue: %u")) % nRank;
+						buffer = CFormat(_("On Queue: %u")) % (unsigned int)nRank;
 					}
 				} else if (client.GetUploadState() == US_UPLOADING) {
 					buffer = _("Uploading");

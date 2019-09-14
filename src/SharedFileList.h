@@ -28,7 +28,8 @@
 
 #include <list>
 #include <map>
-#include <wx/thread.h>		// Needed for wxMutex
+//#include <wx/thread.h>		// Needed for wxMutex
+#include "MuleThread.h"
 
 #include "Types.h"		// Needed for uint16 and uint64
 
@@ -59,8 +60,8 @@ public:
 	CKnownFile*	GetFileByID(const CMD4Hash& filehash);
 	short	GetFilePriorityByID(const CMD4Hash& filehash);
 	const CKnownFile* GetFileByIndex(unsigned int index) const;
-	size_t	GetCount()	{ wxMutexLocker lock(list_mut); return m_Files_map.size(); }
-	size_t  GetFileCount()	{ wxMutexLocker lock(list_mut); return m_Files_map.size(); }
+        size_t	GetCount()	{ wiMutexLocker lock(list_mut); return m_Files_map.size(); }
+        size_t  GetFileCount()	{ wiMutexLocker lock(list_mut); return m_Files_map.size(); }
 	void	CopyFileList(std::vector<CKnownFile*>& out_list) const;
 	void	UpdateItem(CKnownFile* toupdate);
 	void    GetSharedFilesByDirectory(const wxString& directory, CKnownFilePtrList& list);

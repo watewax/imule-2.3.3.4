@@ -28,10 +28,9 @@
 #define ASYNCDNS_H
 
 #include <wx/string.h>
-#include <wx/thread.h>
+#include "MuleThread.h"
 
-// Implementation of Asynchronous dns resolving using wxThread
-//	 and internal wxIPV4address handling of dns
+// Implementation of Asynchronous dns resolving
 
 class wxEvtHandler;
 
@@ -46,11 +45,12 @@ enum DnsSolveType {
 #define DNS_SOLVE_TIME 30*60*1000
 
 
-class CAsyncDNS : public wxThread
+class CAsyncDNS
 {
 public:
 	CAsyncDNS(const wxString& ipName, DnsSolveType type, wxEvtHandler* handler, void* socket = NULL);
-	virtual ExitCode Entry();
+        int Entry();
+        int Run() { return Entry(); }
 
 private:
 	DnsSolveType m_type;

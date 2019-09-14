@@ -71,11 +71,11 @@
 #include "DataToText.h"		// Needed for OriginToText()
 #include "PlatformSpecific.h"	// Needed for CreateSparseFile()
 #include "FileArea.h"		// Needed for CFileArea
-#include "ScopedPtr.h"		// Needed for CScopedArray
 #include "CorruptionBlackBox.h"
 
 #include "kademlia/kademlia/Kademlia.h"
 #include "kademlia/kademlia/Search.h"
+#include <memory>
 
 
 SFileRating::SFileRating(const wxString &u, const wxString &f, sint16 r, const wxString &c)
@@ -150,66 +150,40 @@ CPartFile::CPartFile(CSearchFile* searchresult)
 	SetFileName(searchresult->GetFileName());
 	SetFileSize(searchresult->GetFileSize());
 
-	for (unsigned int i = 0; i < searchresult->m_taglist.size(); ++i){
-		const CTag& pTag = searchresult->m_taglist[i];
+        for (TagList::const_iterator i = searchresult->m_taglist.begin(); i != searchresult->m_taglist.end(); ++i) {
+                const CTag& pTag = (*i);
 
 		bool bTagAdded = false;
-		if (pTag.GetNameID() == 0 && !pTag.GetName().IsEmpty() && (pTag.IsStr() || pTag.IsInt())) {
+                if (pTag.GetID() != 0 && (pTag.IsStr() || pTag.IsInt())) {
 			static const struct {
-				wxString	pszName;
+                                uint8_t	nID;
 				uint8	nType;
-			} _aMetaTags[] =
-				{
-					{ wxT(FT_ED2K_MEDIA_ARTIST),  2 },
-					{ wxT(FT_ED2K_MEDIA_ALBUM),   2 },
-					{ wxT(FT_ED2K_MEDIA_TITLE),   2 },
-					{ wxT(FT_ED2K_MEDIA_LENGTH),  2 },
-					{ wxT(FT_ED2K_MEDIA_BITRATE), 3 },
-					{ wxT(FT_ED2K_MEDIA_CODEC),   2 }
+                        } _aMetaTags[] = {
+                                { TAG_MEDIA_ARTIST,  2 },
+                                { TAG_MEDIA_ALBUM,   2 },
+                                { TAG_MEDIA_TITLE,   2 },
+                                { TAG_MEDIA_LENGTH,  2 },
+                                { TAG_MEDIA_BITRATE, 3 },
+                                { TAG_MEDIA_CODEC,   2 },
+                                { TAG_FILETYPE,	     2 },
+                                { TAG_FILEFORMAT,    2 }
 				};
 
 			for (unsigned int t = 0; t < itemsof(_aMetaTags); ++t) {
-				if (	pTag.GetType() == _aMetaTags[t].nType &&
-					(pTag.GetName() == _aMetaTags[t].pszName)) {
+                                if (	pTag.GetType() == _aMetaTags[t].nType && pTag.GetID() == _aMetaTags[t].nID ) {
 					// skip string tags with empty string values
 					if (pTag.IsStr() && pTag.GetStr().IsEmpty()) {
 						break;
 					}
 
 					// skip "length" tags with "0: 0" values
-					if (pTag.GetName() == wxT(FT_ED2K_MEDIA_LENGTH)) {
-						if (pTag.GetStr().IsSameAs(wxT("0: 0")) ||
-							pTag.GetStr().IsSameAs(wxT("0:0"))) {
+                                        if ( pTag.GetID()==TAG_MEDIA_LENGTH &&
+                                                        (pTag.GetStr().IsSameAs(wxT("0: 0")) || pTag.GetStr().IsSameAs(wxT("0:0")))) {
 							break;
-						}
 					}
 
 					// skip "bitrate" tags with '0' values
-					if ((pTag.GetName() == wxT(FT_ED2K_MEDIA_BITRATE)) && !pTag.GetInt()) {
-						break;
-					}
-
-					AddDebugLogLineN( logPartFile,
-						wxT("CPartFile::CPartFile(CSearchFile*): added tag ") +
-						pTag.GetFullInfo() );
-					m_taglist.push_back(pTag);
-					bTagAdded = true;
-					break;
-				}
-			}
-		} else if (pTag.GetNameID() != 0 && pTag.GetName().IsEmpty() && (pTag.IsStr() || pTag.IsInt())) {
-			static const struct {
-				uint8	nID;
-				uint8	nType;
-			} _aMetaTags[] =
-				{
-					{ FT_FILETYPE,		2 },
-					{ FT_FILEFORMAT,	2 }
-				};
-			for (unsigned int t = 0; t < itemsof(_aMetaTags); ++t) {
-				if (pTag.GetType() == _aMetaTags[t].nType && pTag.GetNameID() == _aMetaTags[t].nID) {
-					// skip string tags with empty string values
-					if (pTag.IsStr() && pTag.GetStr().IsEmpty()) {
+                                        if (pTag.GetID()==TAG_MEDIA_BITRATE && pTag.GetInt()==uint64_t(0)) {
 						break;
 					}
 
@@ -317,7 +291,7 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 	bool isnewstyle = false;
 	uint8 version,partmettype=PMT_UNKNOWN;
 
-	std::map<uint16, Gap_Struct*> gap_map; // Slugfiller
+        std::map<uint64_t, Gap_Struct*> gap_map; // Slugfiller
 	transferred = 0;
 
 	m_partmetfilename = filename;
@@ -391,48 +365,47 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 			LoadHashsetFromFile(&metFile, false);
 		}
 
-		uint32 tagcount = metFile.ReadUInt32();
+                TagList taglist(metFile);
 
-		for (uint32 j = 0; j < tagcount; ++j) {
-			CTag newtag(metFile,true);
+                for (TagList::const_iterator it=taglist.begin(); it!=taglist.end(); it++) {
+                        const CTag & newtag = *it;
 			if (	!getsizeonly ||
 				(getsizeonly &&
-					(newtag.GetNameID() == FT_FILESIZE ||
-					 newtag.GetNameID() == FT_FILENAME))) {
-				switch(newtag.GetNameID()) {
-					case FT_FILENAME: {
+                                         (newtag.GetID() == TAG_FILESIZE ||
+                                          newtag.GetID() == TAG_FILENAME))) {
+                                switch(newtag.GetID()) {
+                                case TAG_FILENAME: {
 						if (!GetFileName().IsOk()) {
 							// If it's not empty, we already loaded the unicoded one
 							SetFileName(CPath(newtag.GetStr()));
 						}
 						break;
 					}
-					case FT_LASTSEENCOMPLETE: {
+                                case TAG_LASTSEENCOMPLETE: {
 						lastseencomplete = newtag.GetInt();
 						break;
 					}
-					case FT_FILESIZE: {
+                                case TAG_FILESIZE: {
 						SetFileSize(newtag.GetInt());
 						break;
 					}
-					case FT_TRANSFERRED: {
+                                case TAG_TRANSFERRED: {
 						transferred = newtag.GetInt();
 						break;
 					}
-					case FT_FILETYPE:{
+                                case TAG_FILETYPE: {
 						//#warning needs setfiletype string
 						//SetFileType(newtag.GetStr());
 						break;
 					}
-					case FT_CATEGORY: {
+                                case TAG_CATEGORY: {
 						m_category = newtag.GetInt();
 						if (m_category > theApp->glob_prefs->GetCatCount() - 1 ) {
 							m_category = 0;
 						}
 						break;
 					}
-					case FT_OLDDLPRIORITY:
-					case FT_DLPRIORITY: {
+                                case TAG_DLPRIORITY: {
 						if (!isnewstyle){
 							m_iDownPriority = newtag.GetInt();
 							if( m_iDownPriority == PR_AUTO ){
@@ -449,13 +422,12 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 						}
 						break;
 					}
-					case FT_STATUS: {
+                                case TAG_STATUS: {
 						m_paused = (newtag.GetInt() == 1);
 						m_stopped = m_paused;
 						break;
 					}
-					case FT_OLDULPRIORITY:
-					case FT_ULPRIORITY: {
+                                case TAG_ULPRIORITY: {
 						if (!isnewstyle){
 							SetUpPriority(newtag.GetInt(), false);
 							if( GetUpPriority() == PR_AUTO ){
@@ -467,29 +439,29 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 						}
 						break;
 					}
-					case FT_KADLASTPUBLISHSRC:{
-						SetLastPublishTimeKadSrc(newtag.GetInt(), 0);
+                                case TAG_KADLASTPUBLISHSRC: {
+                                        SetLastPublishTimeKadSrc(newtag.GetInt());
 						if(GetLastPublishTimeKadSrc() > (uint32)time(NULL)+KADEMLIAREPUBLISHTIMES) {
 							//There may be a posibility of an older client that saved a random number here.. This will check for that..
-							SetLastPublishTimeKadSrc(0,0);
+                                                SetLastPublishTimeKadSrc(0);
 						}
 						break;
 					}
-					case FT_KADLASTPUBLISHNOTES:{
+                                case TAG_KADLASTPUBLISHNOTES: {
 						SetLastPublishTimeKadNotes(newtag.GetInt());
 						break;
 					}
 					// old tags: as long as they are not needed, take the chance to purge them
-					case FT_PERMISSIONS:
-					case FT_KADLASTPUBLISHKEY:
-					case FT_PARTFILENAME:
+                                case TAG_PERMISSIONS:
+                                case TAG_KADLASTPUBLISHKEY:
+				case TAG_PARTFILENAME:
 						break;
-					case FT_DL_ACTIVE_TIME:
+                                case TAG_DL_ACTIVE_TIME:
 						if (newtag.IsInt()) {
 							m_nDlActiveTime = newtag.GetInt();
 						}
 						break;
-					case FT_CORRUPTEDPARTS: {
+                                case TAG_CORRUPTEDPARTS: {
 						wxASSERT(m_corrupted_list.empty());
 						wxString strCorruptedParts(newtag.GetStr());
 						wxStringTokenizer tokenizer(strCorruptedParts, wxT(","));
@@ -504,7 +476,7 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 						}
 						break;
 					}
-					case FT_AICH_HASH:{
+                                case TAG_AICH_HASH: {
 						CAICHHash hash;
 						bool hashSizeOk =
 							hash.DecodeBase32(newtag.GetStr()) == CAICHHash::GetHashSize();
@@ -514,33 +486,23 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 						}
 						break;
 					}
-					case FT_ATTRANSFERRED:{
+                                case TAG_ATTRANSFERRED: {
 						statistic.SetAllTimeTransferred(statistic.GetAllTimeTransferred() + (uint64)newtag.GetInt());
 						break;
 					}
-					case FT_ATTRANSFERREDHI:{
-						statistic.SetAllTimeTransferred(statistic.GetAllTimeTransferred() + (((uint64)newtag.GetInt()) << 32));
+                                case TAG_ATREQUESTED: {
+                                        statistic.SetAllTimeRequests((uint32_t)newtag.GetInt());
 						break;
 					}
-					case FT_ATREQUESTED:{
-						statistic.SetAllTimeRequests(newtag.GetInt());
+                                case TAG_ATACCEPTED: {
+                                        statistic.SetAllTimeAccepts((uint32_t)newtag.GetInt());
 						break;
 					}
-					case FT_ATACCEPTED:{
-						statistic.SetAllTimeAccepts(newtag.GetInt());
-						break;
-					}
-					default: {
-						// Start Changes by Slugfiller for better exception handling
-
-						wxCharBuffer tag_ansi_name = newtag.GetName().ToAscii();
-						char gap_mark = tag_ansi_name.data() ? tag_ansi_name[0u] : 0;
-						if ( newtag.IsInt() && (newtag.GetName().Length() > 1) &&
-							((gap_mark == FT_GAPSTART) ||
-							 (gap_mark == FT_GAPEND))) {
+                                case TAG_GAP_START:
+                                case TAG_GAP_END:
+                                        if ( newtag.IsUint64Uint64() ) {
 							Gap_Struct *gap = NULL;
-							unsigned long int gapkey;
-							if (newtag.GetName().Mid(1).ToULong(&gapkey)) {
+                                                uint64_t gapkey = newtag.GetUint64Uint64().first;
 								if ( gap_map.find( gapkey ) == gap_map.end() ) {
 									gap = new Gap_Struct;
 									gap_map[gapkey] = gap;
@@ -549,26 +511,23 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 								} else {
 									gap = gap_map[ gapkey ];
 								}
-								if (gap_mark == FT_GAPSTART) {
-									gap->start = newtag.GetInt();
-								}
-								if (gap_mark == FT_GAPEND) {
-									gap->end = newtag.GetInt()-1;
-								}
+                                                if (newtag.GetID() == TAG_GAP_START) {
+                                                        gap->start = newtag.GetUint64Uint64().last;
+                                                } else
+                                                        gap->end   = newtag.GetUint64Uint64().last-1;
 							} else {
-								AddDebugLogLineN(logPartFile, wxT("Wrong gap map key while reading met file!"));
-								wxFAIL;
+                                                throw CInvalidPacket(CFormat(wxT("Invalid tag %s"))
+                                                                     % tagnameStr(newtag.GetID()));
 							}
-							// End Changes by Slugfiller for better exception handling
-						} else {
+                                        break;
+                                default:
 							m_taglist.push_back(newtag);
-						}
-					}
 				}
 			} else {
 				// Nothing. Else, nothing.
 			}
 		}
+                taglist.deleteTags() ;
 
 		// load the hashsets from the hybridstylepartmet
 		if (isnewstyle && !getsizeonly && (metFile.GetPosition()<metFile.GetLength()) ) {
@@ -636,7 +595,7 @@ uint8 CPartFile::LoadPartFile(const CPath& in_directory, const CPath& filename, 
 	// Init Gaplist
 	m_gaplist.Init(GetFileSize(), false);	// Init full, then add gaps
 	// Now to flush the map into the list (Slugfiller)
-	std::map<uint16, Gap_Struct*>::iterator it = gap_map.begin();
+        std::map<uint64_t, Gap_Struct*>::iterator it = gap_map.begin();
 	for ( ; it != gap_map.end(); ++it ) {
 		Gap_Struct* gap = it->second;
 		// SLUGFILLER: SafeHash - revised code, and extra safety
@@ -766,77 +725,23 @@ bool CPartFile::SavePartFile(bool Initial)
 			throw wxString(wxT("Failed to open part.met file"));
 		}
 
+                // mkvore : warning : we use CKnownFile methods instead of amule ones
 		// version
 		file.WriteUInt8(IsLargeFile() ? PARTFILE_VERSION_LARGEFILE : PARTFILE_VERSION);
 
 		file.WriteUInt32(CPath::GetModificationTime(m_PartPath));
 		// hash
-		file.WriteHash(m_abyFileHash);
-		uint16 parts = m_hashlist.size();
-		file.WriteUInt16(parts);
-		for (int x = 0; x < parts; ++x) {
-			file.WriteHash(m_hashlist[x]);
-		}
+                WriteHashsetToFile(&file);
 		// tags
-		#define FIXED_TAGS 15
-		uint32 tagcount = m_taglist.size() + FIXED_TAGS + (m_gaplist.size()*2);
-		if (!m_corrupted_list.empty()) {
-			++tagcount;
-		}
+                TagList l_taglist ;
+                l_taglist.push_back(CTag(TAG_TRANSFERRED,	transferred));   // 3
+                l_taglist.push_back(CTag(TAG_STATUS,	(m_paused?1:0)));                        // 4
 
-		if (m_pAICHHashSet->HasValidMasterHash() && (m_pAICHHashSet->GetStatus() == AICH_VERIFIED)){
-			++tagcount;
-		}
+                l_taglist.push_back(CTag(TAG_DLPRIORITY, IsAutoDownPriority()?PR_AUTO:m_iDownPriority));	// 5
 
-		if (GetLastPublishTimeKadSrc()){
-			++tagcount;
-		}
+                l_taglist.push_back(CTag(TAG_LASTSEENCOMPLETE,	lsc			));	// 7
 
-		if (GetLastPublishTimeKadNotes()){
-			++tagcount;
-		}
-
-		if (GetDlActiveTime()){
-			++tagcount;
-		}
-
-		file.WriteUInt32(tagcount);
-
-		//#warning Kry - Where are lost by coruption and gained by compression?
-
-		// 0 (unicoded part file name)
-		// We write it with BOM to keep eMule compatibility. Note that the 'printable' filename is saved,
-		// as presently the filename does not represent an actual file.
-		CTagString(	FT_FILENAME,	GetFileName().GetPrintable()).WriteTagToFile( &file, utf8strOptBOM );
-		CTagString(	FT_FILENAME,	GetFileName().GetPrintable()).WriteTagToFile( &file );                         // 1
-
-		CTagIntSized(	FT_FILESIZE,	GetFileSize(), IsLargeFile() ? 64 : 32).WriteTagToFile( &file );// 2
-		CTagIntSized(	FT_TRANSFERRED,	transferred, IsLargeFile() ? 64 : 32).WriteTagToFile( &file );   // 3
-		CTagInt32(	FT_STATUS,	(m_paused?1:0)).WriteTagToFile( &file );                        // 4
-
-		if ( IsAutoDownPriority() ) {
-			CTagInt32( FT_DLPRIORITY,	(uint8)PR_AUTO	).WriteTagToFile( &file );	// 5
-			CTagInt32( FT_OLDDLPRIORITY,	(uint8)PR_AUTO	).WriteTagToFile( &file );	// 6
-		} else {
-			CTagInt32( FT_DLPRIORITY,	m_iDownPriority	).WriteTagToFile( &file );	// 5
-			CTagInt32( FT_OLDDLPRIORITY,	m_iDownPriority	).WriteTagToFile( &file );	// 6
-		}
-
-		CTagInt32( FT_LASTSEENCOMPLETE,	lsc			).WriteTagToFile( &file );	// 7
-
-		if ( IsAutoUpPriority() ) {
-			CTagInt32( FT_ULPRIORITY,	(uint8)PR_AUTO	).WriteTagToFile( &file );	// 8
-			CTagInt32( FT_OLDULPRIORITY,	(uint8)PR_AUTO	).WriteTagToFile( &file );	// 9
-		} else {
-			CTagInt32( FT_ULPRIORITY,	GetUpPriority() ).WriteTagToFile( &file );	// 8
-			CTagInt32( FT_OLDULPRIORITY,	GetUpPriority() ).WriteTagToFile( &file );	// 9
-		}
-
-		CTagInt32(FT_CATEGORY,       m_category).WriteTagToFile( &file );                       // 10
-		CTagInt32(FT_ATTRANSFERRED,   statistic.GetAllTimeTransferred() & 0xFFFFFFFF).WriteTagToFile( &file );// 11
-		CTagInt32(FT_ATTRANSFERREDHI, statistic.GetAllTimeTransferred() >>32).WriteTagToFile( &file );// 12
-		CTagInt32(FT_ATREQUESTED,    statistic.GetAllTimeRequests()).WriteTagToFile( &file );	// 13
-		CTagInt32(FT_ATACCEPTED,     statistic.GetAllTimeAccepts()).WriteTagToFile( &file );	// 14
+                l_taglist.push_back(CTag(TAG_CATEGORY,       m_category));                       // 10
 
 		// currupt part infos
 		if (!m_corrupted_list.empty()) {
@@ -847,50 +752,32 @@ bool CPartFile::SavePartFile(bool Initial)
 				if (!strCorruptedParts.IsEmpty()) {
 					strCorruptedParts += wxT(",");
 				}
-				strCorruptedParts += CFormat(wxT("%u")) % uCorruptedPart;
+                                strCorruptedParts += CFormat(wxT("%" PRIu16 "")) % uCorruptedPart;
 			}
 			wxASSERT( !strCorruptedParts.IsEmpty() );
 
-			CTagString( FT_CORRUPTEDPARTS, strCorruptedParts ).WriteTagToFile( &file); // 11?
-		}
-
-		//AICH Filehash
-		if (m_pAICHHashSet->HasValidMasterHash() && (m_pAICHHashSet->GetStatus() == AICH_VERIFIED)){
-			CTagString aichtag(FT_AICH_HASH, m_pAICHHashSet->GetMasterHash().GetString() );
-			aichtag.WriteTagToFile(&file); // 12?
-		}
-
-		if (GetLastPublishTimeKadSrc()){
-			CTagInt32(FT_KADLASTPUBLISHSRC, GetLastPublishTimeKadSrc()).WriteTagToFile(&file); // 15?
-		}
-
-		if (GetLastPublishTimeKadNotes()){
-			CTagInt32(FT_KADLASTPUBLISHNOTES, GetLastPublishTimeKadNotes()).WriteTagToFile(&file); // 16?
+                        l_taglist.push_back( CTag( TAG_CORRUPTEDPARTS, strCorruptedParts ) ); // 11?
 		}
 
 		if (GetDlActiveTime()){
-			CTagInt32(FT_DL_ACTIVE_TIME, GetDlActiveTime()).WriteTagToFile(&file); // 17
+                        l_taglist.push_back( CTag( TAG_DL_ACTIVE_TIME, uint64_t(GetDlActiveTime())) ); // 17
 		}
 
-		for (uint32 j = 0; j < (uint32)m_taglist.size();++j) {
-			m_taglist[j].WriteTagToFile(&file);
-		}
 
 		// gaps
 		unsigned i_pos = 0;
 		for (CGapList::const_iterator it = m_gaplist.begin(); it != m_gaplist.end(); ++it) {
-			wxString tagName = CFormat(wxT(" %u")) % i_pos;
+                        l_taglist.push_back( CTag( TAG_GAP_START, i_pos, it.start()	) );
 
 			// gap start = first missing byte but gap ends = first non-missing byte
 			// in edonkey but I think its easier to user the real limits
-			tagName[0] = FT_GAPSTART;
-			CTagIntSized(tagName, it.start(),	IsLargeFile() ? 64 : 32).WriteTagToFile( &file );
-
-			tagName[0] = FT_GAPEND;
-			CTagIntSized(tagName, it.end() + 1, IsLargeFile() ? 64 : 32).WriteTagToFile( &file );
+                        l_taglist.push_back( CTag( TAG_GAP_END,   i_pos, it.end() + 1	) );
 
 			++i_pos;
 		}
+                // other tags are added by base class KnownFile before writing to file
+                WriteTagsToFile(&file, l_taglist);
+
 	} catch (const wxString& error) {
 		AddLogLineNS(CFormat( _("ERROR while saving partfile: %s (%s ==> %s)") )
 			% error
@@ -1001,8 +888,7 @@ void CPartFile::SaveSourceSeeds()
 		CClientRefList::iterator it2 = source_seeds.begin();
 		for (; it2 != source_seeds.end(); ++it2) {
 			CUpDownClient* cur_src = it2->GetClient();
-			file.WriteUInt32(cur_src->GetUserIDHybrid());
-			file.WriteUInt16(cur_src->GetUserPort());
+                        file.WriteAddress(cur_src->GetTCPDest() );
 			file.WriteHash(cur_src->GetUserHash());
 			// CryptSettings - See SourceExchange V4
 			const uint8 uSupportsCryptLayer	= cur_src->SupportsCryptLayer() ? 1 : 0;
@@ -1066,13 +952,7 @@ void CPartFile::LoadSourceSeeds()
 		sources_data.WriteUInt16(src_count);
 
 		for (int i = 0; i< src_count; ++i) {
-			uint32 dwID = file.ReadUInt32();
-			uint16 nPort = file.ReadUInt16();
-
-			sources_data.WriteUInt32(bUseSX2Format ? dwID : wxUINT32_SWAP_ALWAYS(dwID));
-			sources_data.WriteUInt16(nPort);
-			sources_data.WriteUInt32(0);
-			sources_data.WriteUInt16(0);
+                        sources_data.WriteAddress(file.ReadAddress()); // tcp
 
 			if (bUseSX2Format) {
 				sources_data.WriteHash(file.ReadHash());
@@ -1337,7 +1217,7 @@ void CPartFile::UpdateCompletedInfos()
 void CPartFile::WritePartStatus(CMemFile* file)
 {
 	uint16 parts = GetED2KPartCount();
-	file->WriteUInt16(parts);
+        file->WriteUInt64(parts);
 	uint16 done = 0;
 	while (done != parts){
 		uint8 towrite = 0;
@@ -1402,6 +1282,7 @@ uint32 CPartFile::Process(uint32 reducedownload/*in percent*/,uint8 m_icounter)
 				case DS_ERROR: {
 					break;
 				}
+                        /* NOTE: i2p : no lowids
 				case DS_LOWTOLOWIP: {
 					if (cur_src->HasLowID() && !theApp->CanDoCallback(cur_src->GetServerIP(), cur_src->GetServerPort())) {
 						// If we are almost maxed on sources,
@@ -1418,7 +1299,7 @@ uint32 CPartFile::Process(uint32 reducedownload/*in percent*/,uint8 m_icounter)
 					}
 
 					break;
-				}
+                        }*/
 				case DS_NONEEDEDPARTS: {
 					// we try to purge noneeded source, even without reaching the limit
 					if((dwCurTick - lastpurgetime) > 40000) {
@@ -1571,60 +1452,28 @@ uint32 CPartFile::Process(uint32 reducedownload/*in percent*/,uint8 m_icounter)
 	return (uint32)(kBpsDown*1024.0);
 }
 
-bool CPartFile::CanAddSource(uint32 userid, uint16 port, uint32 serverip, uint16 serverport, uint8* pdebug_lowiddropped, bool ed2kID)
+bool CPartFile::CanAddSource(const CI2PAddress & userdest, const CI2PAddress & WXUNUSED(serverdest), uint8_t* WXUNUSED(pdebug_lowiddropped), bool WXUNUSED(ed2kID))
 {
 
-	//The incoming ID could have the userid in the Hybrid format..
-	uint32 hybridID = 0;
-	if( ed2kID ) {
-		if (IsLowID(userid)) {
-			hybridID = userid;
-		} else {
-			hybridID = wxUINT32_SWAP_ALWAYS(userid);
-		}
-	} else {
-		hybridID = userid;
-		if (!IsLowID(userid)) {
-			userid = wxUINT32_SWAP_ALWAYS(userid);
-		}
-	}
+        const CI2PAddress & hybridDest = userdest;
 
 	// MOD Note: Do not change this part - Merkur
 	if (theApp->IsConnectedED2K()) {
-		if(::IsLowID(theApp->GetED2KID())) {
-			if(theApp->GetED2KID() == userid && theApp->serverconnect->GetCurrentServer()->GetIP() == serverip && theApp->serverconnect->GetCurrentServer()->GetPort() == serverport ) {
+                if(theApp->GetED2KID() == userdest) {
 				return false;
-			}
-			if(theApp->GetPublicIP() == userid) {
-				return false;
-			}
-		} else {
-			if(theApp->GetED2KID() == userid && thePrefs::GetPort() == port) {
-				return false;
-			}
 		}
 	}
 
 	if (Kademlia::CKademlia::IsConnected()) {
-		if(!Kademlia::CKademlia::IsFirewalled()) {
-			if(Kademlia::CKademlia::GetIPAddress() == hybridID && thePrefs::GetPort() == port) {
+                if(Kademlia::CKademlia::GetIPAddress() == hybridDest) {
 				return false;
-			}
 		}
 	}
 
-	//This allows *.*.*.0 clients to not be removed if Ed2kID == false
-	if ( IsLowID(hybridID) && theApp->IsFirewalled()) {
-		if (pdebug_lowiddropped) {
-			(*pdebug_lowiddropped)++;
-		}
-		return false;
-	}
-	// MOD Note - end
 	return true;
 }
 
-void CPartFile::AddSources(CMemFile& sources,uint32 serverip, uint16 serverport, unsigned origin, bool bWithObfuscationAndHash)
+void CPartFile::AddSources(CMemFile& sources,const CI2PAddress & serverdest, unsigned origin, bool bWithObfuscationAndHash)
 {
 	uint8 count = sources.ReadUInt8();
 	uint8 debug_lowiddropped = 0;
@@ -1639,8 +1488,8 @@ void CPartFile::AddSources(CMemFile& sources,uint32 serverip, uint16 serverport,
 	}
 
 	for (int i = 0;i != count;++i) {
-		uint32 userid = sources.ReadUInt32();
-		uint16 port   = sources.ReadUInt16();
+                CI2PAddress userdest = sources.ReadAddress();
+                AddDebugLogLineN(logPartFile, CFormat(wxT("Adding source %x")) % userdest.hashCode());
 
 		uint8 byCryptOptions = 0;
 		if (bWithObfuscationAndHash){
@@ -1651,31 +1500,26 @@ void CPartFile::AddSources(CMemFile& sources,uint32 serverip, uint16 serverport,
 
 			if ((thePrefs::IsClientCryptLayerRequested() && (byCryptOptions & 0x01/*supported*/) > 0 && (byCryptOptions & 0x80) == 0)
 				|| (thePrefs::IsClientCryptLayerSupported() && (byCryptOptions & 0x02/*requested*/) > 0 && (byCryptOptions & 0x80) == 0)) {
-				AddDebugLogLineN(logPartFile, CFormat(wxT("Server didn't provide UserHash for source %u, even if it was expected to (or local obfuscationsettings changed during serverconnect")) % userid);
+                                AddDebugLogLineN(logPartFile, wxString::Format(wxT("Server didn't provide UserHash for source %" PRIu32 ", even if it was expected to (or local obfuscationsettings changed during serverconnect"), userdest.hashCode()));
 			} else if (!thePrefs::IsClientCryptLayerRequested() && (byCryptOptions & 0x02/*requested*/) == 0 && (byCryptOptions & 0x80) != 0) {
-				AddDebugLogLineN(logPartFile, CFormat(wxT("Server provided UserHash for source %u, even if it wasn't expected to (or local obfuscationsettings changed during serverconnect")) % userid);
+                                AddDebugLogLineN(logPartFile, wxString::Format(wxT("Server provided UserHash for source %" PRIu32 ", even if it wasn't expected to (or local obfuscationsettings changed during serverconnect"), userdest.hashCode()));
 			}
 		}
 
 
-		// "Filter LAN IPs" and "IPfilter" the received sources IP addresses
-		if (!IsLowID(userid)) {
-			// check for 0-IP, localhost and optionally for LAN addresses
-			if ( !IsGoodIP(userid, thePrefs::FilterLanIPs()) ) {
+                if (theApp->ipfilter->IsFiltered(userdest)) {
+                        AddDebugLogLineN(logPartFile, CFormat(wxT("Not adding source %x PartFile (filtered address)")) % userdest.hashCode());
 				continue;
-			}
-			if (theApp->ipfilter->IsFiltered(userid)) {
-				continue;
-			}
 		}
 
-		if (!CanAddSource(userid, port, serverip, serverport, &debug_lowiddropped)) {
+                if (!CanAddSource(userdest, serverdest, &debug_lowiddropped)) {
+                        AddDebugLogLineN(logPartFile, CFormat(wxT("Not adding source %x PartFile (cannot !)")) % userdest.hashCode());
 			continue;
 		}
 
 		if(thePrefs::GetMaxSourcePerFile() > GetSourceCount()) {
 			++debug_possiblesources;
-			CUpDownClient* newsource = new CUpDownClient(port,userid,serverip,serverport,this, true, true);
+                        CUpDownClient* newsource = new CUpDownClient(userdest,serverdest,this, true, true);
 
 			newsource->SetSourceFrom((ESourceFrom)origin);
 			newsource->SetConnectOptions(byCryptOptions, true, false);
@@ -1688,8 +1532,7 @@ void CPartFile::AddSources(CMemFile& sources,uint32 serverip, uint16 serverport,
 		} else {
 			AddDebugLogLineN(logPartFile, wxT("Consuming a packet because of max sources reached"));
 			// Since we may receive multiple search source UDP results we have to "consume" all data of that packet
-			// This '+1' is added because 'i' counts from 0.
-			sources.Seek((count-(i+1))*(4+2), wxFromCurrent);
+                        for ( ; i != count ; i++ )  sources.ReadAddress() ;
 			if (GetKadFileSearchID()) {
 				Kademlia::CSearchManager::StopSearch(GetKadFileSearchID(), false);
 			}
@@ -1883,7 +1726,7 @@ bool CPartFile::GetNextRequestedBlock(CUpDownClient* sender,
 	uint16 newBlockCount = 0;
 	while(newBlockCount != count) {
 		// Create a request block stucture if a chunk has been previously selected
-		if(sender->GetLastPartAsked() != 0xffff) {
+                if(sender->GetLastPartAsked() != CPartFile::NO_PART) {
 			Requested_Block_Struct* pBlock = new Requested_Block_Struct;
 			if(GetNextEmptyBlockInPart(sender->GetLastPartAsked(), pBlock) == true) {
 				// Keep a track of all pending requested blocks
@@ -1897,12 +1740,12 @@ bool CPartFile::GetNextRequestedBlock(CUpDownClient* sender,
 				// All blocks for this chunk have been already requested
 				delete pBlock;
 				// => Try to select another chunk
-				sender->SetLastPartAsked(0xffff);
+                                sender->SetLastPartAsked(CPartFile::NO_PART);
 			}
 		}
 
 		// Check if a new chunk must be selected (e.g. download starting, previous chunk complete)
-		if(sender->GetLastPartAsked() == 0xffff) {
+                if(sender->GetLastPartAsked() == CPartFile::NO_PART) {
 			// Quantify all chunks (create list of chunks to download)
 			// This is done only one time and only if it is necessary (=> CPU load)
 			if(chunksList.empty()) {
@@ -2066,6 +1909,7 @@ bool CPartFile::GetNextRequestedBlock(CUpDownClient* sender,
 
 void  CPartFile::RemoveBlockFromList(uint64 start,uint64 end)
 {
+        wiMutexLocker lock(blocklistMutex);
 	std::list<Requested_Block_Struct*>::iterator it = m_requestedblocks_list.begin();
 	while (it != m_requestedblocks_list.end()) {
 		std::list<Requested_Block_Struct*>::iterator it2 = it++;
@@ -2079,6 +1923,7 @@ void  CPartFile::RemoveBlockFromList(uint64 start,uint64 end)
 
 void CPartFile::RemoveAllRequestedBlocks(void)
 {
+        wiMutexLocker lock(blocklistMutex);
 	m_requestedblocks_list.clear();
 }
 
@@ -2224,9 +2069,9 @@ void CPartFile::Delete()
 	StopFile(true);
 	AddDebugLogLineN(logPartFile, wxT("\tStopped"));
 
-#ifdef __DEBUG__
+// #ifdef __DEBUG__
 	uint16 removed =
-#endif
+// #endif
 		theApp->uploadqueue->SuspendUpload(GetFileHash(), true);
 	AddDebugLogLineN(logPartFile, CFormat(wxT("\tSuspended upload to %d clients")) % removed);
 	theApp->sharedfiles->RemoveFile(this);
@@ -2303,12 +2148,12 @@ bool CPartFile::HashSinglePart(uint16 partnumber)
 		try {
 			CreateHashFromFile(m_hpartfile, offset, length, &hashresult, NULL);
 		} catch (const CIOFailureException& e) {
-			AddLogLineC(CFormat( _("EOF while hashing downloaded part %u with length %u (max %u) of partfile '%s' with length %u: %s"))
+                        AddLogLineC(CFormat( _("EOF while hashing downloaded part %" PRIu16 " with length %" PRIu32 " (max %" PRIu64 ") of partfile '%s' with length %" PRIu64 ": %s"))
 				% partnumber % length % (offset+length) % GetFileName() % GetFileSize() % e.what());
 			SetStatus(PS_ERROR);
 			return false;
 		} catch (const CEOFException& e) {
-			AddLogLineC(CFormat( _("EOF while hashing downloaded part %u with length %u (max %u) of partfile '%s' with length %u: %s"))
+                        AddLogLineC(CFormat( _("EOF while hashing downloaded part %" PRIu16 " with length %" PRIu32 " (max %" PRIu64 ") of partfile '%s' with length %" PRIu64 ": %s"))
 				% partnumber % length % (offset+length) % GetFileName() % GetFileSize() % e.what());
 			SetStatus(PS_ERROR);
 			return false;
@@ -2419,7 +2264,7 @@ void CPartFile::PauseFile(bool bInsufficient)
 		if (cur_src->GetDownloadState() == DS_DOWNLOADING) {
 			if (!cur_src->GetSentCancelTransfer()) {
 				theStats::AddUpOverheadOther( packet.GetPacketSize() );
-				AddDebugLogLineN( logLocalClient, wxT("Local Client: OP_CANCELTRANSFER to ") + cur_src->GetFullIP() );
+                                AddDebugLogLineN(logLocalClient, wxT("Local Client: OP_CANCELTRANSFER to ") + cur_src->GetTCPDest().humanReadable() );
 				cur_src->SendPacket( &packet, false, true );
 				cur_src->SetSentCancelTransfer( true );
 			}
@@ -2448,7 +2293,7 @@ void CPartFile::ResumeFile()
 	}
 
 	if ( m_insufficient && !CheckFreeDiskSpace() ) {
-		// Still not enough free discspace
+                // Still not enough free diskspace
 		return;
 	}
 
@@ -2565,7 +2410,7 @@ CPacket *CPartFile::CreateSrcInfoPacket(const CUpDownClient* forClient, uint8 by
 
 		// we don't support any special SX2 options yet, reserved for later use
 		if (nRequestedOptions != 0) {
-			AddDebugLogLineN(logKnownFiles, CFormat(wxT("Client requested unknown options for SourceExchange2: %u")) % nRequestedOptions);
+                        AddDebugLogLineN(logKnownFiles, CFormat(wxT("Client requested unknown options for SourceExchange2: %" PRIu16 "")) % nRequestedOptions);
 		}
 	} else {
 		byUsedVersion = forClient->GetSourceExchange1Version();
@@ -2587,7 +2432,7 @@ CPacket *CPartFile::CreateSrcInfoPacket(const CUpDownClient* forClient, uint8 by
 		int state = cur_src->GetDownloadState();
 		int valid = ( state == DS_DOWNLOADING ) || ( state == DS_ONQUEUE && !cur_src->IsRemoteQueueFull() );
 
-		if ( cur_src->HasLowID() || !valid ) {
+                if ( /*cur_src->HasLowID() ||*/ !valid ) {
 			continue;
 		}
 
@@ -2623,16 +2468,7 @@ CPacket *CPartFile::CreateSrcInfoPacket(const CUpDownClient* forClient, uint8 by
 		}
 		if(bNeeded) {
 			++nCount;
-			uint32 dwID;
-			if(forClient->GetSourceExchange1Version() > 2) {
-				dwID = cur_src->GetUserIDHybrid();
-			} else {
-				dwID = wxUINT32_SWAP_ALWAYS(cur_src->GetUserIDHybrid());
-			}
-			data.WriteUInt32(dwID);
-			data.WriteUInt16(cur_src->GetUserPort());
-			data.WriteUInt32(cur_src->GetServerIP());
-			data.WriteUInt16(cur_src->GetServerPort());
+                        data.WriteAddress(cur_src->GetTCPDest());
 
 			if (byUsedVersion >= 2) {
 			    data.WriteHash(cur_src->GetUserHash());
@@ -2690,12 +2526,12 @@ void CPartFile::AddClientSources(CMemFile* sources, unsigned nSourceFrom, uint8 
 		// chance in dealing with wrong source data, userhashs and finally duplicate sources.
 		uint32 uDataSize = sources->GetLength() - sources->GetPosition();
 
-		if ((uint32)(nCount*(4+2+4+2)) == uDataSize) { //Checks if version 1 packet is correct size
+                if ((uint32)(nCount*(3*CI2PAddress::validLength()+16)) == uDataSize) { //Checks if version 1 packet is correct size
 			if(uClientSXVersion != 1) {
 				return;
 			}
 			uPacketSXVersion = 1;
-		} else if ((uint32)(nCount*(4+2+4+2+16)) == uDataSize) { // Checks if version 2&3 packet is correct size
+                } else if ((uint32)(nCount*(CI2PAddress::validLength()+16)) == uDataSize) { // Checks if version 2&3 packet is correct size
 			if (uClientSXVersion == 2) {
 				uPacketSXVersion = 2;
 			} else if (uClientSXVersion > 2) {
@@ -2703,7 +2539,7 @@ void CPartFile::AddClientSources(CMemFile* sources, unsigned nSourceFrom, uint8 
 			} else {
 				return;
 			}
-		} else if (nCount*(4+2+4+2+16+1) == uDataSize) {
+                } else if (nCount*(CI2PAddress::validLength()+16+1) == uDataSize) {
 			if (uClientSXVersion != 4 ) {
 				return;
 			}
@@ -2712,7 +2548,7 @@ void CPartFile::AddClientSources(CMemFile* sources, unsigned nSourceFrom, uint8 
 			// If v5 inserts additional data (like v2), the above code will correctly filter those packets.
 			// If v5 appends additional data after <count>(<Sources>)[count], we are in trouble with the
 			// above code. Though a client which does not understand v5+ should never receive such a packet.
-			AddDebugLogLineN(logClient, CFormat(wxT("Received invalid source exchange packet (v%u) of data size %u for %s")) % uClientSXVersion % uDataSize % GetFileName());
+                        AddDebugLogLineN(logClient, CFormat(wxT("Received invalid source exchange packet (v%" PRIu8 ") of data size %" PRIu32 " for %s")) % uClientSXVersion % uDataSize % GetFileName());
 			return;
 		}
 	} else {
@@ -2730,14 +2566,14 @@ void CPartFile::AddClientSources(CMemFile* sources, unsigned nSourceFrom, uint8 
 		bool bError = false;
 		switch (uClientSXVersion){
 			case 1:
-				bError = nCount*(4+2+4+2) != uDataSize;
+                        bError = nCount*(3*CI2PAddress::validLength()+16) != uDataSize;
 				break;
 			case 2:
 			case 3:
-				bError = nCount*(4+2+4+2+16) != uDataSize;
+                        bError = nCount*(CI2PAddress::validLength()+16) != uDataSize;
 				break;
 			case 4:
-				bError = nCount*(4+2+4+2+16+1) != uDataSize;
+                        bError = nCount*(CI2PAddress::validLength()+16+1) != uDataSize;
 				break;
 			default:
 				wxFAIL;
@@ -2753,10 +2589,13 @@ void CPartFile::AddClientSources(CMemFile* sources, unsigned nSourceFrom, uint8 
 
 	for (uint16 i = 0;i != nCount;++i) {
 
-		uint32 dwID = sources->ReadUInt32();
-		uint16 nPort = sources->ReadUInt16();
-		uint32 dwServerIP = sources->ReadUInt32();
-		uint16 nServerPort = sources->ReadUInt16();
+                CI2PAddress serverDest = CI2PAddress::null;
+                CI2PAddress udpDest = CI2PAddress::null;
+                if (uPacketSXVersion==1)
+                        serverDest = sources->ReadAddress();
+                CI2PAddress tcpDest    = sources->ReadAddress();
+                if (uPacketSXVersion==1)
+                        udpDest = sources->ReadAddress();
 
 		CMD4Hash userHash;
 		if (uPacketSXVersion > 1) {
@@ -2768,38 +2607,24 @@ void CPartFile::AddClientSources(CMemFile* sources, unsigned nSourceFrom, uint8 
 			byCryptOptions = sources->ReadUInt8();
 		}
 
-		//Clients send ID's the the Hyrbid format so highID clients with *.*.*.0 won't be falsely switched to a lowID..
-		uint32 dwIDED2K;
-		if (uPacketSXVersion >= 3) {
-			dwIDED2K = wxUINT32_SWAP_ALWAYS(dwID);
-		} else {
-			dwIDED2K = dwID;
-		}
-
-		// check the HighID(IP) - "Filter LAN IPs" and "IPfilter" the received sources IP addresses
-		if (!IsLowID(dwID)) {
-			if (!IsGoodIP(dwIDED2K, thePrefs::FilterLanIPs())) {
-				// check for 0-IP, localhost and optionally for LAN addresses
-				AddDebugLogLineN(logIPFilter, CFormat(wxT("Ignored source (IP=%s) received via %s - bad IP")) % Uint32toStringIP(dwIDED2K) % OriginToText(nSourceFrom));
+                // check the "IPfilter" the received sources IP addresses
+                if (theApp->ipfilter->IsFiltered(tcpDest)) {
+                        AddDebugLogLineN(logPartFile, CFormat(wxT("Ignored source (Dest=%s) received via source exchange - IPFilter")) % tcpDest.humanReadable());
 				continue;
 			}
-			if (theApp->ipfilter->IsFiltered(dwIDED2K)) {
-				AddDebugLogLineN(logIPFilter, CFormat(wxT("Ignored source (IP=%s) received via %s - IPFilter")) % Uint32toStringIP(dwIDED2K) % OriginToText(nSourceFrom));
+                if (theApp->clientlist->IsBannedClient(tcpDest)) {
 				continue;
-			}
-			if (theApp->clientlist->IsBannedClient(dwIDED2K)){
-				continue;
-			}
 		}
 
 		// additionally check for LowID and own IP
-		if (!CanAddSource(dwID, nPort, dwServerIP, nServerPort, NULL, false)) {
-			AddDebugLogLineN(logIPFilter, CFormat(wxT("Ignored source (IP=%s) received via source exchange")) % Uint32toStringIP(dwIDED2K));
+                if (!CanAddSource(tcpDest, udpDest, NULL, false)) {
+                        AddDebugLogLineN(logPartFile, CFormat(wxT("Ignored source (Dest=%s) received via source exchange")) % tcpDest.humanReadable());
 			continue;
 		}
 
 		if(thePrefs::GetMaxSourcePerFile() > GetSourceCount()) {
-			CUpDownClient* newsource = new CUpDownClient(nPort,dwID,dwServerIP,nServerPort,this, (uPacketSXVersion < 3), true);
+                        CUpDownClient* newsource = new CUpDownClient(tcpDest, serverDest, this, (uPacketSXVersion < 3), true);
+                        newsource->SetUDPDest(udpDest);
 			if (uPacketSXVersion > 1) {
 				newsource->SetUserHash(userHash);
 			}
@@ -2881,7 +2706,7 @@ uint32 CPartFile::WriteToBuffer(uint32 transize, byte* data, uint64 start, uint6
 	// Occasionally packets are duplicated, no point writing it twice
 	if (IsComplete(start, end)) {
 		AddDebugLogLineN(logPartFile,
-			CFormat(wxT("File '%s' has already been written from %u to %u"))
+                                 CFormat(wxT("File '%s' has already been written from %" PRIu64 " to %" PRIu64 ""))
 				% GetFileName() % start % end);
 		return 0;
 	}
@@ -2890,19 +2715,19 @@ uint32 CPartFile::WriteToBuffer(uint32 transize, byte* data, uint64 start, uint6
 	const uint64 nStartChunk = start / PARTSIZE;
 	const uint64 nEndChunk = end / PARTSIZE;
 	if (IsComplete(nStartChunk)) {
-		AddDebugLogLineN(logPartFile, CFormat(wxT("Received data touches already hashed chunk - ignored (start): %u-%u; File=%s")) % start % end % GetFileName());
+                AddDebugLogLineN(logPartFile, CFormat(wxT("Received data touches already hashed chunk - ignored (start): %" PRIu64 "-%" PRIu64 "; File=%s")) % start % end % GetFileName());
 		return 0;
 	} else if (nStartChunk != nEndChunk) {
 		if (IsComplete(nEndChunk)) {
-			AddDebugLogLineN(logPartFile, CFormat(wxT("Received data touches already hashed chunk - ignored (end): %u-%u; File=%s")) % start % end % GetFileName());
+                        AddDebugLogLineN(logPartFile, CFormat(wxT("Received data touches already hashed chunk - ignored (end): %" PRIu64 "-%" PRIu64 "; File=%s")) % start % end % GetFileName());
 			return 0;
 		} else {
-			AddDebugLogLineN(logPartFile, CFormat(wxT("Received data crosses chunk boundaries: %u-%u; File=%s")) % start % end % GetFileName());
+                        AddDebugLogLineN(logPartFile, CFormat(wxT("Received data crosses chunk boundaries: %" PRIu64 "-%" PRIu64 "; File=%s")) % start % end % GetFileName());
 		}
 	}
 
 	// log transferinformation in our "blackbox"
-	m_CorruptionBlackBox->TransferredData(start, end, client->GetIP());
+        m_CorruptionBlackBox->TransferredData(start, end, client->GetTCPDest());
 
 	// Create a new buffered queue entry
 	PartFileBufferedData *item = new PartFileBufferedData(m_hpartfile, data, start, end, block);
@@ -2978,7 +2803,7 @@ void CPartFile::FlushBuffer(bool fromAICHRecoveryDataAvailable)
 	// Loop through queue
 	while ( !m_BufferedData_list.empty() ) {
 		// Get top item and remove it from the queue
-		CScopedPtr<PartFileBufferedData> item(m_BufferedData_list.front());
+                std::unique_ptr<PartFileBufferedData> item(m_BufferedData_list.front());
 		m_BufferedData_list.pop_front();
 
 		// This is needed a few times
@@ -3055,7 +2880,7 @@ void CPartFile::FlushBuffer(bool fromAICHRecoveryDataAvailable)
 			} else {
 				if (!m_hashsetneeded) {
 					AddDebugLogLineN(logPartFile, CFormat(
-						wxT("Finished part %u of '%s'")) % partNumber % GetFileName());
+                                                                 wxT("Finished part %" PRIu16 " of '%s'")) % partNumber % GetFileName());
 				}
 
 				// tell the blackbox about the verified data
@@ -3291,13 +3116,12 @@ void CPartFile::RequestAICHRecovery(uint16 nPart)
 		if (	pCurClient->IsSupportingAICH() &&
 			pCurClient->GetReqFileAICHHash() != NULL &&
 			!pCurClient->IsAICHReqPending()
-			&& (*pCurClient->GetReqFileAICHHash()) == m_pAICHHashSet->GetMasterHash())
-		{
-			if (pCurClient->HasLowID()) {
-				++cAICHLowIDClients;
-			} else {
+                                && (*pCurClient->GetReqFileAICHHash()) == m_pAICHHashSet->GetMasterHash()) {
+                        //if (pCurClient->HasLowID()) {
+                        //	++cAICHLowIDClients;
+                        //} else {
 				++cAICHClients;
-			}
+                        //}
 		}
 	}
 	if ((cAICHClients | cAICHLowIDClients) == 0){
@@ -3317,11 +3141,10 @@ void CPartFile::RequestAICHRecovery(uint16 nPart)
 			&& (*pCurClient->GetReqFileAICHHash()) == m_pAICHHashSet->GetMasterHash())
 		{
 			if (cAICHClients > 0){
-				if (!pCurClient->HasLowID())
+                                //if (!pCurClient->HasLowID())
 					nSeclectedClient--;
-			}
-			else{
-				wxASSERT( pCurClient->HasLowID());
+                        } else {
+                                //wxASSERT( pCurClient->HasLowID());
 				nSeclectedClient--;
 			}
 			if (nSeclectedClient == 0){
@@ -3352,7 +3175,7 @@ void CPartFile::AICHRecoveryDataAvailable(uint16 nPart)
 	uint32 length = GetPartSize(nPart);
 	// if the part was already ok, it would now be complete
 	if (IsComplete(nPart)) {
-		AddDebugLogLineN(logAICHRecovery, CFormat(wxT("Processing AICH Recovery data: The part (%u) is already complete, canceling")) % nPart);
+                AddDebugLogLineN(logAICHRecovery, CFormat(wxT("Processing AICH Recovery data: The part (%" PRIu16 ") is already complete, canceling")) % nPart);
 		return;
 	}
 
@@ -3410,7 +3233,7 @@ void CPartFile::AICHRecoveryDataAvailable(uint16 nPart)
 		// make sure that MD4 agrees to this fact too
 		if (!HashSinglePart(nPart)) {
 			AddDebugLogLineN(logAICHRecovery,
-				CFormat(wxT("Processing AICH Recovery data: The part (%u) got completed while recovering - but MD4 says it corrupt! Setting hashset to error state, deleting part")) % nPart);
+                                         CFormat(wxT("Processing AICH Recovery data: The part (%" PRIu16 ") got completed while recovering - but MD4 says it corrupt! Setting hashset to error state, deleting part")) % nPart);
 			// now we are fu... unhappy
 			m_pAICHHashSet->SetStatus(AICH_ERROR);
 			AddGap(nPart);
@@ -3418,7 +3241,7 @@ void CPartFile::AICHRecoveryDataAvailable(uint16 nPart)
 			return;
 		} else {
 			AddDebugLogLineN(logAICHRecovery,
-				CFormat(wxT("Processing AICH Recovery data: The part (%u) got completed while recovering and MD4 agrees")) % nPart);
+                                         CFormat(wxT("Processing AICH Recovery data: The part (%" PRIu16 ") got completed while recovering and MD4 agrees")) % nPart);
 			if (status == PS_EMPTY && theApp->IsRunning()) {
 				if (GetHashCount() == GetED2KPartHashCount() && !m_hashsetneeded) {
 					// Successfully recovered part, make it available for sharing
@@ -3443,7 +3266,7 @@ void CPartFile::AICHRecoveryDataAvailable(uint16 nPart)
 
 	// make sure the user appreciates our great recovering work :P
 	AddDebugLogLineC( logAICHRecovery, CFormat(
-		wxT("AICH successfully recovered %s of %s from part %u for %s") )
+                                  wxT("AICH successfully recovered %s of %s from part %" PRIu16 " for %s") )
 		% CastItoXBytes(nRecovered)
 		% CastItoXBytes(length)
 		% nPart
@@ -3672,6 +3495,7 @@ void CPartFile::Init()
 	m_is_A4AF_auto = false;
 	m_localSrcReqQueued = false;
 	m_nCompleteSourcesTime = time(NULL);
+        m_nSourcesCount = 0;
 	m_nCompleteSourcesCount = 0;
 	m_nCompleteSourcesCountLo = 0;
 	m_nCompleteSourcesCountHi = 0;
@@ -3761,7 +3585,7 @@ wxString CPartFile::GetFeedback() const
 {
 	wxString retval = CKnownFile::GetFeedback();
 	if (GetStatus() != PS_COMPLETE) {
-		retval += CFormat(wxT("%s: %s (%.2f%%)\n%s: %u\n"))
+                retval += CFormat(wxT("%s: %s (%.2lf%%)\n%s: %" PRIu16 "\n"))
 			% _("Downloaded") % CastItoXBytes(GetCompletedSize()) % GetPercentCompleted() % _("Sources") % GetSourceCount();
 	}
 	return retval + _("Status") + wxT(": ") + getPartfileStatus() + wxT("\n");
@@ -3902,11 +3726,6 @@ uint16 CPartFile::GetPartMetNumber() const
 }
 
 
-void CPartFile::SetHashingProgress(uint16 part) const
-{
-	m_hashingProgress = part;
-	Notify_DownloadCtrlUpdateItem(this);
-}
 
 
 #ifndef CLIENT_GUI
@@ -3953,7 +3772,9 @@ void CPartFile::SetFileName(const CPath& fileName)
 
 	if (is_shared) {
 		// And of course, we must advertise the new name if the file is shared.
-		theApp->sharedfiles->AddKeywords(this);
+                /* mkvore : will be added after file has been published */
+                /* so republish the file instead of adding the keywords now */
+                // theApp->sharedfiles->AddKeywords(this);
 	}
 
 	UpdateDisplayedInfo(true);

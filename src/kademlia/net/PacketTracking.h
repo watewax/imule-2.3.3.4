@@ -29,20 +29,22 @@
 
 #include <map>
 #include <list>
-#include "../utils/UInt128.h"
-#include "../../Types.h"
+#include <kademlia/utils/UInt128.h>
+#include <Types.h>
+
+class CI2PAddress ;
 
 namespace Kademlia
 {
 
 struct TrackPackets_Struct {
-	uint32_t ip;
+        uint32_t desthash;
 	uint32_t inserted;
 	uint8_t  opcode;
 };
 
 struct TrackChallenge_Struct {
-	uint32_t	ip;
+        uint32_t	desthash;
 	uint32_t	inserted;
 	uint8_t		opcode;
 	CUInt128	contactID;
@@ -57,13 +59,12 @@ struct TrackPacketsIn_Struct {
 		bool	 m_dbgLogged;
 	};
 
-	TrackPacketsIn_Struct()
-	{
+        TrackPacketsIn_Struct() {
 		m_lastExpire = 0;
-		m_ip = 0;
+                m_desthash = 0;
 	}
 
-	uint32_t m_ip;
+        uint32_t m_desthash;
 	uint32_t m_lastExpire;
 	typedef std::list<TrackedRequestIn_Struct>	TrackedRequestList;
 	TrackedRequestList	m_trackedRequests;
@@ -76,13 +77,13 @@ class CPacketTracking
 	virtual ~CPacketTracking();
 
       protected:
-	void AddTrackedOutPacket(uint32_t ip, uint8_t opcode);
-	bool IsOnOutTrackList(uint32_t ip, uint8_t opcode, bool dontRemove = false);
-	bool InTrackListIsAllowedPacket(uint32_t ip, uint8_t opcode, bool validReceiverkey);
+        void AddTrackedOutPacket(const CI2PAddress & dest, uint8_t opcode);
+        bool IsOnOutTrackList(const CI2PAddress & dest, uint8_t opcode, bool dontRemove = false);
+        bool InTrackListIsAllowedPacket(const CI2PAddress & dest, uint8_t opcode, bool validReceiverkey);
 	void InTrackListCleanup();
-	void AddLegacyChallenge(const CUInt128& contactID, const CUInt128& challengeID, uint32_t ip, uint8_t opcode);
-	bool IsLegacyChallenge(const CUInt128& challengeID, uint32_t ip, uint8_t opcode, CUInt128& contactID);
-	bool HasActiveLegacyChallenge(uint32_t ip) const;
+        void AddLegacyChallenge(const CUInt128& contactID, const CUInt128& challengeID, const CI2PAddress & dest, uint8_t opcode);
+        bool IsLegacyChallenge(const CUInt128& challengeID, const CI2PAddress & dest, uint8_t opcode, CUInt128& contactID);
+        bool HasActiveLegacyChallenge(const CI2PAddress & dest) const;
 
       private:
 	static bool IsTrackedOutListRequestPacket(uint8_t opcode) throw();

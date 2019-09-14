@@ -29,9 +29,12 @@
 
 #include <deque>
 #include <map>
+#include <memory>
 
 #include "Types.h"
-#include "MuleThread.h"
+#include "common/coroutine.h"
+
+#include <wx/hashmap.h>
 
 
 class CThreadTask;
@@ -61,7 +64,7 @@ enum ETaskPriority
  * which tasks are queued but not executed. Call Start()
  * to begin execution of the tasks.
  */
-class CThreadScheduler
+class CThreadScheduler : public CMuleCoroutine
 {
 public:
 	/** Starts execution of queued tasks. */
@@ -107,10 +110,10 @@ private:
 	void CreateSchedulerThread();
 
 	/** Entry function called via internal thread-object. */
-	void* Entry();
+        virtual bool Continue();
 
 	//! Contains a task and its age.
-	typedef std::pair<CThreadTask*, uint32> CEntryPair;
+        typedef std::pair<CThreadTask*, uint32_t> CEntryPair;
 
 	//! List of currently scheduled tasks.
 	std::deque<CEntryPair> m_tasks;
@@ -118,18 +121,23 @@ private:
 	//! Specifies if tasks should be resorted by priority.
 	bool	m_tasksDirty;
 
+        //         WX_DECLARE_STRING_HASH_MAP( CThreadTask*, CDescMap );
+        //         WX_DECLARE_STRING_HASH_MAP( CDescMap, CTypeMap );
 	typedef std::map<wxString, CThreadTask*> CDescMap;
 	typedef std::map<wxString, CDescMap> CTypeMap;
 	//! Map of current task by type -> desc. Used to avoid duplicate tasks.
 	CTypeMap m_taskDescs;
 
-	//! The actual worker thread.
-	CMuleThread* m_thread;
 	//! The currently running task, if any.
 	CThreadTask* m_currentTask;
 
 	friend class CTaskThread;
 	friend struct CTaskSorter;
+
+        struct {
+                std::unique_ptr<CThreadTask> task;
+        } cont;
+
 };
 
 
@@ -146,7 +154,7 @@ private:
  * with the description. The description should be unique
  * for the given task, such that duplicates can be discovered.
  */
-class CThreadTask
+class CThreadTask : public CMuleCoroutine
 {
 public:
 	/**
@@ -169,16 +177,11 @@ public:
 	ETaskPriority GetPriority() const;
 
 protected:
-	//! @see wxThread::Entry
-	virtual void Entry() = 0;
 
 	/** Called when the last task of a specific type has been completed. */
 	virtual void OnLastTask();
 
-	/** @see wxThread::OnExit */
-	virtual void OnExit();
-
-	/** @see wxThread::TestDestroy */
+        /** @see wiThread::TestDestroy */
 	bool TestDestroy() const;
 
 private:
@@ -187,9 +190,9 @@ private:
 	ETaskPriority m_priority;
 
 	//! The owner (scheduler), used when calling TestDestroy.
-	CMuleThread* m_owner;
+        CMuleCoroutine* m_owner;
 	//! Specifies if the specifc task should be aborted.
-	bool m_abort;
+        bool & m_abort;
 
 	friend class CThreadScheduler;
 };

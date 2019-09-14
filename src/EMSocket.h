@@ -30,6 +30,7 @@
 
 #include "ThrottledSocket.h"	// Needed for ThrottledFileSocket
 
+#include "MuleThread.h"
 class CPacket;
 
 #define ERR_WRONGHEADER		0x01
@@ -46,7 +47,7 @@ const uint32 PACKET_HEADER_SIZE	= 6;
 class CEMSocket : public CEncryptedStreamSocket, public ThrottledFileSocket
 {
 public:
-	CEMSocket(const CProxyData *ProxyData = NULL);
+        CEMSocket();
 	virtual ~CEMSocket();
 
 	virtual void	SendPacket(CPacket* packet, bool delpacket = true, bool controlpacket = true, uint32 actualPayloadSize = 0);
@@ -99,6 +100,7 @@ private:
 	bool	pendingOnReceive;
 
 	// Download partial header
+        // actually, this holds only 'PACKET_HEADER_SIZE-1' bytes.
 	byte	pendingHeader[PACKET_HEADER_SIZE];
 	uint32	pendingHeaderSize;
 
@@ -125,7 +127,7 @@ private:
 
     bool m_currentPacket_is_controlpacket;
 
-	wxMutex	m_sendLocker;
+        wiMutex	m_sendLocker;
 
 	uint64 m_numberOfSentBytesCompleteFile;
     uint64 m_numberOfSentBytesPartFile;

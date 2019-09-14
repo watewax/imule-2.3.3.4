@@ -1,5 +1,5 @@
 //								-*- C++ -*-
-// This file is part of the aMule Project.
+// This file is part of the iMule Project.
 //
 // Copyright (c) 2004-2011 Angel Vidal ( kry@amule.org )
 // Copyright (c) 2004-2011 aMule Team ( admin@amule.org / http://www.amule.org )
@@ -43,6 +43,7 @@ there client on the eMule forum..
 #include "../routing/Maps.h"
 #include "../../Tag.h"
 
+#include "i2p/CI2PAddress.h"
 class CMemFile;
 
 ////////////////////////////////////////
@@ -72,13 +73,13 @@ public:
 	static CSearch* PrepareLookup(uint32_t type, bool start, const CUInt128& id);
 
 	// Will return unique search id, returns zero if already searching for this keyword.
-	static CSearch* PrepareFindKeywords(const wxString& keyword, uint32_t searchTermsDataSize, const uint8_t *searchTermsData, uint32_t searchid);
+        static CSearch* PrepareFindKeywords(const wxString& keyword, CMemFile* searchTermsData, uint32_t searchid);
 
 	static bool StartSearch(CSearch* search);
 
-	static void ProcessResponse(const CUInt128& target, uint32_t fromIP, uint16_t fromPort, ContactList *results);
-	static void ProcessResult(const CUInt128& target, const CUInt128& answer, TagPtrList *info);
-	static void ProcessPublishResult(const CUInt128& target, const uint8_t load, const bool loadResponse);
+        static void ProcessResponse(const CUInt128& target, const CI2PAddress & fromDest, const ContactList & results);
+        static void ProcessResult(const CMemFile & bio, const CI2PAddress & fromDest);
+        static void ProcessPublishResult( CMemFile & bio, const CI2PAddress & fromDest );
 
 	static void GetWords(const wxString& str, WordList *words, bool allowDuplicates = false);
 

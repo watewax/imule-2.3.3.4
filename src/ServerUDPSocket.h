@@ -28,6 +28,7 @@
 
 #include "MuleUDPSocket.h"
 
+#include <memory>
 
 class CPacket;
 class CServer;
@@ -37,21 +38,20 @@ class CMemFile;
 class CServerUDPSocket : public CMuleUDPSocket
 {
 public:
-	CServerUDPSocket(amuleIPV4Address& addr, const CProxyData* ProxyData = NULL);
+        CServerUDPSocket(wxString destKeyName, const CProxyData* ProxyData = NULL);
 
 	void	SendPacket(CPacket* packet, CServer* host, bool delPacket, bool rawpacket, uint16 port_offset);
-	void	OnHostnameResolved(uint32 ip);
-	virtual void OnReceiveError(int errorCode, uint32 ip, uint16 port);
+        void	OnHostnameResolved(const CI2PAddress & dest);
+        virtual void OnReceiveError(int errorCode, const CI2PAddress & dest);
 
 private:
-	void	OnPacketReceived(uint32 ip, uint16 port, byte* buffer, size_t length);
-	void	ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, uint16 port);
+        void	OnPacketReceived(const CI2PAddress & dest, uint8_t* buffer, size_t length);
+        void	ProcessPacket(CMemFile& packet, uint8 opcode, const CI2PAddress & dest);
 	void	SendQueue();
 
 	struct ServerUDPPacket {
-		CPacket*	packet;
-		uint32		ip;
-		uint16		port;
+                std::unique_ptr<CPacket>	packet;
+                CI2PAddress		dest;
 		wxString	addr;
 	};
 

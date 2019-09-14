@@ -1,5 +1,5 @@
 #							-*- Autoconf -*-
-# This file is part of the aMule Project.
+# This file is part of the iMule Project.
 #
 # Copyright (c) 2003-2011 aMule Team ( admin@amule.org / http://www.amule.org )
 #
@@ -370,6 +370,7 @@ AC_DEFUN([MULE_COMPILATION_FLAGS],
 	MULE_IF_ENABLED([optimize],	[MULE_ADDCCXXFLAG([-O2])])
 
 	MULE_ADDFLAG([CPP], [-DUSE_WX_EXTENSIONS])
+	MULE_ADDCCXXFLAG([-std=c++11])
 ])
 
 dnl ---------------------------------------------------------------------------
@@ -504,6 +505,49 @@ AC_DEFUN([MULE_CHECK_CCACHE],
 
 
 dnl ----------------------------------------------------
+dnl MULE_CHECK_BFD
+dnl check if bfd.h is on the system and usable
+dnl ----------------------------------------------------
+AC_DEFUN([MULE_CHECK_BFD],
+[AC_REQUIRE([MULE_CHECK_NLS])dnl
+
+	AC_MSG_CHECKING([for bfd])
+	result=no
+	for bfd_ldadd in "" "${LIBINTL}" "-ldl" "-ldl ${LIBINTL}"; do
+		MULE_BACKUP([LIBS])
+		MULE_BACKUP([LDFLAGS])
+		MULE_PREPEND([LIBS], [-lbfd -liberty ${bfd_ldadd} ${ZLIB_LIBS}])
+		MULE_APPEND([LDFLAGS], [${ZLIB_LDFLAGS}])
+		AC_LINK_IFELSE([
+			AC_LANG_PROGRAM([[
+				#include <ansidecl.h>
+				#include <bfd.h>
+			]], [[
+				char *dummy = bfd_errmsg(bfd_get_error());
+			]])
+		], [
+			result=yes
+			BFD_CPPFLAGS="-DHAVE_BFD"
+			BFD_LIBS="-lbfd -liberty ${bfd_ldadd}"
+			MULE_RESTORE([LIBS])
+			MULE_RESTORE([LDFLAGS])
+			break
+		])
+		MULE_RESTORE([LIBS])
+		MULE_RESTORE([LDFLAGS])
+	done
+
+	AC_MSG_RESULT([$result])
+
+	AS_IF([test $result = no],
+		[MULE_WARNING([bfd.h not found or unusable, please install binutils development package if you are a developer or want to help testing iMule])])
+
+AC_SUBST([BFD_CPPFLAGS])dnl
+AC_SUBST([BFD_LIBS])dnl
+])
+
+
+dnl ----------------------------------------------------
 dnl MULE_CHECK_FLEX_EXTENDED
 dnl check if flex can produce header files
 dnl ----------------------------------------------------
@@ -608,6 +652,51 @@ AC_DEFUN([MULE_CHECK_EXECINFO],
 	])
 ])
 
+dnl ---------------------------------------------------------------------------
+dnl MULE_CHECK_MMAP
+dnl
+dnl Checks for mmap() and makes use of it when found.
+dnl ---------------------------------------------------------------------------
+AC_DEFUN([MULE_CHECK_MMAP],
+[
+	MULE_ARG_ENABLE([mmap], [no], [enable using mapped memory if supported])
+
+	MULE_IF_ENABLED([mmap], [
+		AC_CHECK_HEADERS([sys/mman.h])
+		AC_FUNC_MMAP
+		AC_CHECK_FUNCS([munmap sysconf])
+		AS_IF([test $ac_cv_func_sysconf = yes], [
+			AC_MSG_CHECKING([for pagesize constant for sysconf])
+			AC_LINK_IFELSE([
+				AC_LANG_PROGRAM([[
+					#include <unistd.h>
+				]], [[
+					return sysconf(_SC_PAGESIZE);
+				]])
+			], [
+				AC_MSG_RESULT([_SC_PAGESIZE])
+				AC_DEFINE([HAVE__SC_PAGESIZE], [1], [Define to 1 if you have the _SC_PAGESIZE constant in <unistd.h>])
+			], [
+				AC_LINK_IFELSE([
+					AC_LANG_PROGRAM([[
+						#include <unistd.h>
+					]], [[
+						return sysconf(_SC_PAGE_SIZE);
+					]])
+				], [
+					AC_MSG_RESULT([_SC_PAGE_SIZE])
+					AC_DEFINE([HAVE__SC_PAGE_SIZE], [1], [Define to 1 if you have the _SC_PAGE_SIZE constant in <unistd.h>, but not _SC_PAGESIZE])
+				], [
+					AC_MSG_RESULT([none])
+				])
+			])
+		])
+	], [
+		# fake the result of the test for munmap() for the gettext macros
+		ac_cv_func_munmap=no
+	])
+])
+
 
 dnl ---------------------------------------------------------------------------
 dnl MULE_DENOISER
@@ -635,7 +724,7 @@ AC_DEFUN([MULE_DENOISER],
 		sed -e "1{x;s/.*/1/;x;};/^[	 ]*\$/d;/^#if /{/level.*$denoiserlevel/{x;s/^/1/;x;b0;};x;s/^/0/;x;:0;d;};/^#else/{x;/^1/{s/1/0/;b1;};s/0/1/;:1;x;d;};/^#endif/{x;s/.//;x;d;};/^[	 ]*#/d;x;/^1/{x;b;};x;d" \
 			$srcdir/src/utils/scripts/denoiser.rules > src/utils/scripts/denoiser.sed
 		for i in `find . -name 'Makefile' -print`; do
-			if test -n "`head -n 1 $i | grep '^#'`"; then
+			if test -n "`head -n 1 $i | grep '^#'`" -a -z "`cat $i | grep '^#do not change this anti-MULEDENOISER line'`"; then
 				sed -f src/utils/scripts/denoiser.sed $i > $i.tmp && mv $i.tmp $i
 			fi
 		done

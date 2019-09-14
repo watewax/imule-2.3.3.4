@@ -31,14 +31,14 @@
 class CClientUDPSocket : public CMuleUDPSocket
 {
 public:
-	CClientUDPSocket(const amuleIPV4Address &address, const CProxyData *ProxyData = NULL);
+        CClientUDPSocket(wxString privKey, const CProxyData *ProxyData = NULL);
 
 protected:
 	void	OnReceive(int errorCode);
 
 private:
-	void	OnPacketReceived(uint32 ip, uint16 port, byte* buffer, size_t length);
-	void	ProcessPacket(byte* packet, int16 size, int8 opcode, uint32 host, uint16 port);
+        void	OnPacketReceived(const CI2PAddress & addr, byte* buffer, size_t length);
+        void	ProcessPacket(byte* packet, int16 size, int8 opcode, const CI2PAddress & dest);
 };
 
 #endif // CLIENTUDPSOCKET_H

@@ -1,15 +1,17 @@
+#do not change this anti-MULEDENOISER line or the MULEDENOISER will eat you
+#no, seriously, it will break installation of data files
 SUBDIRS =
 
 if COMPILE_NLS
 SUBDIRS += intl po
 endif
 
-SUBDIRS += docs src unittests
+SUBDIRS += docs src
 
-EXTRA_DIST = amule.rc amule.ico amule.png convert.ico \
-	README.Debian-Packages aMule-CVS.spec aMule.spec \
+EXTRA_DIST = imule.rc imule.ico imule.png convert.ico \
+	README.Debian-Packages  iMule.spec \
 	amule_build_install.sh autogen.sh \
-	po/l10n.xsl
+	po/l10n.xsl LICENSE_I2P.txt
 
 dist_icon_DATA =
 icondir = $(datadir)/pixmaps
@@ -18,22 +20,22 @@ dist_util_DATA =
 utildir = $(datadir)/applications
 
 if MONOLITHIC
-dist_icon_DATA += amule.xpm
-dist_util_DATA += amule.desktop
+dist_icon_DATA += imule.xpm
+dist_util_DATA += imule.desktop
 endif
 
 if AMULE_GUI
-dist_icon_DATA += amulegui.xpm
-dist_util_DATA += amulegui.desktop
+dist_icon_DATA += imulegui.xpm
+dist_util_DATA += imulegui.desktop
 endif
 
 ACLOCAL_AMFLAGS = -I m4
 
 DISTCHECK_CONFIGURE_FLAGS = \
-	--enable-amulecmd \
+	--enable-imulecmd \
 	--enable-webserver \
-	--enable-amule-daemon \
-	--enable-amule-gui \
+	--enable-imule-daemon \
+	--enable-imule-gui \
 	--enable-cas \
 	--enable-wxcas \
 	--enable-plasmamule \
@@ -41,7 +43,7 @@ DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-alcc
 
 # Avoid everything getting built when doing "make check"
-check-recursive: SUBDIRS = unittests
+#check-recursive: SUBDIRS = unittests
 
 MAINTAINERCLEANFILES = ABOUT-NLS \
 					   Makefile.in \
@@ -58,3 +60,9 @@ MAINTAINERCLEANFILES = ABOUT-NLS \
 
 EXTRA__DIST__SUBDIRS = aMule.app debian
 include $(top_srcdir)/automake/dist-hook.am
+
+install-nomad:
+	$(MAKE) bindir=$(prefix) datadir=$(prefix) pkgdatadir=$(prefix) docdir=$(prefix) libexecdir=$(prefix) localedir=$(prefix)/locale install-strip
+	
+install-debug:
+	$(MAKE) bindir=$(prefix) datadir=$(prefix) pkgdatadir=$(prefix) docdir=$(prefix) libexecdir=$(prefix) localedir=$(prefix)/locale install

@@ -86,15 +86,15 @@ AC_DEFUN([MULE_CHECK_NLS],
 	AS_IF([test $USE_INCLUDED_LIBINTL = yes], [INCINTL=-I\${top_builddir}/intl])
 
 	AS_IF([test x$USE_NLS = xyes], [MULE_CHECK_AUTOPOINT(, [USE_NLS=no])])
-	AS_IF([test x$USE_NLS = xno -a x${enable_nls:-yes} = xyes], [MULE_WARNING([You need to install GNU gettext/gettext-tools to compile aMule with i18n support.])])
+	AS_IF([test x$USE_NLS = xno -a x${enable_nls:-yes} = xyes], [MULE_WARNING([You need to install GNU gettext/gettext-tools to compile iMule with i18n support.])])
 
 	AS_IF([test ${USE_NLS:-no} = yes], [
 		AC_MSG_CHECKING([for requested languages])
 		Generate_Langs=`echo $LINGUAS | $AWK ['OFS="\\\\|" { for (i = 1; i <= NF; ++i) $i = "\\\\." $i; print }']`
-		GENERATE_MANS_TO_INSTALL([amule-daemon], [docs/man/amuled])
-		GENERATE_MANS_TO_INSTALL([amulecmd], [docs/man/amulecmd])
-		GENERATE_MANS_TO_INSTALL([webserver], [docs/man/amuleweb])
-		GENERATE_MANS_TO_INSTALL([amule-gui], [docs/man/amulegui])
+		GENERATE_MANS_TO_INSTALL([imule-daemon], [docs/man/imuled])
+		GENERATE_MANS_TO_INSTALL([imulecmd], [docs/man/imulecmd])
+		GENERATE_MANS_TO_INSTALL([webserver], [docs/man/imuleweb])
+		GENERATE_MANS_TO_INSTALL([imule-gui], [docs/man/imulegui])
 		GENERATE_MANS_TO_INSTALL([cas], [src/utils/cas/docs/cas])
 		GENERATE_MANS_TO_INSTALL([wxcas], [src/utils/wxCas/docs/wxcas])
 		GENERATE_MANS_TO_INSTALL([ed2k], [docs/man/ed2k])

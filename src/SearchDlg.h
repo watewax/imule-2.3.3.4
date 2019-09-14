@@ -27,7 +27,7 @@
 #define SEARCHDLG_H
 
 #include <wx/panel.h>		// Needed for wxPanel
-#include <wx/notebook.h>	// needed for wxBookCtrlEvent in wx 2.8
+//#include <wx/notebook.h>	// needed for wxBookCtrlEvent in wx 2.8
 
 #include "Types.h"		// Needed for uint16 and uint32
 
@@ -40,6 +40,7 @@ class wxSpinEvent;
 class wxGauge;
 class CSearchFile;
 
+class wxAuiNotebookEvent;
 
 /**
  * This class represents the Search Dialog, which takes care of
@@ -94,7 +95,7 @@ public:
 	 * @param searchString This will be the heading of the new page.
 	 * @param nSearchID The results with this searchId will be displayed.
 	 */
-	void		CreateNewTab(const wxString& searchString, wxUIntPtr nSearchID);
+        void		CreateNewTab(const wxString& searchString, wxUIntPtr nSearchID, bool stopable);
 
 
 	/**
@@ -149,7 +150,7 @@ private:
 	void		OnFilterCheckChange(wxCommandEvent& ev);
 	void		OnFilteringChange(wxCommandEvent& ev);
 
-	void		OnSearchClosing(wxBookCtrlEvent& evt);
+        void		OnSearchClosing(wxAuiNotebookEvent& evt);
 
 	void		OnBnClickedStart(wxCommandEvent& evt);
 	void		OnBnClickedStop(wxCommandEvent& evt);
@@ -158,7 +159,7 @@ private:
 	/**
 	 * Event-handler for page-chages which takes care of enabling/disabling the download button.
 	 */
-	void		OnSearchPageChanged(wxBookCtrlEvent& evt);
+        void		OnSearchPageChanged(wxAuiNotebookEvent& evt);
 
 	uint32		m_last_search_time;
 

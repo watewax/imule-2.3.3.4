@@ -51,7 +51,7 @@
 #ifdef ASIO_SOCKETS
 #	include <boost/system/error_code.hpp>
 #endif
-
+#include "i2p/wxI2PEvents.h"
 
 #ifndef ASIO_SOCKETS
 
@@ -59,6 +59,7 @@
 // CServerSocketHandler
 //------------------------------------------------------------------------------
 
+/*
 class CServerSocketHandler: public wxEvtHandler
 {
 public:
@@ -74,31 +75,34 @@ private:
 BEGIN_EVENT_TABLE(CServerSocketHandler, wxEvtHandler)
 	EVT_SOCKET(ID_SERVERSOCKET_EVENT, CServerSocketHandler::ServerSocketHandler)
 END_EVENT_TABLE()
+*/
 
-void CServerSocketHandler::ServerSocketHandler(wxSocketEvent& event)
+wxDEFINE_EVENT(ID_SERVERSOCKET_EVENT, CI2PSocketEvent);
+
+//void CServerSocketHandler::ServerSocketHandler(wxSocketEvent& event)
+void CServerSocket::ServerSocketHandler(CI2PSocketEvent& event)
 {
 	CServerSocket *socket = dynamic_cast<CServerSocket *>(event.GetSocket());
 	wxASSERT(socket);
-	if (!socket) {
-		return;
-	}
-
-	if (socket->IsDestroying()) {
+        wxASSERT(socket==this);
+        //         if (!socket) return;
+        //         if (socket!=this) return;
+        if (OnDestroy()) {
 		return;
 	}
 
 	switch(event.GetSocketEvent()) {
 		case wxSOCKET_CONNECTION:
-			socket->OnConnect(wxSOCKET_NOERROR);
+                OnConnect(wxSOCKET_NOERROR);
 			break;
 		case wxSOCKET_LOST:
-			socket->OnError(socket->LastError());
+                OnError(socket->LastError());
 			break;
 		case wxSOCKET_INPUT:
-			socket->OnReceive(wxSOCKET_NOERROR);
+                OnReceive(wxSOCKET_NOERROR);
 			break;
 		case wxSOCKET_OUTPUT:
-			socket->OnSend(wxSOCKET_NOERROR);
+                OnSend(wxSOCKET_NOERROR);
 			break;
 		default:
 			wxFAIL;
@@ -111,7 +115,7 @@ void CServerSocketHandler::ServerSocketHandler(wxSocketEvent& event)
 //
 // There can be only one. :)
 //
-static CServerSocketHandler g_serverSocketHandler;
+//static CServerSocketHandler g_serverSocketHandler;
 
 #endif /* !ASIO_SOCKETS */
 
@@ -120,9 +124,9 @@ static CServerSocketHandler g_serverSocketHandler;
 // CServerSocket
 //------------------------------------------------------------------------------
 
-CServerSocket::CServerSocket(CServerConnect* in_serverconnect, const CProxyData *ProxyData)
+CServerSocket::CServerSocket(CServerConnect* in_serverconnect)
 :
-CEMSocket(ProxyData)
+        CEMSocket()
 {
 	serverconnect = in_serverconnect;
 	connectionstate = 0;
@@ -131,7 +135,8 @@ CEMSocket(ProxyData)
 	m_bIsDeleting = false;
 
 #ifndef ASIO_SOCKETS
-	SetEventHandler(g_serverSocketHandler, ID_SERVERSOCKET_EVENT);
+        Bind(ID_SERVERSOCKET_EVENT, &CServerSocket::ServerSocketHandler, this);
+        SetEventHandler(*this, ID_SERVERSOCKET_EVENT);
 
 	SetNotify(
 		wxSOCKET_CONNECTION_FLAG |
@@ -170,15 +175,16 @@ void CServerSocket::OnConnect(int nErrorCode)
 		case wxSOCKET_NOERROR:
 #endif
 			if (cur_server->HasDynIP()) {
-				uint32 server_ip = GetPeerInt();
-				cur_server->SetID(server_ip);
+                        CI2PAddress  server_dest;
+                        GetPeer(server_dest);
+                        cur_server->SetDest(server_dest);
 				// GetServerByAddress may return NULL, so we must test!
 				// This was the reason why amule would crash when trying to
 				// connect in wxWidgets 2.5.2
 				CServer *pServer = theApp->serverlist->GetServerByAddress(
-					cur_server->GetAddress(), cur_server->GetPort());
+                                                   cur_server->GetAddress());
 				if (pServer) {
-					pServer->SetID(server_ip);
+                                pServer->SetDest(server_dest);
 				} else {
 					AddDebugLogLineN(logServer, wxT("theApp->serverlist->GetServerByAddress() returned NULL"));
 					return;
@@ -257,50 +263,48 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 					if (message.StartsWith(wxT("server version"))) {
 						wxString strVer = message.Mid(15,64); // truncate string to avoid misuse by servers in showing ads
 						strVer.Trim();
-						CServer* eserver = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(),cur_server->GetPort());
+                                        CServer* eserver = theApp->serverlist->GetServerByAddress(cur_server->GetAddress());
 						if (eserver) {
 							eserver->SetVersion(strVer);
 							Notify_ServerRefresh(eserver);
 						}
 					} else if (message.StartsWith(wxT("ERROR"))) {
-						CServer* pServer = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(),cur_server->GetPort());
+                                        CServer* pServer = theApp->serverlist->GetServerByAddress(cur_server->GetAddress());
 						wxString servername;
 						if (pServer) {
 							servername	= pServer->GetListName();
 						} else {
 							servername = _("Server");
 						}
-						AddLogLineN(CFormat( _("ERROR: %s (%s) - %s") )
+                                        AddLogLineN(CFormat( _("Error: %s  - %x") )
 							% servername
-							% Uint32_16toStringIP_Port(cur_server->GetIP(), cur_server->GetPort())
-							% message.Mid(5,message.Len()).Trim(wxT(" :")));
+                                                    % cur_server->GetDest().hashCode());
 						bOutputMessage = false;
 
 					} else if (message.StartsWith(wxT("WARNING"))) {
 
-						CServer* pServer = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(),cur_server->GetPort());
+                                        CServer* pServer = theApp->serverlist->GetServerByAddress(cur_server->GetAddress());
 						wxString servername;
 						if (pServer) {
 							servername	= pServer->GetListName();
 						} else {
 							servername = _("Server");
 						}
-						AddLogLineN(CFormat( _("WARNING: %s (%s) - %s") )
+                                        AddLogLineN(CFormat( _("Warning: %s - %x") )
 							% servername
-							% Uint32_16toStringIP_Port(cur_server->GetIP(), cur_server->GetPort())
-							% message.Mid(5,message.Len()).Trim(wxT(" :")));
+                                                    % cur_server->GetDest().hashCode());
 
 						bOutputMessage = false;
 					}
 
 					if (message.Find(wxT("[emDynIP: ")) != (-1) && message.Find(wxT("]")) != (-1) && message.Find(wxT("[emDynIP: ")) < message.Find(wxT("]"))){
-						wxString dynip = message.Mid(message.Find(wxT("[emDynIP: "))+10,message.Find(wxT("]")) - (message.Find(wxT("[emDynIP: "))+10));
-						dynip.Trim(wxT(" "));
-						if ( dynip.Length() && dynip.Length() < 51){
-							CServer* eserver = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(),cur_server->GetPort());
+                                        wxString dyndest/*ip*/ = message.Mid(message.Find(wxT("[emDynIP: "))+10,message.Find(wxT("]")) - (message.Find(wxT("[emDynIP: "))+10));
+                                        dyndest/*ip*/.Trim(wxT(" "));
+                                        if ( dyndest/*ip*/.Length()/* && dynip.Length() < 51*/) {
+                                                CServer* eserver = theApp->serverlist->GetServerByAddress(cur_server->GetAddress()/*,cur_server->GetPort()*/);
 							if (eserver){
-								eserver->SetDynIP(dynip);
-								cur_server->SetDynIP(dynip);
+                                                        eserver->SetDynIP(dyndest);
+                                                        cur_server->SetDynIP(dyndest);
 								Notify_ServerRefresh(eserver);
 							}
 						}
@@ -317,29 +321,29 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 
 				theStats::AddDownOverheadServer(size);
 
-				if (size < 4 /* uint32 (ID)*/) {
+                        if (size < 4 /* uint32_t (ID)*/) {
 					throw wxString(wxT("Corrupt or invalid loginanswer from server received"));
 				}
 
 				CMemFile data(packet, size);
 
-				uint32 new_id = data.ReadUInt32();
+                uint32_t new_id = data.ReadUInt32();
 
+                /* Add more from 0.30c (Creteil) BEGIN */
 				// save TCP flags in 'cur_server'
 				wxASSERT(cur_server);
+                CI2PAddress ConnDest;//uint32_t ConnPort = 0;
 				CServer* pServer = NULL;
 				if (cur_server) {
-					uint32 ConnPort = 0;
-					uint32 rport = cur_server->GetConnPort();
-					pServer = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(), rport);
-					if (size >= 4+4 /* uint32 (ID) + uint32 (TCP flags)*/) {
+                                CI2PAddress rdest = cur_server->GetConnDest();//uint32_t rport = cur_server->GetConnPort();
+                                if (size >= 4+4 /* uint32_t (ID) + uint32_t (TCP flags)*/) {
 						cur_server->SetTCPFlags(data.ReadUInt32());
-						if (size >= 4+4+4 /* uint32 (ID) + uint32 (TCP flags) + uint32 (aux port) */) {
+                                        if (size >= 4+4+4 /* uint32_t (ID) + uint32_t (TCP flags) + uint32_t (aux port) */) {
 							// aux port login : we should use the 'standard' port of this server to advertize to other clients
-							ConnPort = data.ReadUInt32();
-							cur_server->SetPort(ConnPort);
+                                                ConnDest/*Port*/ = data.ReadAddress();//UInt32();
+                                                cur_server->SetDest/*Port*/(ConnDest/*Port*/);
 							if (cur_server->GetAuxPortsList().IsEmpty()) {
-								cur_server->SetAuxPortsList(CFormat(wxT("%u")) % rport);
+//                                                         cur_server->SetAuxPortsList(CFormat(wxT("%u")) % rport);
 							}
 						}
 					} else {
@@ -348,10 +352,10 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 					// copy TCP flags into the server in the server list
 					if (pServer) {
 						pServer->SetTCPFlags(cur_server->GetTCPFlags());
-						if (ConnPort) {
-							pServer->SetPort(ConnPort);
+                                        if (ConnDest.isValid()/*Port*/) {
+                                                pServer->SetDest/*Port*/(ConnDest/*Port*/);
 							if (pServer->GetAuxPortsList().IsEmpty()) {
-								pServer->SetAuxPortsList(CFormat(wxT("%u")) % pServer->GetConnPort());
+//                                                         pServer->SetAuxPortsList(CFormat(wxT("%u")) % pServer->GetConnPort());
 							}
 							Notify_ServerRefresh(pServer);
 							Notify_ServerUpdateED2KInfo();
@@ -359,12 +363,12 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 					}
 				}
 
-				uint32 dwServerReportedIP = 0;
+				CI2PAddress dwServerReportedIP;
 				if (size >= 4 + 4 + 4 + 4 + 4 /* All of the above + reported ip + obfuscation port */) {
-					dwServerReportedIP = data.ReadUInt32();
+                                dwServerReportedIP = data.ReadAddress();
 					if (::IsLowID(dwServerReportedIP)){
 						wxFAIL;
-						dwServerReportedIP = 0;
+                                        dwServerReportedIP = CI2PAddress::null;
 					}
 					wxASSERT( dwServerReportedIP == new_id || ::IsLowID(new_id) );
 					uint32 dwObfuscationTCPPort = data.ReadUInt32();
@@ -411,8 +415,8 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 
 				serverconnect->SetClientID(new_id);
 
-				if (::IsLowID(new_id) && dwServerReportedIP != 0) {
-					theApp->SetPublicIP(dwServerReportedIP);
+                        if (::IsLowID(new_id) && dwServerReportedIP.isValid()) {
+                                theApp->SetPublicDest(dwServerReportedIP);
 				}
 
 				if (connectionstate != CS_CONNECTED) {
@@ -444,8 +448,7 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 					packet,
 					size,
 					true /*(cur_srv && cur_srv->GetUnicodeSupport())*/,
-					cur_srv ? cur_srv->GetIP() : 0,
-					cur_srv ? cur_srv->GetPort() : 0);
+                                cur_srv ? cur_srv->GetDest() : CI2PAddress::null);
 				theApp->searchlist->LocalSearchEnd();
 				break;
 			}
@@ -456,7 +459,7 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 				CMemFile sources(packet,size);
 				CMD4Hash fileid = sources.ReadHash();
 				if (CPartFile* file = theApp->downloadqueue->GetFileByID(fileid)) {
-					file->AddSources(sources, cur_server->GetIP(), cur_server->GetPort(), SF_LOCAL_SERVER, (opcode == OP_FOUNDSOURCES_OBFU));
+                                file->AddSources(sources, cur_server->GetDest(), SF_LOCAL_SERVER, (opcode == OP_FOUNDSOURCES_OBFU));
 				} else {
 					AddDebugLogLineN(logServer, wxT("Sources received for unknown file: ") + fileid.Encode());
 				}
@@ -468,7 +471,7 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 				if (size < 8) {
 					throw wxString(wxT("Invalid server status packet"));
 				}
-				CServer* update = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(), cur_server->GetPort());
+                        CServer* update = theApp->serverlist->GetServerByAddress(cur_server->GetAddress());
 				if (update) {
 					CMemFile data(packet, size);
 					update->SetUserCount(data.ReadUInt32());
@@ -488,7 +491,7 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 					// throw wxString(wxT("Unknown server info received!"));
 					break;
 				}
-				CServer* update = theApp->serverlist->GetServerByAddress(cur_server->GetAddress(),cur_server->GetPort());
+                        CServer* update = theApp->serverlist->GetServerByAddress(cur_server->GetAddress());
 				if (update) {
 					CMemFile data(packet,size);
 					CMD4Hash hash = data.ReadHash();
@@ -507,9 +510,9 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 					uint32 nTags = data.ReadUInt32();
 					for (uint32 i = 0; i < nTags; i++){
 						CTag tag(data, update->GetUnicodeSupport());
-						if (tag.GetNameID() == ST_SERVERNAME){
+                                        if (tag.GetID() == ST_SERVERNAME) {
 							update->SetListName(tag.GetStr());
-						} else if (tag.GetNameID() == ST_DESCRIPTION){
+                                        } else if (tag.GetID() == ST_DESCRIPTION) {
 							update->SetDescription(tag.GetStr());
 						} // No more known tags from server
 					}
@@ -530,12 +533,9 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 				}
 				int addcount = 0;
 				while(count) {
-					uint32 ip	= servers->ReadUInt32();
-					uint16 port = servers->ReadUInt16();
-					CServer* srv = new CServer(
-								port ,				// Port
-								Uint32toStringIP(ip));	// Ip
-					srv->SetListName(srv->GetFullIP());
+                                CI2PAddress dest = servers->ReadAddress();
+                                CServer* srv = new CServer( dest );
+                                srv->SetListName(srv->GetDest().humanReadable());
 					if (!theApp->AddServer(srv)) {
 						delete srv;
 					} else {
@@ -557,8 +557,8 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 				theStats::AddDownOverheadServer(size);
 				if (size >= 6) {
 					CMemFile data(packet,size);
-					uint32 dwIP = data.ReadUInt32();
-					uint16 nPort = data.ReadUInt16();
+                                CI2PAddress dwIP = data.ReadAddress();
+                                /*uint16 nPort = */data.ReadUInt16();
 
 					uint8 byCryptOptions = 0;
 					CMD4Hash achUserHash;
@@ -567,10 +567,10 @@ bool CServerSocket::ProcessPacket(const byte* packet, uint32 size, int8 opcode)
 						achUserHash = data.ReadHash();
 					}
 
-					CUpDownClient* client = theApp->clientlist->FindClientByIP(dwIP,nPort);
+                                CUpDownClient* client = theApp->clientlist->FindClientByIP(dwIP);
 
 					if (!client) {
-						client = new CUpDownClient(nPort,dwIP,0,0,0, true, true);
+                                        client = new CUpDownClient(dwIP,CI2PAddress::null,0, true, true);
 						theApp->clientlist->AddClient(client);
 					}
 					if (size >= 23 && client->HasValidHash()){
@@ -641,31 +641,26 @@ void CServerSocket::ConnectToServer(CServer* server, bool bNoCrypt)
 	info = cur_server->GetListName();
 
 	// This must be used if we want to reverse-check the addr of the server
-	if (cur_server->HasDynIP() || !cur_server->GetIP()) {
+        if (cur_server->HasDynIP() || !cur_server->GetDest()) {
 		m_IsSolving = true;
 		// Send it to solving thread.
-		CAsyncDNS* dns = new CAsyncDNS(server->GetAddress(), DNS_SERVER_CONNECT, theApp, this);
+                CAsyncDNS* dns = new CAsyncDNS(server->GetAddress().c_str(), DNS_SERVER_CONNECT, theApp, this);
 
-		if ( dns->Create() == wxTHREAD_NO_ERROR ) {
-			if ( dns->Run() != wxTHREAD_NO_ERROR ) {
-				dns->Delete();
-				AddLogLineN(CFormat( _("Cannot create DNS solving thread for connecting to %s") ) % cur_server->GetAddress());
-			}
-		} else {
-			dns->Delete();
+                if ( !dns->Run() ) {
+                        delete dns;
 			AddLogLineN(CFormat( _("Cannot create DNS solving thread for connecting to %s") ) % cur_server->GetAddress());
 		}
 	} else {
 		// Nothing to solve, we already have the IP
-		OnHostnameResolved(cur_server->GetIP());
+                OnHostnameResolved(cur_server->GetDest());
 	}
 
 }
 
 void CServerSocket::OnError(int DEBUG_ONLY(nErrorCode))
 {
-	AddDebugLogLineN(logServer, CFormat(wxT("Error in serversocket: %s(%s:%i): %u"))
-		% cur_server->GetListName() % cur_server->GetFullIP() % cur_server->GetPort() % nErrorCode);
+        AddDebugLogLineN(logServer, CFormat(wxT("Error in serversocket: %s(%s): %u"))
+                         % cur_server->GetListName() % cur_server->GetFullIP() % nErrorCode);
 	SetConnectionState(CS_DISCONNECTED);
 }
 
@@ -730,44 +725,45 @@ void CServerSocket::SendPacket(CPacket* packet, bool delpacket, bool controlpack
 }
 
 
-void CServerSocket::OnHostnameResolved(uint32 ip) {
+void CServerSocket::OnHostnameResolved(const CI2PAddress & dest)
+{
 
 	m_IsSolving = false;
-	if (ip) {
-		if (theApp->ipfilter->IsFiltered(ip, true)) {
+        if (dest.isValid()) {
+       		if (theApp->ipfilter->IsFiltered(dest, true)) {
 			AddLogLineC(CFormat( _("Server IP %s (%s) is filtered.  Not connecting.") )
-				% Uint32toStringIP(ip) % cur_server->GetAddress() );
+                		% dest.humanReadable() % cur_server->GetAddress() ); );
 #ifdef ASIO_SOCKETS
 			OnConnect(boost::system::errc::invalid_argument);
 #else
 			OnConnect(wxSOCKET_INVADDR);
 #endif
 		} else {
-			amuleIPV4Address addr;
-			addr.Hostname(ip);
-			uint16 nPort = 0;
+                        CI2PAddress addr;
+                        addr = dest;
+//                         uint16 nPort = 0;
 			wxString useObfuscation;
 			if ( !m_bNoCrypt && thePrefs::IsServerCryptLayerTCPRequested() && cur_server->GetObfuscationPortTCP() != 0 && cur_server->SupportsObfuscationTCP()){
-				nPort = cur_server->GetObfuscationPortTCP();
+//                                 nPort = cur_server->GetObfuscationPortTCP();
 				useObfuscation = _("using protocol obfuscation.");
 				SetConnectionEncryption(true, NULL, true);
 			} else {
-				nPort = cur_server->GetConnPort();
+//                                 nPort = cur_server->GetConnPort();
 				SetConnectionEncryption(false, NULL, true);
 			}
 
-			addr.Service(nPort);
+//                         addr.Service(nPort);
 
 			AddLogLineN(CFormat( _("Connecting to %s (%s - %s:%i) %s") )
 				% cur_server->GetListName()
 				% cur_server->GetAddress()
 				% cur_server->GetFullIP()
-				% nPort
+//                                     % nPort
 				% useObfuscation
 			);
 
-			AddDebugLogLineN(logServer, CFormat(wxT("Server %s(%s) Port %i"))
-				% cur_server->GetAddress() % Uint32toStringIP(ip) % cur_server->GetConnPort());
+                        AddDebugLogLineN(logServer, CFormat(wxT("Server %s(%s)"))
+                                         % cur_server->GetAddress() % dest.toString());
 			Connect(addr, false);
 		}
 	} else {
@@ -781,8 +777,8 @@ void CServerSocket::OnHostnameResolved(uint32 ip) {
 	}
 
 }
-uint32 CServerSocket::GetServerIP() const
+CI2PAddress CServerSocket::GetServerDest() const
 {
-	return cur_server ? cur_server->GetIP() : 0;
+        return cur_server ? cur_server->GetDest() : CI2PAddress();
 }
 // File_checked_for_headers

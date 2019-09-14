@@ -45,6 +45,7 @@ enum OP_ClientToServerUDP {
 	OP_SERVER_DESC_RES			= 0xA3,	// <name_len 2><name name_len><desc_len 2 desc_en>
 	OP_SERVER_LIST_REQ2			= 0xA4	// (null)
 };
+#define INV_SERV_DESC_LEN           0xF0FF  // used as an 'invalid' string len for OP_SERVER_DESC_REQ/RES
 
 // Server UDP flags
 #define SRV_UDPFLG_EXT_GETSOURCES	0x00000001

@@ -28,6 +28,7 @@
 #include <wx/dialog.h>		// Needed for wxDialog
 #include "Types.h"
 
+#include "i2p/CI2PAddress.h"
 /**
  * The ClientDetailDialog class is responsible for showing the info about a client.
  *
@@ -47,7 +48,7 @@ public:
 	 * @param parent The window that created the dialog.
 	 * @param client The client whose details we're showing.
 	 */
-	CCaptchaDialog(wxWindow*parent, const wxImage& captchaImage, uint64 id);
+	CCaptchaDialog(wxWindow*parent, const wxImage& captchaImage, const CI2PAddress & id);   
 
 	/**
 	 * Destructor.
@@ -78,7 +79,7 @@ private:
 
 	class wxBitmap * m_captchaBitmap;
 	class wxTextCtrl * m_TextCtrl;
-	uint64 m_id;
+	CI2PAddress m_id;
 };
 #endif // CAPTCHADIALOG_H
 // File_checked_for_headers

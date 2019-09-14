@@ -83,6 +83,7 @@
 #include "kademlia/kademlia/Kademlia.h"
 #include "MuleVersion.h"	// Needed for GetMuleVersion()
 
+DEFINE_EVENT_TYPE(ID_GUI_TIMER_EVENT);          // in amuleDlg.cpp
 #ifdef ENABLE_IP2COUNTRY
 #include "IP2Country.h"		// Needed for IP2Country
 #endif
@@ -127,6 +128,7 @@ BEGIN_EVENT_TABLE(CamuleDlg, wxFrame)
 	EVT_ICONIZE(CamuleDlg::OnMinimize)
 
 	EVT_BUTTON(ID_BUTTON_FAST, CamuleDlg::OnBnClickedFast)
+        EVT_BUTTON ( IDC_SHOWSTATUSTEXT, CamuleDlg::OnBnStatusText )
 
 	EVT_TIMER(ID_GUI_TIMER_EVENT, CamuleDlg::OnGUITimer)
 
@@ -152,7 +154,7 @@ wxFrame(
 	pParent, -1, title, where, dlg_size,
 	wxCAPTION|wxRESIZE_BORDER|wxSYSTEM_MENU|wxDIALOG_NO_PARENT|
 	wxRESIZE_BORDER|wxMINIMIZE_BOX|wxMAXIMIZE_BOX|wxCLOSE_BOX,
-	wxT("aMule")),
+	wxT("iMule")),
 m_activewnd(NULL),
 m_transferwnd(NULL),
 m_serverwnd(NULL),
@@ -192,7 +194,7 @@ m_clientSkinNames(CLIENT_SKIN_SIZE)
 	m_clientSkinNames[Client_eMule_Smiley]            = wxT("eMule");
 	m_clientSkinNames[Client_mlDonkey_Smiley]         = wxT("mlDonkey");
 	m_clientSkinNames[Client_eDonkeyHybrid_Smiley]    = wxT("eDonkeyHybrid");
-	m_clientSkinNames[Client_aMule_Smiley]            = wxT("aMule");
+	m_clientSkinNames[Client_aMule_Smiley]            = wxT("iMule");
 	m_clientSkinNames[Client_lphant_Smiley]           = wxT("lphant");
 	m_clientSkinNames[Client_Shareaza_Smiley]         = wxT("Shareaza");
 	m_clientSkinNames[Client_xMule_Smiley]            = wxT("xMule");
@@ -235,11 +237,11 @@ m_clientSkinNames(CLIENT_SKIN_SIZE)
 	m_serverwnd = new CServerWnd(p_cnt, m_srv_split_pos);
 	AddLogLineN(wxEmptyString);
 	AddLogLineN(wxT(" - ") +
-		CFormat(_("This is aMule %s based on eMule.")) % GetMuleVersion());
+		CFormat(_("This is iMule %s based on eMule.")) % GetMuleVersion());
 	AddLogLineN(wxT("   ") +
 		CFormat(_("Running on %s")) % wxGetOsDescription());
 	AddLogLineN(wxT(" - ") +
-		wxString(_("Visit http://www.amule.org to check if a new version is available.")));
+		wxString(_("Visit http://www.imule.i2p to check if a new version is available.")));
 	AddLogLineN(wxEmptyString);
 
 #ifdef ENABLE_IP2COUNTRY
@@ -298,11 +300,15 @@ m_clientSkinNames(CLIENT_SKIN_SIZE)
 		CreateSystray();
 	}
 
-	Show(true);
+        m_kademliawnd->InitSplit();
 	// Must we start minimized?
 	if (thePrefs::GetStartMinimized()) {
-		DoIconize(true);
+                // we have to wait that everything has been drawn before minimizing
+                // if we don't, wx allocates negative sizes to widgets inside the frame
+                wxQueueEvent(this, new wxIconizeEvent(0,true));
 	}
+        else    // this will also call Show() (in DoIconize())
+                wxQueueEvent(this, new wxIconizeEvent(0,false));
 
 	// Set shortcut keys
 	wxAcceleratorEntry entries[] = {
@@ -490,21 +496,21 @@ void CamuleDlg::OnAboutButton(wxCommandEvent& WXUNUSED(ev))
 {
 	wxString msg = wxT(" ");
 #ifdef CLIENT_GUI
-	msg << _("aMule remote control ") << wxT(VERSION);
+	msg << _("iMule remote control ") << wxT(VERSION);
 #else
-	msg << wxT("aMule ") << wxT(VERSION);
+	msg << wxT("iMule ") << wxT(VERSION);
 #endif
 	msg << wxT(" ");
 #ifdef SVNDATE
 	msg << _("Snapshot:") << wxT("\n ") << wxT(SVNDATE);
 #endif
 	msg << wxT("\n\n") << _("'All-Platform' p2p client based on eMule \n\n") <<
-		_("Website: http://www.amule.org \n") <<
-		_("Forum: http://forum.amule.org \n") <<
-		_("FAQ: http://wiki.amule.org \n\n") <<
-		_("Contact: admin@amule.org (administrative issues) \n") <<
-		_("Copyright (c) 2003-2011 aMule Team \n\n") <<
-		_("Part of aMule is based on \n") <<
+		_("Website: http://www.imule.i2p \n") <<
+		_("Forum: http://forum.i2p \n") <<
+		_("FAQ: http://www.imule.i2p/trac \n\n") <<
+		_("Contact: hungr@mail.i2p (administrative issues) \n") <<
+		_("Copyright (c) 2003-2011 iMule Team \n\n") <<
+		_("Part of iMule is based on \n") <<
 		_("Kademlia: Peer-to-peer routing based on the XOR metric.\n") <<
                 _(" Copyright (c) 2002-2011 Petar Maymounkov ( petar@post.harvard.edu )\n") <<
 		_("http://kademlia.scs.cs.nyu.edu\n");
@@ -547,51 +553,30 @@ CamuleDlg::~CamuleDlg()
 	delete m_IP2Country;
 #endif
 
-	AddLogLineN(_("aMule dialog destroyed"));
+	AddLogLineN(_("iMule dialog destroyed"));
 }
 
 
 void CamuleDlg::OnBnConnect(wxCommandEvent& WXUNUSED(evt))
 {
 
-	bool disconnect = (theApp->IsConnectedED2K() || theApp->serverconnect->IsConnecting())
-						#ifdef CLIENT_GUI
-						|| theApp->IsConnectedKad()		// there's no Kad running state atm
-						#else
-						|| (Kademlia::CKademlia::IsRunning())
-						#endif
-						;
-	if (thePrefs::GetNetworkED2K()) {
-		if (disconnect) {
-			//disconnect if currently connected
-			if (theApp->serverconnect->IsConnecting()) {
-				theApp->serverconnect->StopConnectionTry();
-			} else {
-				theApp->serverconnect->Disconnect();
-			}
-		} else {
-			//connect if not currently connected
-			AddLogLineC(_("Connecting"));
-			theApp->serverconnect->ConnectToAnyServer();
-		}
-	} else {
-		wxASSERT(!theApp->IsConnectedED2K());
-	}
+	bool disconnect = (theApp->NetworkStarted() || theApp->NetworkStarting());
 
-	// Connect Kad also
-	if (thePrefs::GetNetworkKademlia()) {
-		if( disconnect ) {
-			theApp->StopKad();
+	if (disconnect) {
+            theApp->StopNetwork();
 		} else {
-			theApp->StartKad();
+            theApp->StartNetwork();
 		}
-	} else {
-		#ifndef CLIENT_GUI
-			wxASSERT(!Kademlia::CKademlia::IsRunning());
-		#endif
-	}
+    ShowConnectionState();
+}
 
-	ShowConnectionState();
+void CamuleDlg::OnBnStatusText ( wxCommandEvent& WXUNUSED ( evt ) )
+{
+        wxString line = CastChild ( wxT ( "infoLabel" ), wxStaticText )->GetLabel();
+
+        if ( !line.IsEmpty() ) {
+                wxMessageBox ( line, wxString ( _ ( "Status text" ) ), wxOK | wxICON_INFORMATION, this );
+        }
 }
 
 
@@ -662,6 +647,16 @@ void CamuleDlg::AddServerMessageLine(wxString& message)
 }
 
 
+#ifdef INTERNAL_ROUTER
+void CamuleDlg::UpdateRouterStatus( wxString& message )
+{
+        wxHtmlWindow * cv = CastByID ( ID_ROUTERSTATUS, m_serverwnd, wxHtmlWindow );
+        if ( cv ) {
+                cv->SetPage(wxT("<html>")+message+wxT("</html>"));
+        }
+}
+#endif
+
 void CamuleDlg::ShowConnectionState(bool skinChanged)
 {
 	static wxImageList status_arrows(16,16,true,0);
@@ -701,7 +696,7 @@ void CamuleDlg::ShowConnectionState(bool skinChanged)
 		} else {
 			ed2kState = ED2KHighID;
 		}
-	} else if (theApp->serverconnect->IsConnecting()) {
+	} else if (theApp->serverconnect && theApp->serverconnect->IsConnecting()) {
 		msgED2K = _("eD2k: Connecting");
 
 		ed2kState = ED2KConnecting;
@@ -755,7 +750,7 @@ void CamuleDlg::ShowConnectionState(bool skinChanged)
 	static EConnState s_oldState = ECS_Unknown;
 	EConnState currentState = ECS_Disconnected;
 
-	if (theApp->serverconnect->IsConnecting() ||
+        if (theApp->NetworkStarting() || (theApp->serverconnect && theApp->serverconnect->IsConnecting()) ||
 			(theApp->IsKadRunning() && !theApp->IsConnectedKad())) {
 		currentState = ECS_Connecting;
 	} else if (theApp->IsConnected()) {
@@ -871,9 +866,9 @@ void CamuleDlg::ShowTransferRate()
 
 		wxString buffer2;
 		if ( theApp->IsConnected() ) {
-			buffer2 = CFormat(_("aMule (%s | Connected)")) % buffer;
+			buffer2 = CFormat(_("iMule (%s | Connected)")) % buffer;
 		} else {
-			buffer2 = CFormat(_("aMule (%s | Disconnected)")) % buffer;
+			buffer2 = CFormat(_("iMule (%s | Disconnected)")) % buffer;
 		}
 		m_wndTaskbarNotifier->SetTrayToolTip(buffer2);
 	}
@@ -1045,36 +1040,37 @@ void CamuleDlg::DoIconize(bool iconize)
 			// Skip() will do it.
 			//Iconize(true);
 			if (SafeState()) {
-				Show(false);
+                                Hide();
 			}
 		} else {
-			Show(true);
+                        Show();
 			Raise();
 		}
 	} else {
-		// Will be done by Skip();
-		//Iconize(iconize);
+                if (iconize) Iconize();
+                else         Restore();
+                Show();
 	}
 }
 
 void CamuleDlg::OnMinimize(wxIconizeEvent& evt)
 {
-// Evil Hack: check if the mouse is inside the window
+// Evil Hack: check if the mouse is inside the window. Removed by mkvore to check what happens.
 #ifndef __WINDOWS__
-	if (GetScreenRect().Contains(wxGetMousePosition()))
+	//if (GetScreenRect().Contains(wxGetMousePosition()))
 #endif
 	{
 		if (m_prefsDialog && m_prefsDialog->IsShown()) {
 			// Veto.
 		} else {
-			if (m_wndTaskbarNotifier) {
-#if wxCHECK_VERSION(2, 9, 0)
+			//if (m_wndTaskbarNotifier) {
+//#if wxCHECK_VERSION(2, 9, 0)
 				DoIconize(evt.IsIconized());
-#else
-				DoIconize(evt.Iconized());
-#endif
-			}
-			evt.Skip();
+//#else
+				//DoIconize(evt.Iconized());
+//#endif
+			//}
+			//evt.Skip();
 		}
 	}
 }
@@ -1219,7 +1215,7 @@ bool CamuleDlg::Check_and_Init_Skin()
 #elif defined(__WXMAC__)
 		wxString dataDir(spb.GetDataDir());
 #else
-	wxString dataDir(spb.GetDataDir().BeforeLast(wxT('/')) + wxT("/amule"));
+	wxString dataDir(spb.GetDataDir().BeforeLast(wxT('/')) + wxT("/imule"));
 #endif
 	wxString systemDir(JoinPaths(dataDir,wxT("skins")) + wxFileName::GetPathSeparator());
 
@@ -1421,7 +1417,7 @@ void CamuleDlg::OnKeyPressed(wxKeyEvent& event)
 		// Ctrl/Alt/Shift must not be pressed, to avoid
 		// conflicts with other (global) shortcuts.
 		if (!event.HasModifiers() && !event.ShiftDown()) {
-			LaunchUrl(wxT("http://wiki.amule.org"));
+			LaunchUrl(wxT("http://www.imule.i2p/trac"));
 			return;
 		}
 	}

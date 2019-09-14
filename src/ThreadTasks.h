@@ -28,6 +28,8 @@
 #define TASKS_H
 
 #include "ThreadScheduler.h"
+#include "FileAutoClose.h"
+#include "SHAHashSet.h"
 #include <common/Path.h>
 
 class CKnownFile;
@@ -84,7 +86,7 @@ protected:
 	virtual void OnLastTask();
 
 	//! @see CThreadTask::Entry
-	virtual void Entry();
+        virtual bool Continue();
 
 	/**
 	 * Helper function for hashing a PARTSIZE chunk of a file.
@@ -112,7 +114,13 @@ protected:
 	const CKnownFile* m_owner;
 
 private:
-	void SetHashingProgress(uint16 part);
+        struct CR {
+                CPath fullPath;
+                CFileAutoClose file;
+                uint64 fileLength;
+                std::unique_ptr<CKnownFile> knownfile;
+                uint16 part;
+        } cr;
 };
 
 
@@ -128,10 +136,19 @@ public:
 
 protected:
 	/** See CThreadTask::Entry */
-	virtual void Entry();
+        virtual bool Continue();
 
 	/** Converts old known2.met files to known2_64.met files. */
 	bool ConvertToKnown2ToKnown264();
+
+private:
+        struct {
+                std::list<CAICHHash> hashlist;
+                CPath fullpath;
+                CFile file;
+                uint64 nLastVerifiedPos;
+                uint64 nExistingSize;
+        } cr;
 };
 
 
@@ -151,10 +168,7 @@ public:
 	CCompletionTask(const CPartFile* file);
 
 protected:
-	/** See CThreadTask::Entry */
-	virtual void Entry();
-
-	/** See CThreadTask::OnExit */
+        virtual bool Continue();
 	virtual void OnExit();
 
 	//! The target filename.
@@ -169,6 +183,16 @@ protected:
 	bool		m_error;
 	//! The resulting full path. File may be be renamed.
 	CPath		m_newName;
+private:
+        bool CloneFile();
+        struct CtxClone {
+                cr_context(CtxClone);
+                CPath partfilename;
+                CPath newName;
+                CFile out;
+                CFile in;
+				std::unique_ptr<byte[]> part;
+        } cr;
 };
 
 
@@ -183,7 +207,7 @@ class CAllocateFileTask : public CThreadTask
 
       protected:
 	/** See CThreadTask::Entry */
-	virtual void Entry();
+        virtual bool Continue();
 
 	/** See CThreadTask::OnExit */
 	virtual void OnExit();
@@ -197,6 +221,16 @@ class CAllocateFileTask : public CThreadTask
 
 	//! Result of the preallocation.
 	long		m_result;
+
+        //! coroutine data
+        struct {
+                uint64_t minFree;
+                int64_t freeSpace;
+                CFile file;
+                void *zero ;
+                uint64_t size ;
+        } cr;
+
 };
 
 

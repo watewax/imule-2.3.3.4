@@ -32,6 +32,8 @@
 
 #include <deque>		// Needed for std::deque
 
+#include "MuleThread.h"
+
 typedef struct UpdateInfo {
 	double timestamp;
 	float downloads[3];
@@ -100,14 +102,14 @@ class CPreciseRateCounter {
 	 *
 	 * @return Current rate in bytes/second.
 	 */
-	double	GetRate()			{ wxMutexLocker lock(m_mutex); return m_rate; };
+        double	GetRate()			{ wiMutexLocker lock(m_mutex); return m_rate; };
 
 	/**
 	 * Gets ever seen maximal rate.
 	 *
 	 * @return The maximal rate which occured.
 	 */
-	double	GetMaxRate()			{ wxMutexLocker lock(m_mutex); return m_max_rate; }
+        double	GetMaxRate()			{ wiMutexLocker lock(m_mutex); return m_max_rate; }
 
 	/**
 	 * Sets desired timespan for rate calculations.
@@ -119,12 +121,12 @@ class CPreciseRateCounter {
 	 * If the new timespan is lower than the old, the change takes
 	 * effect immediately at the next call to CalculateRate().
 	 */
-	void	SetTimespan(uint32_t timespan)	{ wxMutexLocker lock(m_mutex); m_timespan = timespan; }
+        void	SetTimespan(uint32_t timespan)	{ wiMutexLocker lock(m_mutex); m_timespan = timespan; }
 
 	/**
 	 * Add bytes to be tracked for rate-counting.
 	 */
-	void	operator+=(uint32_t bytes)	{ wxMutexLocker lock(m_mutex); m_tmp_sum += bytes; }
+        void	operator+=(uint32_t bytes)	{ wiMutexLocker lock(m_mutex); m_tmp_sum += bytes; }
 
  protected:
 
@@ -135,7 +137,7 @@ class CPreciseRateCounter {
 	double		m_rate;
 	double		m_max_rate;
 	uint32_t	m_tmp_sum;
-	wxMutex		m_mutex;
+        wiMutex		m_mutex;
 	bool		m_count_average;
 };
 
@@ -260,6 +262,7 @@ class CStatistics {
 	static	void	RemoveWaitingClient()			{ --(*s_waitingUploads); }
 	static	uint32	GetWaitingUserCount()			{ return (*s_waitingUploads); }
 	static	double	GetUploadRate()				{ return s_uploadrate->GetRate(); }
+        static	double	GetMaxUploadRate()			{ return s_uploadrate->GetMaxRate(); }
 
 	// Download
 	static	uint64	GetTotalReceivedBytes()			{ return s_totalReceived; }
@@ -319,8 +322,9 @@ class CStatistics {
 	// Kad nodes
 	static void	AddKadNode()				{ ++s_kadNodesCur; }
 	static void	RemoveKadNode()				{ --s_kadNodesCur; }
-	static uint16_t GetKadNodes()			{ return s_kadNodesCur; }
+	//static uint16_t GetKadNodes()			{ return s_kadNodesCur; }
 
+        static int16	GetKadNodesCur()			{ return s_kadNodesCur; } // I2P
 
 	// Other
 	static	void	CalculateRates();

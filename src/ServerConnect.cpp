@@ -51,6 +51,7 @@
 
 //#define DEBUG_CLIENT_PROTOCOL
 
+DEFINE_EVENT_TYPE(ID_SERVER_RETRY_TIMER_EVENT); // in ServerConnect.cpp
 
 void CServerConnect::TryAnotherConnectionrequest()
 {
@@ -156,7 +157,7 @@ void CServerConnect::ConnectToServer(CServer* server, bool multiconnect, bool bN
 	connecting = true;
 	singleconnecting = !multiconnect;
 
-	CServerSocket* newsocket = new CServerSocket(this, thePrefs::GetProxyData());
+        CServerSocket* newsocket = new CServerSocket(this);
 	m_lstOpenSockets.push_back(newsocket);
 	newsocket->ConnectToServer(server, bNoCrypt);
 
@@ -195,13 +196,13 @@ void CServerConnect::ConnectionEstablished(CServerSocket* sender)
 	}
 
 	if (sender->GetConnectionState() == CS_WAITFORLOGIN) {
-		AddLogLineN(CFormat( _("Connected to %s (%s:%i)") )
+                AddLogLineN(CFormat( _("Connected to %s (%s)") )
 			% sender->cur_server->GetListName()
-			% sender->cur_server->GetFullIP()
-			% sender->cur_server->GetPort() );
+                            % sender->cur_server->GetDest().humanReadable()
+                           );
 
 		//send loginpacket
-		CServer* update = theApp->serverlist->GetServerByAddress( sender->cur_server->GetAddress(), sender->cur_server->GetPort() );
+                CServer* update = theApp->serverlist->GetServerByAddress( sender->cur_server->GetAddress() );
 		if (update){
 			update->ResetFailedCount();
 			Notify_ServerRefresh( update );
@@ -210,18 +211,11 @@ void CServerConnect::ConnectionEstablished(CServerSocket* sender)
 		CMemFile data(256);
 		data.WriteHash(thePrefs::GetUserHash());
 		// Why pass an ID, if we are loggin in?
-		data.WriteUInt32(GetClientID());
-		data.WriteUInt16(thePrefs::GetPort());
-		data.WriteUInt32(4); // tagcount
+                data.WriteAddress(theApp->GetTcpDest());
 
-		// Kry - Server doesn't support VBT tags afaik.
-		// Not to mention we don't know its flags yet
-
-		CTagString tagname(CT_NAME,thePrefs::GetUserNick());
-		tagname.WriteTagToFile(&data);
-
-		CTagInt32 tagversion(CT_VERSION,EDONKEYVERSION);
-		tagversion.WriteTagToFile(&data);
+                TagList taglist ;
+                taglist.push_back( CTag(CT_NAME,thePrefs::GetUserNick()) );
+                taglist.push_back( CTag( CT_VERSION, EDONKEYVERSION) );
 
 		uint32 dwCryptFlags = 0;
 
@@ -238,23 +232,22 @@ void CServerConnect::ConnectionEstablished(CServerSocket* sender)
 		}
 
 		// FLAGS for server connection
-		CTagInt32 tagflags(CT_SERVER_FLAGS, CAPABLE_ZLIB
+                taglist.push_back( CTag(CT_SERVER_FLAGS, (CAPABLE_ZLIB
 								| CAPABLE_AUXPORT
 								| CAPABLE_NEWTAGS
 								| CAPABLE_UNICODE
 								| CAPABLE_LARGEFILES
 								| dwCryptFlags
-											);
-
-		tagflags.WriteTagToFile(&data);
+				)));
 
 		// eMule Version (14-Mar-2004: requested by lugdunummaster (need for LowID clients which have no chance
 		// to send an Hello packet to the server during the callback test))
-		CTagInt32 tagMuleVersion(CT_EMULE_VERSION,
-			(SO_AMULE	<< 24) |
+                taglist.push_back( CTag(CT_EMULE_VERSION, (
+                                                (SO_IMULE	<< 24) |
 			make_full_ed2k_version(VERSION_MJR, VERSION_MIN, VERSION_UPDATE)
-			 );
-		tagMuleVersion.WriteTagToFile(&data);
+                                       ) ) );
+
+                taglist.WriteTo(&data);
 
 		CPacket* packet = new CPacket(data, OP_EDONKEYPROT, OP_LOGINREQUEST);
 		#ifdef DEBUG_CLIENT_PROTOCOL
@@ -276,7 +269,7 @@ void CServerConnect::ConnectionEstablished(CServerSocket* sender)
 
 		StopConnectionTry();
 
-		CServer* update = theApp->serverlist->GetServerByAddress(connectedsocket->cur_server->GetAddress(),sender->cur_server->GetPort());
+                CServer* update = theApp->serverlist->GetServerByAddress(connectedsocket->cur_server->GetAddress());
 		if ( update ) {
 			Notify_ServerHighlight(update, true);
 		}
@@ -340,27 +333,24 @@ void CServerConnect::ConnectionFailed(CServerSocket* sender)
 		return;
 	}
 	//messages
-	CServer* pServer = theApp->serverlist->GetServerByAddress(sender->cur_server->GetAddress(), sender->cur_server->GetPort());
+        CServer* pServer = theApp->serverlist->GetServerByAddress(sender->cur_server->GetAddress());
 	switch (sender->GetConnectionState()){
 		case CS_FATALERROR:
 			AddLogLineC(_("Fatal Error while trying to connect. Internet connection might be down"));
 			break;
 		case CS_DISCONNECTED:
 			theApp->sharedfiles->ClearED2KPublishInfo();
-			AddLogLineN(CFormat( _("Lost connection to %s (%s:%i)") )
+                AddLogLineN(CFormat( _("Lost connection to %s (%s)") )
 				% sender->cur_server->GetListName()
-				% sender->cur_server->GetFullIP()
-				% sender->cur_server->GetPort() );
+                            % sender->cur_server->GetDest().humanReadable());
 
 			if (pServer){
 				Notify_ServerHighlight(pServer, false);
 			}
 			break;
 		case CS_SERVERDEAD:
-			AddLogLineN(CFormat( _("%s (%s:%i) appears to be dead.") )
-				% sender->cur_server->GetListName()
-				% sender->cur_server->GetFullIP()
-				% sender->cur_server->GetPort() );
+                AddLogLineN(CFormat( _("%s (%x) appears to be dead.") )
+                            % sender->cur_server->GetListName() % sender->cur_server->GetDest().hashCode() );
 
 			if (pServer) {
 				pServer->AddFailedCount();
@@ -370,10 +360,9 @@ void CServerConnect::ConnectionFailed(CServerSocket* sender)
 		case CS_ERROR:
 			break;
 		case CS_SERVERFULL:
-			AddLogLineN(CFormat( _("%s (%s:%i) appears to be full.") )
+                AddLogLineN(CFormat( _("%s (%s) appears to be full.") )
 				% sender->cur_server->GetListName()
-				% sender->cur_server->GetFullIP()
-				% sender->cur_server->GetPort() );
+                            % sender->cur_server->GetDest().humanReadable() );
 
 			break;
 		case CS_NOTCONNECTED:;
@@ -416,10 +405,9 @@ void CServerConnect::ConnectionFailed(CServerSocket* sender)
 		case CS_NOTCONNECTED:{
 			if (!connecting)
 				break;
-			AddLogLineN(CFormat( _("Connecting to %s (%s:%i) failed.") )
+                AddLogLineN(CFormat( _("Connecting to %s (%s) failed.") )
 				% sender->info
-				% sender->cur_server->GetFullIP()
-				% sender->cur_server->GetPort() );
+                            % sender->cur_server->GetDest().humanReadable() );
 		}
 		/* fall through */
 		case CS_SERVERDEAD:
@@ -469,10 +457,9 @@ void CServerConnect::CheckForTimeout()
 			CServerSocket* value = it->second;
 			++it;
 			if (!value->IsSolving()) {
-				AddLogLineN(CFormat( _("Connection attempt to %s (%s:%i) timed out.") )
+                                AddLogLineN(CFormat( _("Connection attempt to %s (%s) timed out.") )
 					% value->info
-					% value->cur_server->GetFullIP()
-					% value->cur_server->GetPort() );
+                                            % value->cur_server->GetDest().humanReadable() );
 
 				connectionattemps.erase( key );
 
@@ -494,10 +481,9 @@ bool CServerConnect::Disconnect()
 		connected = false;
 
 		CServer* update = theApp->serverlist->GetServerByAddress(
-			connectedsocket->cur_server->GetAddress(),
-			connectedsocket->cur_server->GetPort());
+                                          connectedsocket->cur_server->GetAddress());
 		Notify_ServerHighlight(update, false);
-		theApp->SetPublicIP(0);
+                theApp->SetPublicDest(CI2PAddress::null);
 		DestroySocket(connectedsocket);
 		connectedsocket = NULL;
 		theApp->ShowConnectionState();
@@ -509,7 +495,7 @@ bool CServerConnect::Disconnect()
 }
 
 
-CServerConnect::CServerConnect(CServerList* in_serverlist, amuleIPV4Address &address)
+CServerConnect::CServerConnect(CServerList* in_serverlist, const wxString &destFile)
 : m_idRetryTimer(theApp,ID_SERVER_RETRY_TIMER_EVENT)
 {
 	connectedsocket = NULL;
@@ -524,7 +510,7 @@ CServerConnect::CServerConnect(CServerList* in_serverlist, amuleIPV4Address &add
 
 	// initalize socket for udp packets
 	if (thePrefs::GetNetworkED2K()) {
-		serverudpsocket = new CServerUDPSocket(address, thePrefs::GetProxyData());
+                serverudpsocket = new CServerUDPSocket(destFile);
 	} else {
 		serverudpsocket = NULL;
 	}
@@ -557,9 +543,6 @@ void CServerConnect::SetClientID(uint32 newid)
 {
 	clientid = newid;
 
-	if (!::IsLowID(newid)) {
-		theApp->SetPublicIP(newid);
-	}
 }
 
 
@@ -573,10 +556,10 @@ void CServerConnect::DestroySocket(CServerSocket* pSck)
 }
 
 
-bool CServerConnect::IsLocalServer(uint32 dwIP, uint16 nPort)
+bool CServerConnect::IsLocalServer(const CI2PAddress & nDest)
 {
 	if (IsConnected()){
-		if (connectedsocket->cur_server->GetIP() == dwIP && connectedsocket->cur_server->GetPort() == nPort)
+                if (connectedsocket->cur_server->GetDest() == nDest)
 			return true;
 	}
 	return false;
@@ -613,14 +596,14 @@ void CServerConnect::KeepConnectionAlive()
 }
 
 // true if the IP is one of a server which we currently try to connect to
-bool CServerConnect::AwaitingTestFromIP(uint32 dwIP)
+bool CServerConnect::AwaitingTestFromDest(const CI2PAddress & dest)
 {
 	ServerSocketMap::iterator it = connectionattemps.begin();
 
 	while (it != connectionattemps.end()) {
 		const CServerSocket* serversocket = it->second;
 		if (serversocket && (serversocket->GetConnectionState() == CS_WAITFORLOGIN) &&
-			(serversocket->GetServerIP() == dwIP)) {
+                                (serversocket->GetServerDest() == dest)) {
 			return true;
 		}
 		++it;
@@ -636,13 +619,13 @@ bool CServerConnect::IsConnectedObfuscated() const
 }
 
 
-void CServerConnect::OnServerHostnameResolved(void* socket, uint32 ip)
+void CServerConnect::OnServerHostnameResolved(void* socket, const CI2PAddress & dest)
 {
 	// The socket object might have been deleted while we waited for the hostname
 	// to be resolved, so we check if it's still among the open sockets.
 	SocketsList::iterator it = std::find(m_lstOpenSockets.begin(), m_lstOpenSockets.end(), socket);
 	if (it != m_lstOpenSockets.end()) {
-		(*it)->OnHostnameResolved(ip);
+                (*it)->OnHostnameResolved(dest);
 	} else {
 		AddLogLineNS(_("Received late result of DNS lookup, discarding."));
 	}

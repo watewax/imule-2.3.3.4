@@ -25,10 +25,14 @@
 
 #include <wx/menu.h>
 #include <wx/intl.h>
+#include <wx/notebook.h>
+#include <wx/wupdlock.h>
 
 #include "MuleNotebook.h"	// Interface declarations
 
-#include <common/MenuIDs.h>
+#include "common/MenuIDs.h"
+#include "common/Format.h"
+#include "Logger.h"
 
 DEFINE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_PAGE_CLOSING)
 DEFINE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED)
@@ -36,7 +40,7 @@ DEFINE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED)
 #if MULE_NEEDS_DELETEPAGE_WORKAROUND
 DEFINE_LOCAL_EVENT_TYPE(wxEVT_COMMAND_MULENOTEBOOK_DELETE_PAGE)
 #endif
-
+/*
 BEGIN_EVENT_TABLE(CMuleNotebook, wxNotebook)
 	EVT_RIGHT_DOWN(CMuleNotebook::OnRMButton)
 
@@ -54,13 +58,17 @@ BEGIN_EVENT_TABLE(CMuleNotebook, wxNotebook)
 	EVT_MULENOTEBOOK_DELETE_PAGE(wxID_ANY, CMuleNotebook::OnDeletePage)
 #endif
 END_EVENT_TABLE()
+*/
 
-
-CMuleNotebook::CMuleNotebook( wxWindow *parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name )
-	: wxNotebook(parent, id, pos, size, style, name)
+CMuleNotebook::CMuleNotebook( wxWindow *parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long )
+        : wxAuiNotebook(parent, id, pos, size)
 {
 	m_popup_enable = true;
 	m_popup_widget = NULL;
+        Bind(wxEVT_AUINOTEBOOK_TAB_RIGHT_DOWN, &CMuleNotebook::OnRMButton, this);
+        Bind(wxEVT_MENU, &CMuleNotebook::OnPopupClose,       this,  MP_CLOSE_TAB);
+        Bind(wxEVT_MENU, &CMuleNotebook::OnPopupCloseAll,    this,  MP_CLOSE_ALL_TABS);
+        Bind(wxEVT_MENU, &CMuleNotebook::OnPopupCloseOthers, this,  MP_CLOSE_OTHER_TABS);
 }
 
 
@@ -80,9 +88,9 @@ void CMuleNotebook::OnDeletePage(wxBookCtrlEvent& evt)
 #endif // MULE_NEEDS_DELETEPAGE_WORKAROUND
 
 
-bool CMuleNotebook::DeletePage(int nPage)
+bool CMuleNotebook::DeletePage(size_t nPage)
 {
-	wxCHECK_MSG((nPage >= 0) && (nPage < (int)GetPageCount()), false,
+        wxCHECK_MSG(nPage < GetPageCount(), false,
 		wxT("Trying to delete invalid page-index in CMuleNotebook::DeletePage"));
 
 	// Send out close event
@@ -91,32 +99,7 @@ bool CMuleNotebook::DeletePage(int nPage)
 	ProcessEvent( evt );
 
 	// and finally remove the actual page
-	bool result = wxNotebook::DeletePage( nPage );
-
-	// Ensure a valid selection
-	if ( GetPageCount() && (int)GetSelection() >= (int)GetPageCount() ) {
-		SetSelection( GetPageCount() - 1 );
-	}
-
-	// Send a page change event to work around wx problem when newly selected page
-	// is identical with deleted page (wx sends a page change event during deletion,
-	// but the control is still the one to be deleted at that moment).
-	if (GetPageCount()) {
-		// Select the tab that took the place of the one we just deleted.
-		size_t page = nPage;
-		// Except if we deleted the last one - then select the one that is last now.
-		if (page == GetPageCount()) {
-			page--;
-		}
-		wxNotebookEvent event( wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, GetId(), page );
-		event.SetEventObject(this);
-		ProcessEvent( event );
-	} else {
-	// Send an event when no pages are left open
-		wxNotebookEvent event( wxEVT_COMMAND_MULENOTEBOOK_ALL_PAGES_CLOSED, GetId() );
-		event.SetEventObject(this);
-		ProcessEvent( event );
-	}
+        bool result = wxAuiNotebook::DeletePage( nPage );
 
 	return result;
 }
@@ -124,14 +107,14 @@ bool CMuleNotebook::DeletePage(int nPage)
 
 bool CMuleNotebook::DeleteAllPages()
 {
-	Freeze();
+        wxWindowUpdateLocker noUpdates(this);
 
 	bool result = true;
 	while ( GetPageCount() ) {
 		result &= DeletePage( 0 );
 	}
 
-	Thaw();
+	//Thaw();
 
 	return result;
 }
@@ -150,37 +133,24 @@ void CMuleNotebook::SetPopupHandler( wxWindow* widget )
 
 
 //#warning wxMac does not support selection by right-clicking on tabs!
-void CMuleNotebook::OnRMButton(wxMouseEvent& event)
+void CMuleNotebook::OnRMButton(wxAuiNotebookEvent& event)
 {
 	// Cases where we shouldn't be showing a popup-menu.
-	if ( !GetPageCount() || !m_popup_enable ) {
+        if ( !GetPageCount() || !m_popup_enable || tab == wxNOT_FOUND) {
 		event.Skip();
 		return;
 	}
 
 
-// For some reason, gtk1 does a rather poor job when using the HitTest
-	wxPoint eventPoint = event.GetPosition();
-
-	int tab = HitTest(eventPoint);
-	if (tab != wxNOT_FOUND) {
 		SetSelection(tab);
-	} else {
-		event.Skip();
-		return;
-	}
 
 	// Should we send the event to a specific widget?
 	if ( m_popup_widget ) {
-		wxMouseEvent evt = event;
+                wxMouseEvent evt(wxEVT_RIGHT_DOWN);
+                evt.SetState( wxGetMouseState() );
 
 		// Map the coordinates onto the parent
-		wxPoint point = evt.GetPosition();
-		point = ClientToScreen( point );
-		point = m_popup_widget->ScreenToClient( point );
-
-		evt.m_x = point.x;
-		evt.m_y = point.y;
+                evt.SetPosition( m_popup_widget->ScreenToClient( wxGetMousePosition() ) );                
 
 		m_popup_widget->GetEventHandler()->AddPendingEvent( evt );
 	} else {
@@ -189,7 +159,7 @@ void CMuleNotebook::OnRMButton(wxMouseEvent& event)
 		menu.Append(MP_CLOSE_ALL_TABS, wxString(_("Close all tabs")));
 		menu.Append(MP_CLOSE_OTHER_TABS, wxString(_("Close other tabs")));
 
-		PopupMenu( &menu, event.GetPosition() );
+                PopupMenu( &menu );
 	}
 }
 
@@ -213,82 +183,6 @@ void CMuleNotebook::OnPopupCloseOthers(wxCommandEvent& WXUNUSED(evt))
 	for ( int i = GetPageCount() - 1; i >= 0; i-- ) {
 		if ( current != GetPage( i ) )
 			DeletePage( i );
-	}
-}
-
-
-void CMuleNotebook::OnMouseButton(wxMouseEvent &event)
-{
-	if (GetImageList() == NULL) {
-		// This Mulenotebook has no images on tabs, so nothing to do.
-		event.Skip();
-		return;
-	}
-
-	long xpos, ypos;
-	event.GetPosition(&xpos, &ypos);
-
-	long flags = 0;
-	int tab = HitTest(wxPoint(xpos,ypos),&flags);
-	static int tab_down_icon = -1;
-	static int tab_down_label = -1;
-
-	if (event.LeftDown() &&  (flags == wxNB_HITTEST_ONICON)) {
-		tab_down_icon = tab;
-	}
-	else if (event.MiddleDown() && (flags == wxNB_HITTEST_ONLABEL)) {
-		tab_down_label = tab;
-	}
-	else if (event.LeftDown() || event.MiddleDown()) {
-		tab_down_icon = -1;
-		tab_down_label = -1;
-	}
-	
-	if (((tab != -1) &&  (((flags == wxNB_HITTEST_ONICON) && event.LeftUp() && (tab == tab_down_icon)) ||
-			((flags == wxNB_HITTEST_ONLABEL) && event.MiddleUp() && (tab == tab_down_label))))) {
-		// User did click on a 'x' or middle click on the label
-		tab_down_icon = -1;
-		tab_down_label = -1;
-#if MULE_NEEDS_DELETEPAGE_WORKAROUND
-		/*	WORKAROUND: Instead of calling DeletePage, we need to wait for the
-		 *	mouse release signal to reach Gtk. Inconsistent with normal wxEvent
-		 *	behaviour the button release handler in wxWidgets don't evaluate
-		 *	the result of the signal handling. */
-		wxNotebookEvent evt( wxEVT_COMMAND_MULENOTEBOOK_DELETE_PAGE, GetId(), tab );
-		evt.SetEventObject(this);
-		AddPendingEvent( evt );
-#else
-		DeletePage(tab);
-#endif // MULE_NEEDS_DELETEPAGE_WORKAROUND
-	} else {
-		// Is not a 'x'. Send this event up.
-		event.Skip();
-	}
-}
-
-
-void CMuleNotebook::OnMouseMotion(wxMouseEvent &event)
-{
-	if (GetImageList() == NULL) {
-		// This Mulenotebook has no images on tabs, so nothing to do.
-		event.Skip();
-		return;
-	}
-
-	long flags = 0;
-	int tab = HitTest(wxPoint(event.m_x,event.m_y),&flags);
-
-	// Clear the highlight for all tabs.
-	for (int i=0;i<(int)GetPageCount();++i) {
-		SetPageImage(i, 0);
-	}
-
-	if ((tab != -1) &&  (flags == wxNB_HITTEST_ONICON)) {
-		// Mouse is over a 'x'
-		SetPageImage(tab, 1);
-	} else {
-		// Is not a 'x'. Send this event up.
-		event.Skip();
 	}
 }
 

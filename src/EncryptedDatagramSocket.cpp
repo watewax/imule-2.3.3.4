@@ -103,8 +103,10 @@
 #include <protocol/Protocols.h>
 #include <common/MD5Sum.h>
 
+#include "OtherFunctions.h"	// Needed for md4cpy
 // random generator
 #include "CryptoPP_Inc.h"	// Needed for Crypto functions
+#include "libs/i2p/CI2PAddress.h"
 
 #define CRYPT_HEADER_WITHOUTPADDING		    8
 #define	MAGICVALUE_UDP						91
@@ -113,14 +115,14 @@
 #define	MAGICVALUE_UDP_SERVERCLIENT			0xA5
 #define	MAGICVALUE_UDP_CLIENTSERVER			0x6B
 
-CEncryptedDatagramSocket::CEncryptedDatagramSocket(amuleIPV4Address &address, muleSocketFlags flags, const CProxyData *proxyData)
-	: CDatagramSocketProxy(address, flags, proxyData)
+CEncryptedDatagramSocket::CEncryptedDatagramSocket( wxString address, wxSocketFlags flags)
+        : wxI2PDatagramSocket(address, flags | wxSOCKET_REUSEADDR)
 {}
 
 CEncryptedDatagramSocket::~CEncryptedDatagramSocket()
 {}
 
-int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, uint8_t **bufOut, uint32_t ip, uint32_t *receiverVerifyKey, uint32_t *senderVerifyKey)
+int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, uint8_t **bufOut, const CI2PAddress & dest, uint32_t *receiverVerifyKey, uint32_t *senderVerifyKey)
 {
 	int result = bufLen;
 	*bufOut = bufIn;
@@ -184,7 +186,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, 
 			uint8_t keyData[23];
 			md4cpy(keyData, thePrefs::GetUserHash().GetHash());
 			keyData[20] = MAGICVALUE_UDP;
-			PokeUInt32(keyData + 16, ip);
+                        PokeUInt32(keyData + 16, dest.hashCode());
 			memcpy(keyData + 21, bufIn + 1, 2); // random key part sent from remote client
 			md5.Calculate(keyData, sizeof(keyData));
 		} else if (currentTry == 2) {
@@ -192,7 +194,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, 
 			kad = true;
 			if (Kademlia::CKademlia::GetPrefs()) {
 				uint8_t keyData[6];
-				PokeUInt32(keyData, Kademlia::CPrefs::GetUDPVerifyKey(ip));
+                                PokeUInt32(keyData, Kademlia::CPrefs::GetUDPVerifyKey(dest));
 				memcpy(keyData + 4, bufIn + 1, 2); // random key part sent from remote client
 				md5.Calculate(keyData, sizeof(keyData));
 			}
@@ -236,6 +238,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, 
 		if (kad) {
 			if (result <= 8) {
 				//DebugLogError(_T("Obfuscated Kad packet with mismatching size (verify keys missing) received from clientIP: %s"), ipstr(dwIP));
+                                AddDebugLogLineN(logCrypto, CFormat(wxT("Obfuscated Kad packet with mismatching size (verify keys missing) received from client dst: %s")) % dest.humanReadable());
 				return bufLen; // pass through, let the Receivefunction do the errorhandling on this junk;
 			}
 			// read the verify keys
@@ -253,17 +256,18 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, 
 		return result; // done
 	} else {
 		//DebugLogWarning(_T("Obfuscated packet expected but magicvalue mismatch on UDP packet from clientIP: %s"), ipstr(dwIP));
+                AddDebugLogLineN(logCrypto, CFormat(wxT("Obfuscated Kad packet expected but magicvalue mismatch on UDP packet from client dst: %s")) % dest.humanReadable());
 		return bufLen; // pass through, let the Receivefunction do the errorhandling on this junk
 	}
 }
 
 // Encrypt packet. Key used:
-// clientHashOrKadID != NULL					-> clientHashOrKadID
-// clientHashOrKadID == NULL && kad && receiverVerifyKey != 0	-> receiverVerifyKey
+// pachClientHashOrKadID != NULL					-> pachClientHashOrKadID
+// pachClientHashOrKadID == NULL && bKad && nReceiverVerifyKey != 0	-> nReceiverVerifyKey
 // else								-> ASSERT
-int CEncryptedDatagramSocket::EncryptSendClient(uint8_t **buf, int bufLen, const uint8_t *clientHashOrKadID, bool kad, uint32_t receiverVerifyKey, uint32_t senderVerifyKey)
+int CEncryptedDatagramSocket::EncryptSendClient(std::unique_ptr<uint8_t[]> & buf, int bufLen, const uint8_t *clientHashOrKadID, bool kad, uint32_t receiverVerifyKey, uint32_t senderVerifyKey)
 {
-	wxASSERT(theApp->GetPublicIP() != 0 || kad);
+        wxASSERT(theApp->GetPublicDest().isValid() || kad);
 	wxASSERT(thePrefs::IsClientCryptLayerSupported());
 	wxASSERT(clientHashOrKadID != NULL || receiverVerifyKey != 0);
 	wxASSERT((receiverVerifyKey == 0 && senderVerifyKey == 0) || kad);
@@ -271,7 +275,7 @@ int CEncryptedDatagramSocket::EncryptSendClient(uint8_t **buf, int bufLen, const
 	uint8_t padLen = 0;			// padding disabled for UDP currently
 	const uint32_t cryptHeaderLen = padLen + CRYPT_HEADER_WITHOUTPADDING + (kad ? 8 : 0);
 	uint32_t cryptedLen = bufLen + cryptHeaderLen;
-	uint8_t *cryptedBuffer = new uint8_t[cryptedLen];
+        std::unique_ptr<uint8_t[]> cryptedBuffer(new uint8_t[cryptedLen]);
 	bool kadRecvKeyUsed = false;
 
 	uint16_t randomKeyPart = GetRandomUint16();
@@ -285,8 +289,7 @@ int CEncryptedDatagramSocket::EncryptSendClient(uint8_t **buf, int bufLen, const
 			PokeUInt16(keyData+4, randomKeyPart);
 			md5.Calculate(keyData, sizeof(keyData));
 			//DEBUG_ONLY( DebugLog(_T("Creating obfuscated Kad packet encrypted by ReceiverKey (%u)"), nReceiverVerifyKey) );
-		}
-		else if (clientHashOrKadID != NULL && !CMD4Hash(clientHashOrKadID).IsEmpty()) {
+                } else if (clientHashOrKadID != NULL && !CMD4Hash(clientHashOrKadID).IsEmpty()) {
 			uint8_t keyData[18];
 			md4cpy(keyData, clientHashOrKadID);
 			PokeUInt16(keyData+16, randomKeyPart);
@@ -301,7 +304,7 @@ int CEncryptedDatagramSocket::EncryptSendClient(uint8_t **buf, int bufLen, const
 	} else {
 		uint8_t keyData[23];
 		md4cpy(keyData, clientHashOrKadID);
-		PokeUInt32(keyData+16, theApp->GetPublicIP());
+                PokeUInt32(keyData+16, theApp->GetPublicDest().hashCode());
 		PokeUInt16(keyData+21, randomKeyPart);
 		keyData[20] = MAGICVALUE_UDP;
 		md5.Calculate(keyData, sizeof(keyData));
@@ -348,33 +351,32 @@ int CEncryptedDatagramSocket::EncryptSendClient(uint8_t **buf, int bufLen, const
 	}
 
 	cryptedBuffer[0] = semiRandomNotProtocolMarker;
-	PokeUInt16(cryptedBuffer + 1, randomKeyPart);
+        PokeUInt16(cryptedBuffer.get() + 1, randomKeyPart);
 
 	uint32_t magicValue = ENDIAN_SWAP_32(MAGICVALUE_UDP_SYNC_CLIENT);
-	sendbuffer.RC4Crypt((uint8_t*)&magicValue, cryptedBuffer + 3, 4);
-	sendbuffer.RC4Crypt((uint8_t*)&padLen, cryptedBuffer + 7, 1);
+        sendbuffer.RC4Crypt((uint8_t*)&magicValue, cryptedBuffer.get() + 3, 4);
+        sendbuffer.RC4Crypt((uint8_t*)&padLen, cryptedBuffer.get() + 7, 1);
 
 	for (int j = 0; j < padLen; j++) {
 		uint8_t byRand = (uint8_t)rand();	// they actually don't really need to be random, but it doesn't hurt either
-		sendbuffer.RC4Crypt((uint8_t*)&byRand, cryptedBuffer + CRYPT_HEADER_WITHOUTPADDING + j, 1);
+                sendbuffer.RC4Crypt((uint8_t*)&byRand, cryptedBuffer.get() + CRYPT_HEADER_WITHOUTPADDING + j, 1);
 	}
 
 	if (kad) {
 		ENDIAN_SWAP_I_32(receiverVerifyKey);
 		ENDIAN_SWAP_I_32(senderVerifyKey);
-		sendbuffer.RC4Crypt((uint8_t*)&receiverVerifyKey, cryptedBuffer + CRYPT_HEADER_WITHOUTPADDING + padLen, 4);
-		sendbuffer.RC4Crypt((uint8_t*)&senderVerifyKey, cryptedBuffer + CRYPT_HEADER_WITHOUTPADDING + padLen + 4, 4);
+                sendbuffer.RC4Crypt((uint8_t*)&receiverVerifyKey, cryptedBuffer.get() + CRYPT_HEADER_WITHOUTPADDING + padLen, 4);
+                sendbuffer.RC4Crypt((uint8_t*)&senderVerifyKey, cryptedBuffer.get() + CRYPT_HEADER_WITHOUTPADDING + padLen + 4, 4);
 	}
 
-	sendbuffer.RC4Crypt(*buf, cryptedBuffer + cryptHeaderLen, bufLen);
-	delete [] *buf;
-	*buf = cryptedBuffer;
+        sendbuffer.RC4Crypt(buf.get(), cryptedBuffer.get() + cryptHeaderLen, bufLen);
+        buf.swap(cryptedBuffer);
 
 	theStats::AddUpOverheadCrypt(cryptedLen - bufLen);
 	return cryptedLen;
 }
 
-int CEncryptedDatagramSocket::DecryptReceivedServer(uint8_t* pbyBufIn, int nBufLen, uint8_t **ppbyBufOut, uint32_t dwBaseKey, uint32_t /*dbgIP*/)
+int CEncryptedDatagramSocket::DecryptReceivedServer(uint8_t* pbyBufIn, int nBufLen, uint8_t **ppbyBufOut, uint32_t dwBaseKey, const CI2PAddress & /*dbgIP*/)
 {
 	int nResult = nBufLen;
 	*ppbyBufOut = pbyBufIn;
@@ -429,7 +431,7 @@ int CEncryptedDatagramSocket::DecryptReceivedServer(uint8_t* pbyBufIn, int nBufL
 	}
 }
 
-int CEncryptedDatagramSocket::EncryptSendServer(uint8_t** ppbyBuf, int nBufLen, uint32_t dwBaseKey)
+int CEncryptedDatagramSocket::EncryptSendServer(std::unique_ptr<uint8_t[]> & ppbyBuf, int nBufLen, uint32_t dwBaseKey)
 {
 	wxASSERT( thePrefs::IsServerCryptLayerUDPEnabled() );
 	wxASSERT( dwBaseKey != 0 );
@@ -463,23 +465,22 @@ int CEncryptedDatagramSocket::EncryptSendServer(uint8_t** ppbyBuf, int nBufLen, 
 
 	uint8_t byPadLen = 0;			// padding disabled for UDP currently
 	uint32_t nCryptedLen = nBufLen + byPadLen + CRYPT_HEADER_WITHOUTPADDING;
-	uint8_t* pachCryptedBuffer = new uint8_t[nCryptedLen];
+        std::unique_ptr<uint8_t[]> pachCryptedBuffer(new uint8_t[nCryptedLen]);
 
 	pachCryptedBuffer[0] = bySemiRandomNotProtocolMarker;
-	PokeUInt16(pachCryptedBuffer + 1, nRandomKeyPart);
+        PokeUInt16(pachCryptedBuffer.get() + 1, nRandomKeyPart);
 
 	uint32_t dwMagicValue = ENDIAN_SWAP_32(MAGICVALUE_UDP_SYNC_SERVER);
-	sendbuffer.RC4Crypt((uint8_t*)&dwMagicValue, pachCryptedBuffer + 3, 4);
+        sendbuffer.RC4Crypt((uint8_t*)&dwMagicValue, pachCryptedBuffer.get() + 3, 4);
 
-	sendbuffer.RC4Crypt((uint8_t*)&byPadLen, pachCryptedBuffer + 7, 1);
+        sendbuffer.RC4Crypt((uint8_t*)&byPadLen, pachCryptedBuffer.get() + 7, 1);
 
 	for (int j = 0; j < byPadLen; j++){
 		uint8_t byRand = (uint8_t)rand();	// they actually don't really need to be random, but it doesn't hurt either
-		sendbuffer.RC4Crypt((uint8_t*)&byRand, pachCryptedBuffer + CRYPT_HEADER_WITHOUTPADDING + j, 1);
+                sendbuffer.RC4Crypt((uint8_t*)&byRand, pachCryptedBuffer.get() + CRYPT_HEADER_WITHOUTPADDING + j, 1);
 	}
-	sendbuffer.RC4Crypt(*ppbyBuf, pachCryptedBuffer + CRYPT_HEADER_WITHOUTPADDING + byPadLen, nBufLen);
-	delete[] *ppbyBuf;
-	*ppbyBuf = pachCryptedBuffer;
+        sendbuffer.RC4Crypt(ppbyBuf.get(), pachCryptedBuffer.get() + CRYPT_HEADER_WITHOUTPADDING + byPadLen, nBufLen);
+        ppbyBuf.reset(pachCryptedBuffer.release());
 
 	theStats::AddUpOverheadCrypt(nCryptedLen - nBufLen);
 	return nCryptedLen;

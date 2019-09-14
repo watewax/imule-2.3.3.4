@@ -37,7 +37,7 @@ class CEC_SearchFile_Tag;
 class SearchFile {
 	public:
 		wxString sFileName;
-		unsigned long lFileSize;
+        uint64_t lFileSize;
 		CMD4Hash  nHash;
 		wxString  sHash;
 		long lSourceCount;
@@ -56,7 +56,7 @@ wxString ECv2_Response2String(CECPacket *response);
 class CamulecmdApp : public CaMuleExternalConnector
 {
 public:
-	const wxString GetGreetingTitle() { return _("aMule text client"); }
+	const wxString GetGreetingTitle() { return _("iMule text client"); }
 	int ProcessCommand(int ID);
 	void Process_Answer_v2(const CECPacket *reply);
 	void OnInitCommandSet();

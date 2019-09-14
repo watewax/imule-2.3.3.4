@@ -349,44 +349,29 @@ bool CUploadQueue::IsDownloading(const CUpDownClient* client) const
 }
 
 
-CUpDownClient* CUploadQueue::GetWaitingClientByIP_UDP(uint32 dwIP, uint16 nUDPPort, bool bIgnorePortOnUniqueIP, bool* pbMultipleIPs)
+CUpDownClient* CUploadQueue::GetWaitingClientByIP_UDP(const CI2PAddress & dwDest)
 {
-	CUpDownClient* pMatchingIPClient = NULL;
+        //         CUpDownClient* pMatchingIPClient = NULL;
 
-	int cMatches = 0;
+        //         int cMatches = 0;
 
 	CClientRefList::iterator it = m_waitinglist.begin();
 	for (; it != m_waitinglist.end(); ++it) {
 		CUpDownClient* cur_client = it->GetClient();
 
-		if ((dwIP == cur_client->GetIP()) && (nUDPPort == cur_client->GetUDPPort())) {
+                if (dwDest == cur_client->GetUDPDest()) {
 			return cur_client;
-		} else if ((dwIP == cur_client->GetIP()) && bIgnorePortOnUniqueIP) {
-			pMatchingIPClient = cur_client;
-			cMatches++;
 		}
 	}
 
-	if (pbMultipleIPs) {
-		*pbMultipleIPs = cMatches > 1;
-	}
-
-	if (pMatchingIPClient && cMatches == 1) {
-		return pMatchingIPClient;
-	} else {
 		return NULL;
-	}
 }
 
 
 void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 {
-	if (theApp->serverconnect->IsConnected() && theApp->serverconnect->IsLowID() && !theApp->serverconnect->IsLocalServer(client->GetServerIP(),client->GetServerPort()) && client->GetDownloadState() == DS_NONE && !client->IsFriend() && theStats::GetWaitingUserCount() > 50) {
-		// Well, all that issues finish in the same: don't allow to add to the queue
-		return;
-	}
-
 	if ( client->IsBanned() ) {
+		AddDebugLogLineN( logUploadQueue, CFormat(wxT("not adding banned client %s")) % client->GetTCPDest().humanReadable() );
 		return;
 	}
 
@@ -422,10 +407,12 @@ void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 						RemoveFromWaitingQueue(client);
 						AddUpNextClient(client);
 						lastupslotHighID = false; // LowID alternate
+					      AddDebugLogLineN( logUploadQueue, CFormat(wxT("LowID? client %s added")) % client->GetTCPDest().humanReadable() );
 						return;
 					}
 				}
 
+			       AddDebugLogLineN( logUploadQueue, CFormat(wxT("Sending ranking info to client %s")) % client->GetTCPDest().humanReadable() );
 				client->SendRankingInfo();
 				Notify_SharedCtrlRefreshClient(client->ECID(), AVAILABLE_SOURCE);
 				return;
@@ -454,6 +441,7 @@ void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 						}
 					}
 
+				      AddDebugLogLineN( logUploadQueue, CFormat(wxT("client %s isn't identifed, remove it")) % client->GetTCPDest().humanReadable() );
 					return;
 				}
 			}
@@ -461,7 +449,7 @@ void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 	}
 
 	// Count the number of clients with the same IP-address
-	found = theApp->clientlist->GetClientsByIP( client->GetIP() );
+        found = theApp->clientlist->GetClientsByIP( client->GetTCPDest() );
 
 	int ipCount = 0;
 	for ( it = found.begin(); it != found.end(); ++it ) {
@@ -472,8 +460,10 @@ void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 
 	// We do not accept more than 3 clients from the same IP
 	if ( ipCount > 3 ) {
+		AddDebugLogLineN( logUploadQueue, CFormat(wxT("client %s has more than 3 IPs (ipCount). tchao.")) % client->GetTCPDest().humanReadable() );
 		return;
-	} else if ( theApp->clientlist->GetClientsFromIP(client->GetIP()) >= 3 ) {
+        } else if ( theApp->clientlist->GetClientsFromIP(client->GetTCPDest()) >= 3 ) {
+		AddDebugLogLineN( logUploadQueue, CFormat(wxT("client %s has more than 3 IPs (GetClientsFromIP). tchao.")) % client->GetTCPDest().humanReadable() );
 		return;
 	}
 
@@ -494,6 +484,7 @@ void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 
 	// TODO find better ways to cap the list
 	if (m_waitinglist.size() >= (thePrefs::GetQueueSize())) {
+		AddDebugLogLineN( logUploadQueue, CFormat(wxT("client %s rejected because of a huge queue.")) % client->GetTCPDest().humanReadable() );
 		return;
 	}
 
@@ -503,9 +494,11 @@ void CUploadQueue::AddClientToQueue(CUpDownClient* client)
 	if (m_waitinglist.empty() && tick - m_nLastStartUpload >= 1000
 		&& m_uploadinglist.size() < GetMaxSlots()
 		 && !theApp->listensocket->TooManySockets()) {
+		AddDebugLogLineN( logUploadQueue, CFormat(wxT("Start uploading to client %s.")) % client->GetTCPDest().humanReadable() );
 		AddUpNextClient(client);
 		m_nLastStartUpload = tick;
 	} else {
+		AddDebugLogLineN( logUploadQueue, CFormat(wxT("adding client %s to waiting list.")) % client->GetTCPDest().humanReadable() );
 		// add to waiting queue
 		m_waitinglist.push_back(CCLIENTREF(client, wxT("CUploadQueue::AddClientToQueue m_waitinglist.push_back")));
 		// and sort it to update queue ranks

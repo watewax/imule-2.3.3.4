@@ -53,20 +53,20 @@
 // (TCP+3) UDP socket
 //
 
-CServerUDPSocket::CServerUDPSocket(amuleIPV4Address &address, const CProxyData *ProxyData)
-	: CMuleUDPSocket(wxT("Server UDP-Socket"), ID_SERVERUDPSOCKET_EVENT, address, ProxyData)
+CServerUDPSocket::CServerUDPSocket(wxString destFile, const CProxyData *ProxyData)
+        : CMuleUDPSocket(wxT("Server UDP-Socket")/*, ID_SERVERUDPSOCKET_EVENT*/, destFile, ProxyData)
 {
 	Open();
 }
 
 
-void CServerUDPSocket::OnPacketReceived(uint32 serverip, uint16 serverport, byte* buffer, size_t length)
+void CServerUDPSocket::OnPacketReceived(const CI2PAddress & addr, uint8_t* buffer, size_t length)
 {
 	wxCHECK_RET(length >= 2, wxT("Invalid packet."));
 
 	size_t nPayLoadLen = length;
 	byte* pBuffer = buffer;
-	CServer* pServer = theApp->serverlist->GetServerByIPUDP(serverip, serverport, true);
+        CServer* pServer = theApp->serverlist->GetServerByDest(addr);
 	if (pServer && thePrefs::IsServerCryptLayerUDPEnabled() &&
 		((pServer->GetServerKeyUDP() != 0 && pServer->SupportsObfuscationUDP()) || (pServer->GetCryptPingReplyPending() && pServer->GetChallenge() != 0)))
 	{
@@ -79,7 +79,7 @@ void CServerUDPSocket::OnPacketReceived(uint32 serverip, uint16 serverport, byte
 		}
 
 		wxASSERT( dwKey != 0 );
-		nPayLoadLen = CEncryptedDatagramSocket::DecryptReceivedServer(buffer, length, &pBuffer, dwKey, serverip);
+		nPayLoadLen = CEncryptedDatagramSocket::DecryptReceivedServer(buffer, length, &pBuffer, dwKey, addr);
 #ifdef __DEBUG__
 		if (nPayLoadLen == length) {
 			AddDebugLogLineN(logServerUDP, CFormat(wxT("Expected encrypted packet, but received unencrytped from server %s, UDPKey %u, Challenge: %u")) % pServer->GetListName() % pServer->GetServerKeyUDP() % pServer->GetChallenge());
@@ -94,7 +94,7 @@ void CServerUDPSocket::OnPacketReceived(uint32 serverip, uint16 serverport, byte
 
 	if (protocol == OP_EDONKEYPROT) {
 		CMemFile data(pBuffer + 2, nPayLoadLen - 2);
-		ProcessPacket(data, opcode, serverip, serverport);
+                ProcessPacket(data, opcode, addr);
 	} else {
 		AddDebugLogLineN(logServerUDP, CFormat(wxT("Received invalid packet, protocol (0x%x) and opcode (0x%x)")) % protocol % opcode);
 
@@ -103,15 +103,14 @@ void CServerUDPSocket::OnPacketReceived(uint32 serverip, uint16 serverport, byte
 }
 
 
-void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, uint16 port)
+void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8_t opcode, const CI2PAddress & dest)
 {
-	CServer* update = theApp->serverlist->GetServerByIPUDP(ip, port, true);
+        CServer* update = theApp->serverlist->GetServerByDest(dest);
 	unsigned size = packet.GetLength();
 
 	theStats::AddDownOverheadOther(size);
 	AddDebugLogLineN( logServerUDP,
-					CFormat( wxT("Received UDP server packet from %s:%u, opcode (0x%x)")) %
-							Uint32toStringIP(ip) % port % opcode );
+                          CFormat( wxT("Received UDP server packet from %s, opcode (0x%x)!")) % dest.humanReadable() % opcode );
 
 	try {
 		// Imported: OP_GLOBSEARCHRES, OP_GLOBFOUNDSOURCES & OP_GLOBSERVSTATRES
@@ -123,7 +122,7 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 				// process all search result packets
 
 				do{
-					theApp->searchlist->ProcessUDPSearchAnswer(packet, true, ip, port - 4);
+                                theApp->searchlist->ProcessUDPSearchAnswer(packet, dest);
 
 					if (packet.GetPosition() + 2 < size) {
 						// An additional packet?
@@ -149,7 +148,7 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 				do {
 					CMD4Hash fileid = packet.ReadHash();
 					if (CPartFile* file = theApp->downloadqueue->GetFileByID(fileid)) {
-						file->AddSources(packet, ip, port-4, SF_REMOTE_SERVER, false);
+                                        file->AddSources(packet, dest, SF_REMOTE_SERVER, false);
 					} else {
 						AddDebugLogLineC( logServerUDP, wxT("Sources received for unknown file") );
 						// skip sources for that file
@@ -175,7 +174,7 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 			case OP_GLOBSERVSTATRES:{
 				// Reviewed with 0.47c
 				if (!update) {
-					throw wxString(CFormat(wxT("Unknown server on a OP_GLOBSERVSTATRES packet (%s:%d)")) % Uint32toStringIP(ip) % (port-4));
+                                throw wxString(CFormat(wxT("Unknown server on a OP_GLOBSERVSTATRES packet (%s)")) % dest.humanReadable());
 				}
 				if (size < 12) {
 					throw wxString(CFormat(wxT("Invalid OP_GLOBSERVSTATRES packet (size=%u)")) % size);
@@ -244,7 +243,7 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 					update->SetDescReqChallenge(uDescReqChallenge);
 					sendpacket->CopyUInt32ToDataBuffer(uDescReqChallenge);
 					//theStats.AddUpDataOverheadServer(packet->size);
-					AddDebugLogLineN(logServerUDP, CFormat(wxT(">>> Sending OP__ServDescReq     to server %s:%u, challenge %08x\n")) % update->GetAddress() % update->GetPort() % uDescReqChallenge);
+                                AddDebugLogLineN(logServerUDP, CFormat(wxT(">>> Sending OP__ServDescReq     to server %s, challenge %08x\n")) % update->GetAddress() % uDescReqChallenge);
 					theApp->serverconnect->SendUDPPacket(sendpacket, update, true);
 				} else {
 					update->SetLastDescPingedCount(true);
@@ -277,8 +276,8 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 
 						uint32 uTags = packet.ReadUInt32();
 						for (uint32 i = 0; i < uTags; ++i) {
-							CTag tag(packet, update->GetUnicodeSupport());
-							switch (tag.GetNameID()) {
+                                                CTag tag(packet);
+                                                switch (tag.GetID()) {
 								case ST_SERVERNAME:
 									update->SetListName(tag.GetStr());
 									break;
@@ -320,11 +319,11 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 			default:
 				AddDebugLogLineC(logServerUDP, CFormat(wxT("Unknown Server UDP opcode %x")) % opcode);
 		}
-	} catch (const wxString& DEBUG_ONLY(error)) {
+        } catch (const wxString& error) {
 		AddDebugLogLineN(logServerUDP, wxT("Error while processing incoming UDP Packet: ") + error);
-	} catch (const CInvalidPacket& DEBUG_ONLY(error)) {
+        } catch (const CInvalidPacket& error) {
 		AddDebugLogLineN(logServerUDP, wxT("Invalid UDP packet encountered: ") + error.what());
-	} catch (const CEOFException& DEBUG_ONLY(e)) {
+        } catch (const CEOFException& e) {
 		AddDebugLogLineN(logServerUDP, wxT("IO error while processing incoming UDP Packet: ") + e.what());
 	}
 
@@ -335,12 +334,12 @@ void CServerUDPSocket::ProcessPacket(CMemFile& packet, uint8 opcode, uint32 ip, 
 
 }
 
-void CServerUDPSocket::OnReceiveError(int errorCode, uint32 ip, uint16 port)
+void CServerUDPSocket::OnReceiveError(int errorCode, const CI2PAddress & ip)
 {
-	CMuleUDPSocket::OnReceiveError(errorCode, ip, port);
+        CMuleUDPSocket::OnReceiveError(errorCode, ip);
 
 	// If we are not currently pinging this server, increase the failure counter
-	CServer* pServer = theApp->serverlist->GetServerByIPUDP(ip, port, true);
+        CServer* pServer = theApp->serverlist->GetServerByDest(ip);
 	if (pServer && !pServer->GetCryptPingReplyPending() && GetTickCount() - pServer->GetLastPinged() >= SEC2MS(30)) {
 		pServer->AddFailedCount();
 		Notify_ServerRefresh(pServer);
@@ -348,34 +347,33 @@ void CServerUDPSocket::OnReceiveError(int errorCode, uint32 ip, uint16 port)
 
 }
 
-void CServerUDPSocket::SendPacket(CPacket* packet, CServer* host, bool delPacket, bool rawpacket, uint16 port_offset)
+void CServerUDPSocket::SendPacket(CPacket* packet, CServer* host, bool delPacket, bool rawpacket, uint16 WXUNUSED(port_offset))
 {
-	ServerUDPPacket item = { NULL, 0, 0, wxEmptyString };
+        ServerUDPPacket item = { nullptr, CI2PAddress::null, wxEmptyString };
 
 	if (host->HasDynIP()) {
 		item.addr = host->GetDynIP();
 	} else {
-		item.ip = host->GetIP();
+                item.dest = host->GetDest();
 	}
 
 	// 4 (default) for standard sending, 12 for obfuscated ping, that's all for now.
 	// Might be changed if encrypted bellow, so don't move it.
-	item.port = host->GetPort() + port_offset;
+	//item.port = host->GetPort() + port_offset;
 
 	// We might need to encrypt the packet for this server.
 	if (!rawpacket && thePrefs::IsServerCryptLayerUDPEnabled() && host->GetServerKeyUDP() != 0 && host->SupportsObfuscationUDP()) {
 		uint16 uRawPacketSize = packet->GetPacketSize() + 2;
-		byte* pRawPacket = new byte[uRawPacketSize];
-		memcpy(pRawPacket, packet->GetUDPHeader(), 2);
-		memcpy(pRawPacket + 2, packet->GetDataBuffer(), packet->GetPacketSize());
+                std::unique_ptr<byte[]> pRawPacket(new byte[uRawPacketSize]);
+                memcpy(pRawPacket.get(), packet->GetUDPHeader(), 2);
+                memcpy(pRawPacket.get() + 2, packet->GetDataBuffer(), packet->GetPacketSize());
 
-		uRawPacketSize = CEncryptedDatagramSocket::EncryptSendServer(&pRawPacket, uRawPacketSize, host->GetServerKeyUDP());
+                uRawPacketSize = CEncryptedDatagramSocket::EncryptSendServer(pRawPacket, uRawPacketSize, host->GetServerKeyUDP());
 		AddDebugLogLineN(logServerUDP, CFormat(wxT("Sending encrypted packet to server %s, UDPKey %u, port %u, original OPCode 0x%02x")) % host->GetListName() % host->GetServerKeyUDP() % host->GetObfuscationPortUDP() % packet->GetOpCode());
-		item.port = host->GetObfuscationPortUDP();
+		//item.port = host->GetObfuscationPortUDP();
 
-		CMemFile encryptedpacket(pRawPacket + 2, uRawPacketSize - 2);
-		item.packet  = new CPacket(encryptedpacket, pRawPacket[0], pRawPacket[1]);
-		delete[] pRawPacket;
+                CMemFile encryptedpacket(pRawPacket.get() + 2, uRawPacketSize - 2);
+                item.packet.reset(new CPacket(encryptedpacket, pRawPacket[0], pRawPacket[1]));
 
 		if (delPacket) {
 			delete packet;
@@ -384,14 +382,14 @@ void CServerUDPSocket::SendPacket(CPacket* packet, CServer* host, bool delPacket
 	} else {
 		AddDebugLogLineN(logServerUDP, CFormat(wxT("Sending regular packet to server %s, port %u (raw = %s), OPCode 0x%02x")) % host->GetListName() % host->GetObfuscationPortUDP() % (rawpacket ? wxT("True") : wxT("False")) % packet->GetOpCode());
 		if (delPacket) {
-			item.packet = packet;
+                        item.packet.reset(packet);
 		} else {
-			item.packet = new CPacket(*packet);
+                        item.packet.reset(new CPacket(*packet));
 		}
 	}
 
 
-	m_queue.push_back(item);
+        m_queue.push_back(std::move(item));
 
 	// If there is more than one item in the queue,
 	// then we are already waiting for a dns query.
@@ -404,19 +402,20 @@ void CServerUDPSocket::SendPacket(CPacket* packet, CServer* host, bool delPacket
 void CServerUDPSocket::SendQueue()
 {
 	while (!m_queue.empty()) {
-		ServerUDPPacket item = m_queue.front();
-		CPacket* packet = item.packet;
+        ServerUDPPacket & item = m_queue.front();
+        std::unique_ptr<CPacket> & packet = item.packet;
 
 		// Do we need to do a DNS lookup before sending?
-		wxASSERT(item.ip || !item.addr.IsEmpty());
+                wxASSERT(item.dest.isValid() || !item.addr.IsEmpty());
 		if (!item.addr.IsEmpty()) {
 			// This not an ip but a hostname. Resolve it.
-			CServer* update = theApp->serverlist->GetServerByAddress(item.addr, item.port);
+                        CServer* update = theApp->serverlist->GetServerByAddress(item.addr);
 			if (update) {
 				if (update->GetLastDNSSolve() + DNS_SOLVE_TIME < ::GetTickCount64()) {
 					// Its time for a new check.
 					CAsyncDNS* dns = new CAsyncDNS(item.addr, DNS_UDP, theApp, this);
-					if ((dns->Create() != wxTHREAD_NO_ERROR) || (dns->Run() != wxTHREAD_NO_ERROR)) {
+                                        if (!dns->Run()) {
+                                                delete dns;
 						// Not much we can do here, just drop the packet.
 						m_queue.pop_front();
 						continue;
@@ -434,18 +433,19 @@ void CServerUDPSocket::SendQueue()
 						continue;
 					} else {
 						// It has been solved or is solving.
-						if (update->GetIP()) {
+                                                if (update->GetDest().isValid()) {
 							// It has been solved and ok
 							AddDebugLogLineN(logServerUDP, wxT("Sending a UDP packet to a resolved DNS server host: ")+item.addr);
 							// Update the item IP
-							item.ip = update->GetIP();
+                                                        item.dest = update->GetDest();
 							// It'll fallback to the sending.
 						} else {
 							AddDebugLogLineN(logServerUDP, wxT("Trying to send a UDP packet to a server host that is checking DNS: ")+item.addr);
 							// Let the packet queued, and wait for resolution
 							// Meanwhile, send other packets.
+                            m_queue.push_back(std::move(item));
 							m_queue.pop_front();
-							m_queue.push_back(item);
+							//m_queue.push_back(item);
 							return;
 						}
 					}
@@ -458,13 +458,13 @@ void CServerUDPSocket::SendQueue()
 			}
 		}
 
-		CServer* update = theApp->serverlist->GetServerByIPUDP(item.ip, item.port, true);
+                CServer* update = theApp->serverlist->GetServerByDest(item.dest);
 		if (update) {
 			AddDebugLogLineN(logServerUDP, wxT("Sending a UDP packet to a server: ")+update->GetAddress());
 			// Don't encrypt, as this is already either encrypted or refused to encrypt.
-			CMuleUDPSocket::SendPacket(packet, item.ip, item.port, false, NULL, false, 0);
+                        CMuleUDPSocket::SendPacket(std::move(packet), item.dest, false, NULL, false, 0);
 		} else {
-			AddDebugLogLineN(logServerUDP, wxT("Sending a UDP packet to a server no in serverlist: ")+Uint32_16toStringIP_Port(item.ip,item.port));
+                        AddDebugLogLineN(logServerUDP, wxT("Sending a UDP packet to a server no in serverlist: ")+(item.dest.humanReadable()));
 		}
 
 		m_queue.pop_front();
@@ -472,25 +472,25 @@ void CServerUDPSocket::SendQueue()
 }
 
 
-void CServerUDPSocket::OnHostnameResolved(uint32 ip)
+void CServerUDPSocket::OnHostnameResolved(const CI2PAddress & dest)
 {
 	wxCHECK_RET(m_queue.size(), wxT("DNS query returned, but no packets are queued."));
 
-	ServerUDPPacket item = m_queue.front();
-	wxCHECK_RET(!item.ip && !item.addr.IsEmpty(), wxT("DNS resolution not expected."));
+        ServerUDPPacket & item = m_queue.front();
+        wxCHECK_RET(!item.dest && !item.addr.IsEmpty(), wxT("DNS resolution not expected."));
 
 	/* An asynchronous database routine completed. */
-	CServer* update = theApp->serverlist->GetServerByAddress(item.addr, item.port);
-	if (ip == 0) {
+        CServer* update = theApp->serverlist->GetServerByAddress(item.addr);
+        if (!dest) {
 		update->SetDNSError(true);
 		m_queue.pop_front();
 	} else {
 		if (update) {
-			update->SetID(ip);
+                        update->SetDest(dest);
 		}
 
 		item.addr.Clear();
-		item.ip = ip;
+                item.dest = dest;
 	}
 
 	SendQueue();

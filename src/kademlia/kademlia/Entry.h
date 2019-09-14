@@ -45,16 +45,20 @@ there client on the eMule forum..
 #include <time.h>
 #include <list>
 #include <map>
+#include <i2p/CI2PAddress.h>
 
 struct SSearchTerm;
 class CFileDataIO;
 
 ////////////////////////////////////////
 namespace Kademlia {
+
+class CIndexed;
 ////////////////////////////////////////
 
 class CEntry
 {
+        friend class CIndexed;
 protected:
 	struct sFileNameEntry {
 		wxString m_filename;
@@ -62,34 +66,32 @@ protected:
 	};
 
 public:
-	CEntry()
-	{
-		m_uIP = 0;
-		m_uTCPport = 0;
-		m_uUDPport = 0;
+        CEntry() {
 		m_uSize = 0;
 		m_tLifeTime = time(NULL);
 		m_bSource = false;
 	}
 
-	virtual		~CEntry();
+        virtual ~CEntry() {}
 	virtual CEntry*	Copy() const;
 	virtual bool	IsKeyEntry() const throw()	{ return false; }
 
-	bool	 GetIntTagValue(const wxString& tagname, uint64_t& value, bool includeVirtualTags = true) const;
-	wxString GetStrTagValue(const wxString& tagname) const;
+        uint64_t GetIntTagValue(uint8_t tagname, bool includeVirtualTags = true) const;
+        bool     GetIntTagValue(uint8_t tagname, uint64_t& value, bool includeVirtualTags = true) const;
+        wxString GetStrTagValue(uint8_t tagname) const;
+        virtual TagList & GetTagList();
 
-	void	 AddTag(CTag *tag)			{ m_taglist.push_back(tag); }
-	uint32_t GetTagCount() const			{ return m_taglist.size() + ((m_uSize != 0) ? 1 : 0) + (GetCommonFileName().IsEmpty() ? 0 : 1); }
-	void	 WriteTagList(CFileDataIO* data)	{ WriteTagListInc(data, 0); }
+        void     AddTag(const CTag & tag)           { m_taglist.push_back(tag); }
+        size_t GetTagCount() const                { return m_taglist.size() + ((m_uSize != 0) ? 1 : 0) + (GetCommonFileName().IsEmpty() ? 0 : 1); }
+        void     WriteTagList(CFileDataIO* data);
 
 	wxString GetCommonFileNameLowerCase() const	{ return GetCommonFileName().MakeLower(); }
 	wxString GetCommonFileName() const;
 	void	 SetFileName(const wxString& name);
 
-	uint32_t m_uIP;
-	uint16_t m_uTCPport;
-	uint16_t m_uUDPport;
+        CI2PAddress m_tcpdest;
+        CI2PAddress m_udpdest;
+
 	CUInt128 m_uKeyID;
 	CUInt128 m_uSourceID;
 	uint64_t m_uSize;
@@ -97,15 +99,16 @@ public:
 	bool m_bSource;
 
 protected:
-	void	WriteTagListInc(CFileDataIO *data, uint32_t increaseTagNumber = 0);
+	//void	WriteTagListInc(CFileDataIO *data, uint32_t increaseTagNumber = 0);
 	typedef std::list<sFileNameEntry>	FileNameList;
 	FileNameList	m_filenames;
-	TagPtrList	m_taglist;
+        TagList         m_taglist;
 };
 
 class CKeyEntry : public CEntry
 {
       protected:
+        // iMule : IP means hash of UDP destination
 	struct sPublishingIP {
 		uint32_t m_ip;
 		time_t	 m_lastPublish;
@@ -115,8 +118,8 @@ class CKeyEntry : public CEntry
 	CKeyEntry();
 	virtual ~CKeyEntry();
 
-	virtual CEntry*	Copy() const			{ return CEntry::Copy(); }
-	virtual bool	IsKeyEntry() const throw()	{ return true; }
+        //         virtual CEntry* Copy() const            { return CEntry::Copy(); }
+        bool    IsKeyEntry() const throw()  { return true; }
 
 	bool	SearchTermsMatch(const SSearchTerm *searchTerm) const;
 	void	MergeIPsAndFilenames(CKeyEntry* fromEntry);
@@ -125,7 +128,7 @@ class CKeyEntry : public CEntry
 	void	WritePublishTrackingDataToFile(CFileDataIO *data);
 	void	ReadPublishTrackingDataFromFile(CFileDataIO *data);
 	void	DirtyDeletePublishData();
-	void	WriteTagListWithPublishInfo(CFileDataIO *data);
+        TagList GetTagListWithPublishInfo();
 	static void	ResetGlobalTrackingMap()	{ s_globalPublishIPs.clear(); }
 
       protected:

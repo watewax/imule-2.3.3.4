@@ -27,16 +27,17 @@
 #define UPLOADBANDWIDTHTHROTTLER_H
 
 
-#include <wx/thread.h>
+#include "Types.h"
+#include "common/coroutine.h"
+#include <wx/timer.h>
 
 #include <deque>
 
-#include "Types.h"
 
 class ThrottledControlSocket;
 class ThrottledFileSocket;
 
-class UploadBandwidthThrottler : public wxThread
+class UploadBandwidthThrottler
 {
 public:
     UploadBandwidthThrottler();
@@ -57,13 +58,27 @@ private:
     void DoRemoveFromAllQueues(ThrottledControlSocket* socket);
     bool RemoveFromStandardListNoLock(ThrottledFileSocket* socket);
 
-    void* Entry();
+        struct UBTEntryCtx {
+                uint32 lastLoopTick;
+                sint32 bytesToSpend;
+                uint32 allowedDataRate;
+                uint32 rememberedSlotCounter;
+                uint32 extraSleepTime;
+                uint32 timeSinceLastLoop;
+                uint32 minFragSize;
+                uint32 doubleSendSize;
+                uint32 sleepTime;
+                uint32 thisLoopTick;
 
-    bool m_doRun;
+                cr_context ( UBTEntryCtx );
+        } ;
 
+        UBTEntryCtx entryCtx;
 
-    wxMutex m_sendLocker;
-    wxMutex m_tempQueueLocker;
+        void Entry();
+
+        bool m_doRun;
+        wxTimer m_sleep;
 
 	typedef std::deque<ThrottledControlSocket*> SocketQueue;
 

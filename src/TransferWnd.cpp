@@ -211,13 +211,13 @@ void CTransferWnd::OnSetCatStatus( wxCommandEvent& event )
 		}
 	}
 
-	CoreNotify_Download_Set_Cat_Status( m_dlTab->GetSelection(), event.GetId() );
+        CoreNotify_Download_Set_Cat_Status( (uint8)m_dlTab->GetSelection(), event.GetId() );
 }
 
 
 void CTransferWnd::OnSetCatPriority( wxCommandEvent& event )
 {
-	int priority = 0;
+        uint8 priority = 0;
 
 	switch ( event.GetId() ) {
 		case MP_PRIOLOW:	priority = PR_LOW;	break;
@@ -228,7 +228,7 @@ void CTransferWnd::OnSetCatPriority( wxCommandEvent& event )
 			return;
 	}
 
-	CoreNotify_Download_Set_Cat_Prio( m_dlTab->GetSelection(), priority );
+        CoreNotify_Download_Set_Cat_Prio( (uint8)m_dlTab->GetSelection(), priority );
 }
 
 
@@ -252,16 +252,17 @@ void CTransferWnd::OnAddCategory(wxCommandEvent& WXUNUSED(event))
 
 void CTransferWnd::OnDelCategory(wxCommandEvent& WXUNUSED(event))
 {
-	RemoveCategory(m_dlTab->GetSelection());
+        RemoveCategory((uint8)m_dlTab->GetSelection());
 }
 
 
 void CTransferWnd::RemoveCategory(int index)
 {
 	if ( index > 0 ) {
+                wxASSERT(index < 1 << 8);
 		theApp->downloadqueue->ResetCatParts(index);
-		theApp->glob_prefs->RemoveCat(index);
-		RemoveCategoryPage(index);
+                theApp->glob_prefs->RemoveCat((uint8)index);
+                RemoveCategoryPage((uint8)index);
 		if ( theApp->glob_prefs->GetCatCount() == 1 ) {
 			thePrefs::SetAllcatFilter( acfAll );
 		}
@@ -271,7 +272,7 @@ void CTransferWnd::RemoveCategory(int index)
 }
 
 
-void CTransferWnd::RemoveCategoryPage(int index)
+void CTransferWnd::RemoveCategoryPage(uint8 index)
 {
 	m_dlTab->RemovePage(index);
 	m_dlTab->SetSelection(0);
@@ -315,7 +316,7 @@ void CTransferWnd::OnCategoryChanged(wxNotebookEvent& evt)
 	CKnownFileVector filesVector;
 	clientlistctrl->ShowSources(filesVector);
 	// Then change cat
-	downloadlistctrl->ChangeCategory(evt.GetSelection());
+        downloadlistctrl->ChangeCategory((uint8) evt.GetSelection());
 	downloadlistctrl->SortList();
 }
 

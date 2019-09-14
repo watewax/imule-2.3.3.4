@@ -67,6 +67,7 @@ bool CUpDownClient::Compare(const CUpDownClient* tocomp, bool bIgnoreUserhash) c
 	    return GetUserHash() == tocomp->GetUserHash();
 	}
 
+        /*
 	if (HasLowID()) {
 		//User is firewalled.. Must do two checks..
 		if (GetIP()!=0	&& GetIP() == tocomp->GetIP()) {
@@ -94,6 +95,7 @@ bool CUpDownClient::Compare(const CUpDownClient* tocomp, bool bIgnoreUserhash) c
 		//Both IP, and Server do not match..
 		return false;
     }
+        */
 
 	//User is not firewalled.
 	if (GetUserPort()!=0) {
@@ -215,13 +217,15 @@ bool CUpDownClient::IsSourceRequestAllowed()
 
 void CUpDownClient::SendFileRequest()
 {
+        AddDebugLogLineN(logClient, CFormat( _("Sending file request to %s") ) % GetUserName() ) ;
+        // 0.42e
 	wxCHECK_RET(m_reqfile, wxT("Cannot request file when no reqfile is set"));
 
 	CMemFile dataFileReq(16+16);
 	dataFileReq.WriteHash(m_reqfile->GetFileHash());
 
 	if (SupportMultiPacket()) {
-		DEBUG_ONLY( wxString sent_opcodes; )
+                wxString sent_opcodes;
 
 		if (SupportExtMultiPacket()) {
 			dataFileReq.WriteUInt64(m_reqfile->GetFileSize());
@@ -230,7 +234,7 @@ void CUpDownClient::SendFileRequest()
 		AddDebugLogLineN(logClient, wxT("Sending file request to client"));
 
 		dataFileReq.WriteUInt8(OP_REQUESTFILENAME);
-		DEBUG_ONLY( sent_opcodes += wxT("|RFNM|"); )
+                sent_opcodes += wxT("|RFNM|");
 		// Extended information
 		if (GetExtendedRequestsVersion() > 0) {
 			m_reqfile->WritePartStatus(&dataFileReq);
@@ -239,7 +243,7 @@ void CUpDownClient::SendFileRequest()
 			m_reqfile->WriteCompleteSourcesCount(&dataFileReq);
 		}
 		if (m_reqfile->GetPartCount() > 1) {
-			DEBUG_ONLY( sent_opcodes += wxT("|RFID|"); )
+                        sent_opcodes += wxT("|RFID|");
 			dataFileReq.WriteUInt8(OP_SETREQFILEID);
 		}
 		if (IsEmuleClient()) {
@@ -248,20 +252,20 @@ void CUpDownClient::SendFileRequest()
 		}
 		if (IsSourceRequestAllowed()) {
 			if (SupportsSourceExchange2()){
-				DEBUG_ONLY( sent_opcodes += wxT("|RSRC2|"); )
+                                sent_opcodes += wxT("|RSRC2|");
 				dataFileReq.WriteUInt8(OP_REQUESTSOURCES2);
 				dataFileReq.WriteUInt8(SOURCEEXCHANGE2_VERSION);
 				const uint16 nOptions = 0; // 16 ... Reserved
 				dataFileReq.WriteUInt16(nOptions);
 			} else {
-				DEBUG_ONLY( sent_opcodes += wxT("|RSRC|"); )
+                                sent_opcodes += wxT("|RSRC|");
 				dataFileReq.WriteUInt8(OP_REQUESTSOURCES);
 			}
 			m_reqfile->SetLastAnsweredTimeTimeout();
 			SetLastAskedForSources();
 		}
 		if (IsSupportingAICH()) {
-			DEBUG_ONLY( sent_opcodes += wxT("|AFHR|"); )
+                        sent_opcodes += wxT("|AFHR|");
 			dataFileReq.WriteUInt8(OP_AICHFILEHASHREQ);
 		}
 		CPacket* packet = new CPacket(dataFileReq, OP_EMULEPROT, (SupportExtMultiPacket() ? OP_MULTIPACKET_EXT : OP_MULTIPACKET));
@@ -395,7 +399,8 @@ void CUpDownClient::ProcessFileStatus(bool bUdpPacket, const CMemFile* data, con
 		throw wxString(wxT("ERROR: Wrong file ID (ProcessFileStatus; m_reqfile!=file)"));
 	}
 
-	uint16 nED2KPartCount = data->ReadUInt16();
+        //! read part count (8 bytes)
+        uint64_t nED2KPartCount = data->ReadUInt64();
 
 	m_reqfile->UpdatePartsFrequency( this, false );	// Decrement
 	m_downPartStatus.clear();
@@ -720,8 +725,8 @@ void CUpDownClient::SendBlockRequests()
 			wxASSERT( (*it)->block->StartOffset <= (*it)->block->EndOffset );
 			(*it)->fZStreamError = 0;
 			(*it)->fRecovered = 0;
-			CTagVarInt(/*Noname*/0,(*it)->block->StartOffset).WriteTagToFile(&data);
-			CTagVarInt(/*Noname*/0,(*it)->block->EndOffset).WriteTagToFile(&data);
+                        CTag(/*Noname*/0,(*it)->block->StartOffset).WriteTo(&data);
+                        CTag(/*Noname*/0,(*it)->block->EndOffset).WriteTo(&data);
 			++it;
 			nBlocks--;
 		}
@@ -735,31 +740,9 @@ void CUpDownClient::SendBlockRequests()
 
 		//#warning Kry - I dont specially like this approach, we iterate one time too many
 
-		bool bHasLongBlocks =  false;
+                bool bHasLongBlocks =  true;
 
 		std::list<Pending_Block_Struct*>::iterator it = m_PendingBlocks_list.begin();
-		for (uint32 i = 0; i != m_MaxBlockRequests; i++){
-			if (it != m_PendingBlocks_list.end()) {
-				Pending_Block_Struct* pending = *it++;
-				wxASSERT( pending->block->StartOffset <= pending->block->EndOffset );
-				if (pending->block->StartOffset > 0xFFFFFFFF || pending->block->EndOffset > 0xFFFFFFFF){
-					bHasLongBlocks = true;
-					if (!SupportsLargeFiles()){
-						// Requesting a large block from a client that doesn't support large files?
-						if (!GetSentCancelTransfer()){
-							CPacket* cancel_packet = new CPacket(OP_CANCELTRANSFER, 0, OP_EDONKEYPROT);
-							theStats::AddUpOverheadFileRequest(cancel_packet->GetPacketSize());
-							AddDebugLogLineN( logLocalClient, wxT("Local Client: OP_CANCELTRANSFER to ") + GetFullIP() );
-							SendPacket(cancel_packet,true,true);
-							SetSentCancelTransfer(1);
-						}
-						SetDownloadState(DS_ERROR);
-						return;
-					}
-					break;
-				}
-			}
-		}
 
 		CMemFile data(16 /*Hash*/ + (m_MaxBlockRequests*(bHasLongBlocks ? 8 : 4) /* uint32/64 start*/) + (3*(bHasLongBlocks ? 8 : 4)/* uint32/64 end*/));
 		data.WriteHash(m_reqfile->GetFileHash());
@@ -802,9 +785,10 @@ void CUpDownClient::SendBlockRequests()
 				}
 			}
 		}
-		packet = new CPacket(data, (bHasLongBlocks ? OP_EMULEPROT : OP_EDONKEYPROT), (bHasLongBlocks ? (uint8)OP_REQUESTPARTS_I64 : (uint8)OP_REQUESTPARTS));
-		AddDebugLogLineN(logLocalClient, CFormat(wxT("Local Client: %s to %s")) % (bHasLongBlocks ? wxT("OP_REQUESTPARTS_I64") : wxT("OP_REQUESTPARTS")) % GetFullIP());
-	}
+                packet = new CPacket(data, (SupportsLargeFiles() ? OP_EMULEPROT : OP_EDONKEYPROT), (bHasLongBlocks ? (uint8)OP_REQUESTPARTS : (uint8)OP_REQUESTPARTS));
+                AddDebugLogLineN(logLocalClient, wxString::Format(wxT("Local Client: %s to "),(bHasLongBlocks ? wxT("OP_REQUESTPARTS") : wxT("OP_REQUESTPARTS"))) + GetTCPDest().humanReadable() );
+                break;
+        }
 
 	if (packet) {
 		theStats::AddUpOverheadFileRequest(packet->GetPacketSize());
@@ -883,12 +867,14 @@ void CUpDownClient::ProcessBlockPacket(const byte* packet, uint32 size, bool pac
 
 		// Check that packet size matches the declared data size + header size
 		if ( nEndPos == nStartPos || size != ((nEndPos - nStartPos) + header_size)) {
-			throw wxString(wxT("Corrupted or invalid DataBlock received (ProcessBlockPacket)"));
+                        throw (wxString) (CFormat(wxT("Corrupted or invalid DataBlock received (ProcessBlockPacket) "
+                                                      "(nEndPos=%" PRIu64 ", nStartPos=%" PRIu64 ", size=%" PRIu32 ", HEADER_SIZE=%d)"))
+                                          % nEndPos % nStartPos % size % header_size);
 		}
 		theStats::AddDownloadFromSoft(GetClientSoft(),size - header_size);
 		bytesReceivedCycle += size - header_size;
 
-		credits->AddDownloaded(size - header_size, GetIP(), theApp->CryptoAvailable());
+                credits->AddDownloaded(size - header_size, GetTCPDest(), theApp->CryptoAvailable());
 
 		// Move end back one, should be inclusive
 		nEndPos--;
@@ -908,8 +894,8 @@ void CUpDownClient::ProcessBlockPacket(const byte* packet, uint32 size, bool pac
 
 				if (cur_block->fZStreamError){
 					AddDebugLogLineN(logZLib,
-						CFormat(wxT("Ignoring %u bytes of block %u-%u because of erroneous zstream state for file: %s"))
-							% (size - header_size) % nStartPos % nEndPos % m_reqfile->GetFileName());
+                                                         CFormat(wxT("Ignoring %" PRIu32 " bytes of block %" PRIu64 "-%" PRIu64 " because of erroneous zstream state for file: %s"))
+                                                         % (size - (uint32_t) header_size) % nStartPos % nEndPos % m_reqfile->GetFileName());
 					m_reqfile->RemoveBlockFromList(cur_block->block->StartOffset, cur_block->block->EndOffset);
 					return;
 				}
@@ -925,7 +911,7 @@ void CUpDownClient::ProcessBlockPacket(const byte* packet, uint32 size, bool pac
 				if (!packed) {
 					// security sanitize check
 					if (nEndPos > cur_block->block->EndOffset) {
-						AddDebugLogLineN(logRemoteClient, CFormat(wxT("Received Blockpacket exceeds requested boundaries (requested end: %u, Part: %u, received end: %u, Part: %u), file: %s remote IP: %s")) % cur_block->block->EndOffset % (uint32)(cur_block->block->EndOffset / PARTSIZE) % nEndPos % (uint32)(nEndPos / PARTSIZE) % m_reqfile->GetFileName() % Uint32toStringIP(GetIP()));
+                                                AddDebugLogLineN(logRemoteClient, CFormat(wxT("Received Blockpacket exceeds requested boundaries (requested end: %" PRIu64 ", Part: %" PRIu64 ", received end: %" PRIu64 ", Part: %" PRIu64 "), file: %s remote IP: %s")) % cur_block->block->EndOffset % (cur_block->block->EndOffset / PARTSIZE) % nEndPos % (nEndPos / PARTSIZE) % m_reqfile->GetFileName() % GetTCPDest().humanReadable());
 						m_reqfile->RemoveBlockFromList(cur_block->block->StartOffset, cur_block->block->EndOffset);
 						return;
 					}
@@ -1177,6 +1163,7 @@ float CUpDownClient::CalculateKBpsDown()
 		}
 		//AddDebugLogLineN(logLocalClient, CFormat(wxT("CalculateKBpsDown %p kbps %.1f kbpsCur %.1f dt %.3f rcv %d "))
 		//			% this % kBpsDown  % kBpsDownCur % dt % bytesReceivedCycle);
+                msReceivedTotal += msCur-msReceivedPrev;
 		bytesReceivedCycle = 0;
 		msReceivedPrev = msCur;
 	}
@@ -1200,6 +1187,11 @@ float CUpDownClient::CalculateKBpsDown()
 	return kBpsDown;
 }
 
+float CUpDownClient::GetAvgKBpsDown() const
+{
+	if (msReceivedTotal==0) return 0;
+	return ((float)m_nTransferredDown/msReceivedTotal);
+}
 uint16 CUpDownClient::GetAvailablePartCount() const
 {
 	uint16 result = 0;
@@ -1262,11 +1254,7 @@ void CUpDownClient::UDPReaskForDownload()
 	}
 	*/
 
-	if (thePrefs::GetEffectiveUDPPort() == 0) {
-		return;
-	}
-
-	if (m_nUDPPort != 0 && !theApp->IsFirewalled() && !IsConnected()) {
+        if (m_nUDPDest.isValid() && !IsConnected()) {
 		//don't use udp to ask for sources
 		if(IsSourceRequestAllowed()) {
 			return;
@@ -1287,38 +1275,14 @@ void CUpDownClient::UDPReaskForDownload()
 		}
 
 		if (GetUDPVersion() > 2) {
-			data.WriteUInt16(m_reqfile->m_nCompleteSourcesCount);
+					wxASSERT(m_reqfile->m_nCompleteSourcesCount < 1<<16);
+                    data.WriteUInt16((uint16)m_reqfile->m_nCompleteSourcesCount);
 		}
 
-		CPacket* response = new CPacket(data, OP_EMULEPROT, OP_REASKFILEPING);
+                std::unique_ptr<CPacket> response(new CPacket(data, OP_EMULEPROT, OP_REASKFILEPING));
 		AddDebugLogLineN( logClientUDP, wxT("Client UDP socket: send OP_REASKFILEPING") );
 		theStats::AddUpOverheadFileRequest(response->GetPacketSize());
-		theApp->clientudp->SendPacket(response,GetConnectIP(),GetUDPPort(), ShouldReceiveCryptUDPPackets(), GetUserHash().GetHash(), false, 0);
-	} else  if (HasLowID() && GetBuddyIP() && GetBuddyPort() && HasValidBuddyID()) {
-
-		m_bUDPPending = true;
-
-		CMemFile data(128);
-
-		data.WriteHash(CMD4Hash(GetBuddyID()));
-		data.WriteHash(m_reqfile->GetFileHash());
-
-		if (GetUDPVersion() > 3) {
-			if (m_reqfile->IsPartFile()) {
-				static_cast<CPartFile*>(m_reqfile)->WritePartStatus(&data);
-			} else {
-				data.WriteUInt16(0);
-			}
-		}
-
-		if (GetUDPVersion() > 2) {
-			data.WriteUInt16(m_reqfile->m_nCompleteSourcesCount);
-		}
-
-		CPacket* response = new CPacket(data, OP_EMULEPROT, OP_REASKCALLBACKUDP);
-		AddDebugLogLineN( logClientUDP, wxT("Client UDP socket: send OP_REASKCALLBACKUDP") );
-		theStats::AddUpOverheadFileRequest(response->GetPacketSize());
-		theApp->clientudp->SendPacket(response, GetBuddyIP(), GetBuddyPort(), false, NULL, true, 0 );
+                theApp->clientudp->SendPacket(std::move(response),GetUDPDest(), ShouldReceiveCryptUDPPackets(), GetUserHash().GetHash(), false, 0);
 	}
 }
 
@@ -1593,7 +1557,7 @@ void CUpDownClient::SendAICHRequest(CPartFile* pForFile, uint16 nPart){
 	m_fAICHRequested = TRUE;
 	CMemFile data;
 	data.WriteHash(pForFile->GetFileHash());
-	data.WriteUInt16(nPart);
+        data.WriteUInt64(nPart);
 	pForFile->GetAICHHashset()->GetMasterHash().Write(&data);
 	CPacket* packet = new CPacket(data, OP_EMULEPROT, OP_AICHREQUEST);
 	theStats::AddUpOverheadOther(packet->GetPacketSize());
@@ -1617,7 +1581,7 @@ void CUpDownClient::ProcessAICHAnswer(const byte* packet, uint32 size)
 	CMD4Hash hash = data.ReadHash();
 	CPartFile* pPartFile = theApp->downloadqueue->GetFileByID(hash);
 	CAICHRequestedData request = CAICHHashSet::GetAICHReqDetails(this);
-	uint16 nPart = data.ReadUInt16();
+        uint64_t nPart = data.ReadUInt64();
 	if (pPartFile != NULL && request.m_pPartFile == pPartFile && request.m_pClient.GetClient() == this && nPart == request.m_nPart){
 		CAICHHash ahMasterHash(&data);
 		if ( (pPartFile->GetAICHHashset()->GetStatus() == AICH_TRUSTED || pPartFile->GetAICHHashset()->GetStatus() == AICH_VERIFIED)
@@ -1645,14 +1609,14 @@ void CUpDownClient::ProcessAICHAnswer(const byte* packet, uint32 size)
 
 void CUpDownClient::ProcessAICHRequest(const byte* packet, uint32 size)
 {
-	if (size != 16 + 2 + CAICHHash::GetHashSize()) {
+        if (size != 16 + 8 + CAICHHash::GetHashSize()) {
 		throw wxString(wxT("Received AICH Request Packet with wrong size"));
 	}
 
 	CMemFile data(packet, size);
 
 	CMD4Hash hash = data.ReadHash();
-	uint16 nPart = data.ReadUInt16();
+        uint64_t nPart = data.ReadUInt64();
 	CAICHHash ahMasterHash(&data);
 	CKnownFile* pKnownFile = theApp->sharedfiles->GetFileByID(hash);
 	if (pKnownFile != NULL){
@@ -1662,7 +1626,7 @@ void CUpDownClient::ProcessAICHRequest(const byte* packet, uint32 size)
 		{
 			CMemFile fileResponse;
 			fileResponse.WriteHash(pKnownFile->GetFileHash());
-			fileResponse.WriteUInt16(nPart);
+                        fileResponse.WriteUInt64( nPart );
 			pKnownFile->GetAICHHashset()->GetMasterHash().Write(&fileResponse);
 			if (pKnownFile->GetAICHHashset()->CreatePartRecoveryData(nPart*PARTSIZE, &fileResponse)){
 				AddDebugLogLineN(logAICHTransfer,

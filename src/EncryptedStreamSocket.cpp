@@ -89,6 +89,7 @@ Basic Obfuscated Handshake Protocol Client <-> Server:
 #include "MemFile.h"
 #include "ClientList.h"
 #include "RandomFunctions.h"
+#include "OtherFunctions.h"
 
 #include <algorithm>
 
@@ -118,7 +119,7 @@ static unsigned char dh768_p[] = {
 #endif
 #define SOCKET_ERROR (-1)
 
-CEncryptedStreamSocket::CEncryptedStreamSocket(muleSocketFlags flags, const CProxyData *proxyData) : CSocketClientProxy(flags, proxyData)
+CEncryptedStreamSocket::CEncryptedStreamSocket(muleSocketFlags flags) : wxI2PSocketClient(flags)
 {
 	m_StreamCryptState = thePrefs::IsClientCryptLayerSupported() ? ECS_UNKNOWN : ECS_NONE;
 	m_NegotiatingState = ONS_NONE;
@@ -183,7 +184,7 @@ void CEncryptedStreamSocket::SetConnectionEncryption(bool bEnabled, const uint8_
 // together with the fact that each byte must pass the keystream only once
 int CEncryptedStreamSocket::Write(const void* lpBuf, uint32_t nBufLen)
 {
-	//printf("Starting write for %s\n", (const char*) unicode2char(GetPeer()));
+        //printf("Starting write for %s\n", (const char*) unicode2char(DbgGetIPString()));
 	if (!IsEncryptionLayerReady()) {
 		wxFAIL;
 		return 0;
@@ -203,19 +204,21 @@ int CEncryptedStreamSocket::Write(const void* lpBuf, uint32_t nBufLen)
 		//this happens when the encryption option was not set on an outgoing connection
 		//or if we try to send before receiving on an incoming connection - both shouldn't happen
 		m_StreamCryptState = ECS_NONE;
-		//DebugLogError(_T("CEncryptedStreamSocket: Overwriting State ECS_UNKNOWN with ECS_NONE because of premature Send() (%s)"), GetPeer());
+                //DebugLogError(_T("CEncryptedStreamSocket: Overwriting State ECS_UNKNOWN with ECS_NONE because of premature Send() (%s)"), DbgGetIPString());
 	}
 
 	//printf("Writing %i bytes of data\n", nBufLen);
-	return CSocketClientProxy::Write(lpBuf, nBufLen);
+        wxI2PSocketClient::Write(lpBuf, nBufLen);
+        return wxI2PSocketClient::LastCount();
 }
 
 int CEncryptedStreamSocket::Read(void* lpBuf, uint32_t nBufLen)
 {
-	m_nObfusicationBytesReceived = CSocketClientProxy::Read(lpBuf, nBufLen);
+        wxI2PSocketClient::Read(lpBuf, nBufLen);
+        m_nObfusicationBytesReceived = wxI2PSocketClient::LastCount();
 	m_bFullReceive = m_nObfusicationBytesReceived == (uint32)nBufLen;
 
-	//printf("Read %i bytes on %s, socket %p\n", m_nObfusicationBytesReceived, (const char*) unicode2char(GetPeer()), this);
+        //printf("Read %i bytes on %s, socket %p\n", m_nObfusicationBytesReceived, (const char*) unicode2char(DbgGetIPString()), this);
 
 	if (m_nObfusicationBytesReceived == (uint32_t)SOCKET_ERROR || m_nObfusicationBytesReceived <= 0) {
 		return m_nObfusicationBytesReceived;
@@ -274,14 +277,14 @@ int CEncryptedStreamSocket::Read(void* lpBuf, uint32_t nBufLen)
 					// until servers and kad completely support encryption too, which will at least for kad take a bit
 					// only exception is the .ini option ClientCryptLayerRequiredStrict which will even ignore test connections
 					// Update: New server now support encrypted callbacks
-					uint32_t ip = GetPeerInt();
-					if (thePrefs::IsClientCryptLayerRequiredStrict() || (!theApp->serverconnect->AwaitingTestFromIP(ip)
-						&& !theApp->clientlist->IsKadFirewallCheckIP(ip)) )
-					{
+		                        CI2PAddress address;
+		                        GetPeer(address);
+		                        CI2PAddress & dest = address;
+		                        if (thePrefs::IsClientCryptLayerRequiredStrict() || !theApp->serverconnect->AwaitingTestFromDest(dest) ) {
 						OnError(ERR_ENCRYPTION_NOTALLOWED);
 						return 0;
 					} else {
-						//AddDebugLogLine(DLP_DEFAULT, false, _T("Incoming unencrypted firewallcheck connection permitted despite RequireEncryption setting  - %s"), GetPeer() );
+						//AddDebugLogLine(DLP_DEFAULT, false, _T("Incoming unencrypted firewallcheck connection permitted despite RequireEncryption setting  - %s"), GetPeer());
 					}
 				}
 				return m_nObfusicationBytesReceived; // buffer was unchanged, we can just pass it through
@@ -542,8 +545,10 @@ int CEncryptedStreamSocket::Negotiate(const uint8* pBuffer, uint32 nLen)
 					const uint8_t bySelectedEncryptionMethod = ENM_OBFUSCATION; // we do not support any further encryption in this version, so no need to look which the other client preferred
 					fileResponse.WriteUInt8(bySelectedEncryptionMethod);
 
-					const uint8_t byPaddingLen = theApp->serverconnect->AwaitingTestFromIP(GetPeerInt()) ? 16 : (thePrefs::GetCryptTCPPaddingLength() + 1);
-					uint8_t byPadding = (uint8_t)(GetRandomUint8() % byPaddingLen);
+		                        CI2PAddress address;
+		                        GetPeer(address);
+		                        const uint8 byPaddingLen = theApp->serverconnect->AwaitingTestFromDest(address) ? 16 : (thePrefs::GetCryptTCPPaddingLength() + 1);
+		                        uint8 byPadding = (uint8)(GetRandomUint8() % byPaddingLen);
 
 					fileResponse.WriteUInt8(byPadding);
 					for (int i = 0; i < byPadding; i++) {
@@ -733,7 +738,8 @@ int CEncryptedStreamSocket::SendNegotiatingData(const void* lpBuf, uint32_t nBuf
 	uint32_t result = 0;
 	if (!bDelaySend) {
 		//printf("Writing negotiation data on %s: ", (const char*) unicode2char(GetPeer()));
-		result = CSocketClientProxy::Write(pBuffer, nBufLen);
+                wxI2PSocketClient::Write(pBuffer, nBufLen);
+                result = wxI2PSocketClient::LastCount();
 		//printf("Wrote %i bytes\n",result);
 	}
 
@@ -752,6 +758,12 @@ int CEncryptedStreamSocket::SendNegotiatingData(const void* lpBuf, uint32_t nBuf
 	}
 }
 
+wxString	CEncryptedStreamSocket::DbgGetIPString()
+{
+        CI2PAddress address;
+        GetPeer(address);
+        return address.toString();
+}
 
 uint8_t CEncryptedStreamSocket::GetSemiRandomNotProtocolMarker() const
 {

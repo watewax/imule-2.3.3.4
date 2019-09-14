@@ -49,7 +49,7 @@ class CKadUDPKey
 
       private:
 	uint32_t	m_key;
-	uint32_t	m_ip;
+        uint32_t	m_ip; // imule: hash of a destination
 };
 
 } // namespace Kademlia

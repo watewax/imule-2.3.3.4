@@ -30,9 +30,11 @@
 #include "ObservableQueue.h"	// Needed for CObservableQueue
 #include "GetTickCount.h"	// Needed fot GetTickCount
 
+#include "MuleThread.h"
 
 #include <deque>
 
+#include "i2p/CI2PAddress.h"
 
 class CSharedFileList;
 class CSearchFile;
@@ -163,7 +165,7 @@ public:
 	 * clients. The source will then be queued as is appropriate, or deleted
 	 * if it is duplicate of an existing client.
 	 */
-	void    CheckAndAddSource(CPartFile* sender, CUpDownClient* source);
+        bool     CheckAndAddSource(CPartFile* sender, CUpDownClient* source);
 
 	/**
 	 * This function adds already known source to the specified file.
@@ -200,7 +202,7 @@ public:
 	 * @param nUDPPort The UDP-port of the client.
 	 * @return The matching client or NULL if none was found.
 	 */
-	CUpDownClient* GetDownloadClientByIP_UDP(uint32 dwIP, uint16 nUDPPort) const;
+        CUpDownClient* GetDownloadClientByDest_UDP(const CI2PAddress & nUDPDest) const;
 
 
 	/**
@@ -265,7 +267,7 @@ public:
 	/**
 	 * This function is called when a DNS lookup is finished.
 	 */
-	void	OnHostnameResolved(uint32 ip);
+        void	OnHostnameResolved(const CI2PAddress & dest);
 
 
 	/**
@@ -301,7 +303,7 @@ public:
 	/**
 	 * Add a Kad source to a download
 	 */
-	 void	KademliaSearchFile(uint32_t searchID, const Kademlia::CUInt128* pcontactID, const Kademlia::CUInt128* pkadID, uint8_t type, uint32_t ip, uint16_t tcp, uint16_t udp, uint32_t buddyip, uint16_t buddyport, uint8_t byCryptOptions);
+        bool	KademliaSearchFile(uint32 searchID, const Kademlia::CUInt128* pcontactID, uint8_t type, const CI2PAddress & tcpdest, const CI2PAddress & udpdest, const CI2PAddress & serverdest, uint8 byCryptOptions);
 
 	CPartFile* GetFileByKadFileSearchID(uint32 id) const;
 
@@ -344,10 +346,10 @@ private:
 	int		GetMaxFilesPerUDPServerPacket() const;
 	bool	SendGlobGetSourcesUDPPacket(CMemFile& data);
 
-	void	AddToResolve(const CMD4Hash& fileid, const wxString& pszHostname, uint16 port, const wxString& hash, uint8 cryptoptions);
+        void 	AddToResolve(const CMD4Hash& fileid, const wxString& pszHostname, const wxString& hash, uint8 cryptoptions);
 
 	//! The mutex assosiated with this class, mutable to allow for const functions.
-	mutable wxMutex m_mutex;
+        mutable wiMutex m_mutex;
 
 
 	uint32		m_datarate;
@@ -371,8 +373,6 @@ private:
 		CMD4Hash fileid;
 		//! The dynamic hostname.
 		wxString strHostname;
-		//! The user-port of the source.
-		uint16 port;
 		//! The hash of the source
 		wxString hash;
 		//! The cryptoptions for the source

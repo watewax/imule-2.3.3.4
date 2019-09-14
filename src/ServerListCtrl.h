@@ -30,7 +30,7 @@
 
 #define	COLUMN_SERVER_NAME	0
 #define	COLUMN_SERVER_ADDR	1
-#define	COLUMN_SERVER_PORT	2
+//#define	COLUMN_SERVER_PORT	2
 #define	COLUMN_SERVER_DESC	3
 #define	COLUMN_SERVER_PING	4
 #define	COLUMN_SERVER_USERS	5
@@ -184,7 +184,7 @@ private:
 	 *
 	 * @see wxListCtrl::SortItems
 	 */
-	static int wxCALLBACK SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData);
+        static int wxCALLBACK SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData);
 
 
 	//! Used to keep track of the last high-lighted item.

@@ -60,18 +60,18 @@ class CValueMap {
 		/*
 		 * Tag -> LastValue map. Hold last value that transmitted to remote side
 		 */
-		std::map<ec_tagname_t, uint8> m_map_uint8;
-		std::map<ec_tagname_t, uint16> m_map_uint16;
-		std::map<ec_tagname_t, uint32> m_map_uint32;
-		std::map<ec_tagname_t, uint64> m_map_uint64;
-		std::map<ec_tagname_t, CMD4Hash> m_map_md4;
+		std::map<ECTagNames, uint8_t> m_map_uint8;
+		std::map<ECTagNames, uint16_t> m_map_uint16;
+		std::map<ECTagNames, uint32_t> m_map_uint32;
+		std::map<ECTagNames, uint64_t> m_map_uint64;
+		std::map<ECTagNames, CMD4Hash> m_map_md4;
+		std::map<ECTagNames, wxString> m_map_string;
+		std::map<ECTagNames, CECTag> m_map_tag;
+		std::map<ECTagNames, CI2PAddress> m_map_address;
 		std::map<ec_tagname_t, CUInt128> m_map_uint128;
-		std::map<ec_tagname_t, wxString> m_map_string;
-		std::map<ec_tagname_t, CECTag> m_map_tag;
 
 		template <class T>
-		void CreateTagT(ec_tagname_t tagname, T value, std::map<ec_tagname_t, T> &map, CECTag *parent)
-		{
+        void CreateTagT(ECTagNames tagname, T value, std::map<ECTagNames, T> &map, CECTag *parent) {
 			if ( (map.count(tagname) == 0) || (map[tagname] != value) ) {
 				parent->AddTag(CECTag(tagname, value));
 				map[tagname] = value;
@@ -92,47 +92,40 @@ class CValueMap {
 			m_map_uint128 = valuemap.m_map_uint128;
 			m_map_string = valuemap.m_map_string;
 			m_map_tag = valuemap.m_map_tag;
+                m_map_address = valuemap.m_map_address;
 		}
 
-		void CreateTag(ec_tagname_t tagname, uint8 value, CECTag *parent)
-		{
+        void CreateTag(ECTagNames tagname, uint8 value, CECTag *parent) {
 			CreateTagT<uint8>(tagname, value, m_map_uint8, parent);
 		}
 
-		void CreateTag(ec_tagname_t tagname, uint16 value, CECTag *parent)
-		{
+        void CreateTag(ECTagNames tagname, uint16 value, CECTag *parent) {
 			CreateTagT<uint16>(tagname, value, m_map_uint16, parent);
 		}
 
-		void CreateTag(ec_tagname_t tagname, uint32 value, CECTag *parent)
-		{
+        void CreateTag(ECTagNames tagname, uint32 value, CECTag *parent) {
 			CreateTagT<uint32>(tagname, value, m_map_uint32, parent);
 		}
 
-		void CreateTag(ec_tagname_t tagname, uint64 value, CECTag *parent)
-		{
+        void CreateTag(ECTagNames tagname, uint64 value, CECTag *parent) {
 			CreateTagT<uint64>(tagname, value, m_map_uint64, parent);
 		}
 
-		void CreateTag(ec_tagname_t tagname, CMD4Hash value, CECTag *parent)
-		{
+        void CreateTag(ECTagNames tagname, CMD4Hash value, CECTag *parent) {
 			CreateTagT<CMD4Hash>(tagname, value, m_map_md4, parent);
 		}
 
-		void CreateTag(ec_tagname_t tagname, CUInt128 value, CECTag *parent)
-		{
-			CreateTagT<CUInt128>(tagname, value, m_map_uint128, parent);
-		}
+        void CreateTag(ECTagNames tagname, wxString value, CECTag *parent) {
+                CreateTagT<wxString>(tagname, value, m_map_string, parent);
+        }
 
-		void CreateTag(ec_tagname_t tagname, wxString value, CECTag *parent)
-		{
-			CreateTagT<wxString>(tagname, value, m_map_string, parent);
-		}
+        void CreateTag(ECTagNames tagname, const CI2PAddress & value, CECTag *parent) {
+                CreateTagT<CI2PAddress>(tagname, value, m_map_address, parent);
+        }
 
-		bool AddTag(const CECTag &tag, CECTag *parent)
-		{
+        bool AddTag(const CECTag &tag, CECTag *parent) {
 			bool ret = false;
-			ec_tagname_t tagname = tag.GetTagName();
+                        ECTagNames tagname = tag.GetTagName();
 			if (m_map_tag.count(tagname) == 0 || m_map_tag[tagname] != tag) {
 				m_map_tag[tagname] = tag;
 				parent->AddTag(tag);
@@ -141,8 +134,7 @@ class CValueMap {
 			return ret;
 		}
 
-		void ForgetTag(ec_tagname_t tagname)
-		{
+        void ForgetTag(ECTagNames tagname) {
 			m_map_tag.erase(tagname);
 		}
 };
@@ -201,20 +193,23 @@ class CEC_ConnState_Tag : public CECTag {
 
 		uint32	GetEd2kId()			const { return GetTagByNameSafe(EC_TAG_ED2K_ID)->GetInt(); }
 		uint32	GetClientId()		const { return GetTagByNameSafe(EC_TAG_CLIENT_ID)->GetInt(); }
-		bool	HasLowID()			const { return GetEd2kId() < HIGHEST_LOWID_ED2K_KAD; }
+        CI2PAddress	GetClientUdpDest()	{ return GetTagByNameSafe(EC_TAG_CLIENT_UDPDEST)->GetAddressData(); }
+        CI2PAddress	GetClientTcpDest()	{ return GetTagByNameSafe(EC_TAG_CLIENT_TCPDEST)->GetAddressData(); }
+        bool	HasLowID()			const { return false; }
 		bool	IsConnected()		const { return IsConnectedED2K() || IsConnectedKademlia(); }
 		bool	IsConnectedED2K()	const { return (GetInt() & 0x01) != 0; }
 		bool	IsConnectingED2K()	const { return (GetInt() & 0x02) != 0; }
 		bool	IsConnectedKademlia()	const { return (GetInt() & 0x04) != 0; }
 		bool	IsKadFirewalled()	const { return (GetInt() & 0x08) != 0; }
 		bool	IsKadRunning()	const { return (GetInt() & 0x10) != 0; }
-		bool	GetKadID(CUInt128& target)	const { return AssignIfExist(EC_TAG_KAD_ID, target); }
+        bool	IsNetworkStarting()	const { return (GetInt() & 0x20) != 0; }
+        bool	IsNetworkStarted()	const { return (GetInt() & 0x40) != 0; }
 };
 
 class CEC_SharedFile_Tag : public CECTag {
 	public:
 		CEC_SharedFile_Tag(const CKnownFile *file, EC_DETAIL_LEVEL detail_level,
-							CValueMap *valuemap = NULL, ec_tagname_t name = EC_TAG_KNOWNFILE);
+                           CValueMap *valuemap = NULL, ECTagNames name = EC_TAG_KNOWNFILE);
 
 		// template needs it
 		uint32		ID()		const { return GetInt(); }
@@ -239,9 +234,10 @@ class CEC_SharedFile_Tag : public CECTag {
 		uint64		GetXferred(uint64 *target = 0)		const { return AssignIfExist(EC_TAG_KNOWNFILE_XFERRED, target); }
 		uint64		GetAllXferred(uint64 *target = 0)	const { return AssignIfExist(EC_TAG_KNOWNFILE_XFERRED_ALL, target); }
 
-		uint16		GetCompleteSourcesLow(uint16 *target = 0)	const { return AssignIfExist(EC_TAG_KNOWNFILE_COMPLETE_SOURCES_LOW, target); }
-		uint16		GetCompleteSourcesHigh(uint16 *target = 0)	const { return AssignIfExist(EC_TAG_KNOWNFILE_COMPLETE_SOURCES_HIGH, target); }
-		uint16		GetCompleteSources(uint16 *target = 0)		const { return AssignIfExist(EC_TAG_KNOWNFILE_COMPLETE_SOURCES, target); }
+        uint32		GetCompleteSourcesLow(uint32 *target = 0)	const { return AssignIfExist(EC_TAG_KNOWNFILE_COMPLETE_SOURCES_LOW, target); }
+        uint32		GetCompleteSourcesHigh(uint32 *target = 0)	const { return AssignIfExist(EC_TAG_KNOWNFILE_COMPLETE_SOURCES_HIGH, target); }
+        uint32		GetCompleteSources(uint32 *target = 0)		const { return AssignIfExist(EC_TAG_KNOWNFILE_COMPLETE_SOURCES, target); }
+        uint32		GetSources(uint32 *target = 0)			const { return AssignIfExist(EC_TAG_KNOWNFILE_SOURCES, target); }
 
 		uint16		GetOnQueue(uint16 *target = 0)		const { return AssignIfExist(EC_TAG_KNOWNFILE_ON_QUEUE, target); }
 
@@ -298,11 +294,13 @@ class CEC_UpDownClient_Tag : public CECTag {
 		uint32 ID() const { return GetInt(); }
 
 		CMD4Hash UserHash(CMD4Hash * target = 0) const { return AssignIfExist(EC_TAG_CLIENT_HASH, target); }
-		uint32 UserID(uint32 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_USER_ID, target); }
+        CI2PAddress UserID(CI2PAddress *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_USER_ID, target); }
 
 		wxString ClientName(wxString *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_NAME, target); }
 		uint32 SpeedUp(uint32 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_UP_SPEED, target); }
 		float SpeedDown(float *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_DOWN_SPEED, target); }
+        float SpeedAvgDown(float *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_AVG_DOWN_SPEED, target); }
+        float SpeedAvgUp(float *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_AVG_UP_SPEED, target); }
 
 		uint64 XferUp(uint64 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_UPLOAD_TOTAL, target); };
 		uint64 XferDown(uint64 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_DOWNLOAD_TOTAL, target); }
@@ -323,12 +321,16 @@ class CEC_UpDownClient_Tag : public CECTag {
 		//uint32 QueueTime(uint32 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_QUEUE_TIME, target); }
 		bool GetSourceFrom(uint8 &target) const { return AssignIfExist(EC_TAG_CLIENT_FROM, target); }
 
-		bool   UserIP(uint32 &target) const { return AssignIfExist(EC_TAG_CLIENT_USER_IP, target); }
+        bool   UserIP(CI2PAddress &target) const { return AssignIfExist(EC_TAG_CLIENT_USER_IP, target); }
 		uint16 UserPort(uint16 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_USER_PORT, target); }
-		uint32 ServerIP(uint32 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_SERVER_IP, target); }
+        CI2PAddress ServerDest(CI2PAddress *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_SERVER_IP, target); }
 		uint16 ServerPort(uint16 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_SERVER_PORT, target); }
 		wxString ServerName(wxString *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_SERVER_NAME, target); }
-		bool KadPort(uint16 &target) const { return AssignIfExist(EC_TAG_CLIENT_KAD_PORT, target); }
+        bool KadPort(CI2PAddress &target) const { return AssignIfExist(EC_TAG_CLIENT_KAD_PORT, target); }
+	/*
+        CI2PAddress UserUdpDest(CI2PAddress *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_UDPDEST, target); }
+	*/
+        CI2PAddress UserIP(CI2PAddress *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_USER_IP, target); }
 
 		uint32 Score(uint32 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_SCORE, target); }
 		uint16 WaitingPosition(uint16 *target = 0) const { return AssignIfExist(EC_TAG_CLIENT_WAITING_POSITION, target); }
@@ -402,7 +404,7 @@ class CEC_Friend_Tag : public CECTag {
 		uint32		ID() const							{ return GetInt(); }
 		bool		Name(wxString &target) const		{ return AssignIfExist(EC_TAG_FRIEND_NAME, target); }
 		bool		UserHash(CMD4Hash &target) const	{ return AssignIfExist(EC_TAG_FRIEND_HASH, target); }
-		bool		IP(uint32 &target) const			{ return AssignIfExist(EC_TAG_FRIEND_IP, target); }
+        bool		TCPDest(CI2PAddress &target) const			{ return AssignIfExist(EC_TAG_FRIEND_IP, target); }
 		bool		Port(uint16 &target) const			{ return AssignIfExist(EC_TAG_FRIEND_PORT, target); }
 		bool		Client(uint32 &target) const		{ return AssignIfExist(EC_TAG_FRIEND_CLIENT, target); }
 };

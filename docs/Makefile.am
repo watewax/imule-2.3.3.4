@@ -2,7 +2,7 @@ SUBDIRS = man
 
 dist_doc_DATA = \
 	ABOUT-NLS \
-	amulesig.txt \
+	imulesig.txt \
 	Changelog \
 	INSTALL \
 	license.txt \

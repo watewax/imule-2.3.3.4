@@ -47,10 +47,11 @@
 
 #include "kademlia/kademlia/Search.h"
 #include "kademlia/kademlia/SearchManager.h"
-#include "kademlia/kademlia/UDPFirewallTester.h"
+// #include "kademlia/kademlia/UDPFirewallTester.h" // not for i2p
 #include "kademlia/net/KademliaUDPListener.h"
 #include "kademlia/routing/Contact.h"
 
+#include "i2p/CI2PAddress.h"
 
 /**
  * CDeletedClient Class
@@ -89,7 +90,6 @@ CClientList::CClientList()
 	m_dwLastBannCleanUp = 0;
 	m_dwLastTrackedCleanUp = 0;
 	m_dwLastClientCleanUp = 0;
-	m_nBuddyStatus = Disconnected;
 }
 
 
@@ -114,8 +114,8 @@ void CClientList::AddClient( CUpDownClient* toadd )
 		m_clientList.insert( IDMapPair( toadd->GetUserIDHybrid(), CCLIENTREF(toadd, wxT("CClientList::AddClient m_clientList.insert"))) );
 
 		// We only add the IP if it is valid
-		if ( toadd->GetIP() ) {
-			m_ipList.insert( IDMapPair( toadd->GetIP(), CCLIENTREF(toadd, wxT("CClientList::AddClient m_ipList.insert")) ) );
+                if ( toadd->GetTCPDest() ) {
+                        m_ipList.insert( IDMapPair( toadd->GetTCPDest(), CCLIENTREF(toadd, wxT("CClientList::AddClient m_ipList.insert")) ) );
 		}
 
 		// We only add the hash if it is valid
@@ -130,8 +130,8 @@ void CClientList::AddClient( CUpDownClient* toadd )
 
 void CClientList::RemoveClient(CUpDownClient* client)
 {
-	RemoveFromKadList( client );
-	RemoveDirectCallback( client );
+        //I2P : KadList is only for firewall -- RemoveFromKadList( client );
+        //I2P : no buddy -- RemoveDirectCallback( client );
 
 	if ( RemoveIDFromList( client ) ) {
 		// Also remove the ip and hash entries
@@ -158,7 +158,7 @@ void CClientList::UpdateClientID( CUpDownClient* client, uint32 newID )
 void CClientList::UpdateClientIP( CUpDownClient* client, uint32 newIP )
 {
 	// Sanity check
-	if ( ( client->GetClientState() != CS_LISTED ) || ( client->GetIP() == newIP ) )
+        if ( ( client->GetClientState() != CS_LISTED ) || ( client->GetTCPDest() == newIP ) )
 		return;
 
 	// Remove the old IP entry
@@ -212,12 +212,12 @@ bool CClientList::RemoveIDFromList( CUpDownClient* client )
 void CClientList::RemoveIPFromList( CUpDownClient* client )
 {
 	// Check if we need to look for the IP entry
-	if ( !client->GetIP() ) {
+        if ( !client->GetTCPDest() ) {
 		return;
 	}
 
 	// Remove the IP entry
-	std::pair<IDMap::iterator, IDMap::iterator> range = m_ipList.equal_range( client->GetIP() );
+        std::pair<IDMap::iterator, IDMap::iterator> range = m_ipList.equal_range( client->GetTCPDest() );
 
 	for ( ; range.first != range.second; ++range.first ) {
 		if ( client == range.first->second.GetClient() ) {
@@ -255,51 +255,16 @@ CUpDownClient* CClientList::FindMatchingClient( CUpDownClient* client )
 	typedef std::pair<IDMap::const_iterator, IDMap::const_iterator> IDMapIteratorPair;
 	wxCHECK(client, NULL);
 
-	const uint32 userIP = client->GetIP();
+        const uint32 userDest = client->GetTCPDest();
 	const uint32 userID = client->GetUserIDHybrid();
 	const uint16 userPort = client->GetUserPort();
-	const uint16 userKadPort = client->GetKadPort();
+        const uint32 userKadDest = client->GetUDPDest();
 
 
-	// LowID clients need a different set of checks
-	if (client->HasLowID()) {
-		// User is firewalled ... Must do two checks.
-		if (userIP && (userPort || userKadPort)) {
-			IDMapIteratorPair range = m_ipList.equal_range(userIP);
-
-			for ( ; range.first != range.second; ++range.first ) {
-				CUpDownClient* other = range.first->second.GetClient();
-				wxASSERT(userIP == other->GetIP());
-
-				if (userPort && (userPort == other->GetUserPort())) {
-					return other;
-				  } else if (userKadPort && (userKadPort == other->GetKadPort())) {
-					return other;
-				}
-			}
-		}
-
-		const uint32 serverIP = client->GetServerIP();
-		const uint32 serverPort = client->GetServerPort();
-		if (userID && serverIP && serverPort) {
-			IDMapIteratorPair range = m_clientList.equal_range(userID);
-
-			for (; range.first != range.second; ++range.first) {
-				CUpDownClient* other = range.first->second.GetClient();
-				wxASSERT(userID == other->GetUserIDHybrid());
-
-				// For lowid, we also have to check the server
-				if (serverIP == other->GetServerIP()) {
-					if (serverPort == other->GetServerPort()) {
-						return other;
-					}
-				}
-			}
-		}
-	} else if (userPort || userKadPort) {
-		// Check by IP first, then by ID
+        if (userDest || userKadDest) {
+                // Check by dest, then ID
 		struct { const IDMap& map; uint32 value; } toCheck[] = {
-			{ m_ipList, userIP }, { m_clientList, userID }
+                        { m_ipList, userDest }, { m_clientList, userID }
 		};
 
 		for (size_t i = 0; i < itemsof(toCheck); ++i) {
@@ -319,10 +284,10 @@ CUpDownClient* CClientList::FindMatchingClient( CUpDownClient* client )
 				}
 			}
 
-			if (userKadPort) {
+                        if (userKadDest) {
 				IDMap::const_iterator it = range.first;
 				for (; it != range.second; ++it) {
-					if (userKadPort == it->second.GetClient()->GetKadPort()) {
+                                        if (userKadDest == it->second.GetClient()->GetUDPDest()) {
 						return it->second.GetClient();
 					}
 				}
@@ -383,18 +348,17 @@ bool CClientList::AttachToAlreadyKnown(CUpDownClient** client, CClientTCPSocket*
 		if (sender) {
 			if (found_client->GetSocket()) {
 				if (found_client->IsConnected()
-					&& (found_client->GetIP() != tocheck->GetIP() || found_client->GetUserPort() != tocheck->GetUserPort() ) )
-				{
+                                                && ( found_client->GetTCPDest() != tocheck->GetTCPDest() || found_client->GetUserPort() != tocheck->GetUserPort() ) ) {
 					// if found_client is connected and has the IS_IDENTIFIED, it's safe to say that the other one is a bad guy
 					if (found_client->IsIdentified()){
-						AddDebugLogLineN(logClient, wxT("Client: ") + tocheck->GetUserName() + wxT("(") + tocheck->GetFullIP() +  wxT("), Banreason: Userhash invalid"));
+                                                AddDebugLogLineN(logClient, wxT("Client: ") + tocheck->GetUserName() + wxT("(") + tocheck->GetTCPDest().humanReadable() +  wxT("), Banreason: Userhash invalid"));
 						tocheck->Ban();
 						return false;
 					}
 
 					AddDebugLogLineN(logClient, wxT("WARNING! Found matching client, to a currently connected client: ")
-															+ tocheck->GetUserName() + wxT("(") +  tocheck->GetFullIP()
-															+ wxT(") and ") + found_client->GetUserName() + wxT("(") +  found_client->GetFullIP() + wxT(")"));
+                                                         + tocheck->GetUserName() + wxT("(") +  tocheck->GetTCPDest().humanReadable()
+                                                         + wxT(") and ") + found_client->GetUserName() + wxT("(") +  found_client->GetTCPDest().humanReadable() + wxT(")"));
 					return false;
 				}
 				found_client->GetSocket()->Safe_Delete();
@@ -482,7 +446,7 @@ bool CClientList::ComparePriorUserhash(uint32 dwIP, uint16 nPort, void* pNewHash
 
 void CClientList::AddTrackClient(CUpDownClient* toadd)
 {
-	std::map<uint32, CDeletedClient*>::iterator it = m_trackedClientsList.find( toadd->GetIP() );
+        std::map<uint32, CDeletedClient*>::iterator it = m_trackedClientsList.find( toadd->GetTCPDest() );
 
 	if ( it != m_trackedClientsList.end() ) {
 		CDeletedClient* pResult = it->second;
@@ -502,7 +466,7 @@ void CClientList::AddTrackClient(CUpDownClient* toadd)
 		CDeletedClient::PortAndHash porthash = { toadd->GetUserPort(), toadd->GetCreditsHash()};
 		pResult->m_ItemsList.push_back(porthash);
 	} else {
-		m_trackedClientsList[ toadd->GetIP() ] = new CDeletedClient(toadd);
+                m_trackedClientsList[ toadd->GetTCPDest() ] = new CDeletedClient(toadd);
 	}
 }
 
@@ -554,6 +518,7 @@ void CClientList::Process()
 		}
 	}
 
+#ifdef this_seems_to_be_related_to_firewalls_and_is_not_useful_in_i2p
 	//We need to try to connect to the clients in m_KadList
 	//If connected, remove them from the list and send a message back to Kad so we can send a ACK.
 	//If we don't connect, we need to remove the client..
@@ -719,8 +684,9 @@ void CClientList::Process()
 		}
 	}
 
+#endif
 	CleanUpClientList();
-	ProcessDirectCallbackList();
+        //I2P : no woman no cry, no firewall no callback -- ProcessDirectCallbackList();
 }
 
 
@@ -814,26 +780,26 @@ bool CClientList::IsDeadSource(const CUpDownClient* client)
 	return m_deadSources.IsDeadSource( client );
 }
 
-bool CClientList::SendChatMessage(uint64 client_id, const wxString& message)
+bool CClientList::SendChatMessage(const CI2PAddress & client_id, const wxString& message)
 {
-	CUpDownClient* client = FindClientByIP(IP_FROM_GUI_ID(client_id), PORT_FROM_GUI_ID(client_id));
+        CUpDownClient* client = FindClientByIP(client_id);
 	AddDebugLogLineN( logClient, wxT("Trying to Send Message.") );
 	if (client) {
 		AddDebugLogLineN( logClient, wxT("Sending.") );
 	} else {
 		AddDebugLogLineC( logClient,
-			CFormat( wxT("No client (GUI_ID %lli [%s:%llu]) found in CClientList::SendChatMessage(). Creating") )
-				% client_id
-				% Uint32toStringIP(IP_FROM_GUI_ID(client_id))
-				% PORT_FROM_GUI_ID(client_id) );
-		client = new CUpDownClient(PORT_FROM_GUI_ID(client_id),IP_FROM_GUI_ID(client_id),0,0,NULL, true, true);
+                                  CFormat( wxT("No client (GUI_ID %s) found in CClientList::SendChatMessage(). Creating") )
+                                  % client_id.humanReadable()
+                                );
+                client = new CUpDownClient(client_id, CI2PAddress::null, NULL, true, true);
 		AddClient(client);
 	}
 	return client->SendChatMessage(message);
 }
 
-void CClientList::SetChatState(uint64 client_id, uint8 state) {
-	CUpDownClient* client = FindClientByIP(IP_FROM_GUI_ID(client_id), PORT_FROM_GUI_ID(client_id));
+void CClientList::SetChatState(uint64 client_id, uint8 state)
+{
+        CUpDownClient* client = FindClientByIP(client_id);
 	if (client) {
 		client->SetChatState(state);
 	}
@@ -841,6 +807,7 @@ void CClientList::SetChatState(uint64 client_id, uint8 state) {
 
 /* Kad stuff */
 
+#ifdef kad_stuff_seems_to_mean_firewall_stuff_and_no_firewall_with_i2p
 bool CClientList::RequestTCP(Kademlia::CContact* contact, uint8_t connectOptions)
 {
 	uint32_t nContactIP = wxUINT32_SWAP_ALWAYS(contact->GetIPAddress());
@@ -972,6 +939,7 @@ bool CClientList::DoRequestFirewallCheckUDP(const Kademlia::CContact& contact)
 	return true;
 }
 
+#endif
 void CClientList::CleanUpClientList()
 {
 	// We remove clients which are not needed any more by time
@@ -986,7 +954,7 @@ void CClientList::CleanUpClientList()
 	const uint32 cur_tick = ::GetTickCount();
 	if (m_dwLastClientCleanUp + CLIENTLIST_CLEANUP_TIME < cur_tick ){
 		m_dwLastClientCleanUp = cur_tick;
-		DEBUG_ONLY( uint32 cDeleted = 0; )
+                uint32 cDeleted = 0;
 		IDMap::iterator current_it = m_clientList.begin();
 		while (current_it != m_clientList.end()) {
 			CUpDownClient* pCurClient = current_it->second.GetClient();
@@ -997,9 +965,8 @@ void CClientList::CleanUpClientList()
 			if ((pCurClient->GetUploadState() == US_NONE || (pCurClient->GetUploadState() == US_BANNED && !pCurClient->IsBanned()))
 				&& pCurClient->GetDownloadState() == DS_NONE
 				&& pCurClient->GetChatState() == MS_NONE
-				&& pCurClient->GetKadState() == KS_NONE
-				&& pCurClient->GetSocket() == NULL)
-			{
+                                        && true // I2P -- pCurClient->GetKadState() == KS_NONE
+                                        && pCurClient->GetSocket() == NULL) {
 				DEBUG_ONLY( cDeleted++; )
 				pCurClient->Disconnected(wxT("Removed during ClientList cleanup."));
 				pCurClient->Safe_Delete();
@@ -1020,11 +987,13 @@ void CClientList::CleanUpClientList()
 						CFormat(wxT("Debug: Not deleted client %x with chat state: %i "))
 							% (long int)pCurClient % pCurClient->GetChatState());
 				}
+                                /* I2P
 				if (!(pCurClient->GetKadState() == KS_NONE)) {
 					AddDebugLogLineN(logProxy,
 						CFormat(wxT("Debug: Not deleted client %x with kad state: %i ip: %s"))
 							% (long int)pCurClient % (int)pCurClient->GetKadState() % pCurClient->GetFullIP());
 				}
+                                */
 				if (!(pCurClient->GetSocket() == NULL)) {
 					AddDebugLogLineN(logProxy,
 						CFormat(wxT("Debug: Not deleted client %x: has socket")) % (long int)pCurClient);
@@ -1039,6 +1008,7 @@ void CClientList::CleanUpClientList()
 	}
 }
 
+#ifdef no_firewall_with_i2p
 void CClientList::AddKadFirewallRequest(uint32 ip)
 {
 	uint32 ticks = ::GetTickCount();
@@ -1134,4 +1104,5 @@ uint16 CClientList::GetBuddyPort()
 }
 
 
+#endif
 // File_checked_for_headers

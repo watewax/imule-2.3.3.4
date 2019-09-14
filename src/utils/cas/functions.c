@@ -82,7 +82,7 @@ char *get_path(const char *file)
 			CFURLRef urlRef = CFURLCreateFromFSRef(NULL, &fsRef);
 			if (urlRef != NULL) {
 				if (CFURLGetFileSystemRepresentation(urlRef, true, home, sizeof(home))) {
-					strcat(home, CAS_DIR_SEPARATOR "aMule");
+					strcat(home, CAS_DIR_SEPARATOR "iMule");
 				}
 				CFRelease(urlRef) ;
 			}
@@ -98,7 +98,7 @@ char *get_path(const char *file)
 
 		if (SUCCEEDED(hr)) {
 			if (SHGetPathFromIDList(pidl, home)) {
-				strcat(home, CAS_DIR_SEPARATOR "aMule");
+				strcat(home, CAS_DIR_SEPARATOR "iMule");
 			}
 		}
 
@@ -148,7 +148,7 @@ char *get_path(const char *file)
 			home = pwd->pw_dir;
 #endif /* CAS_UNIX */
 		}
-		strcat(home, CAS_DIR_SEPARATOR ".aMule");
+		strcat(home, CAS_DIR_SEPARATOR ".iMule");
 
 #endif /* !__APPLE__ && !__WIN32__ */
 

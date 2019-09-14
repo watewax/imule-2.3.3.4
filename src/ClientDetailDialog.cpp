@@ -95,19 +95,15 @@ bool CClientDetailDialog::OnInitDialog() {
 	CastChild(ID_DVERSION, wxStaticText)->SetLabel(
 		m_client.GetSoftVerStr());
 
-	// User ID
-	CastChild(ID_DID, wxStaticText)->SetLabel(
-		CFormat(wxT("%u (%s)")) % m_client.GetUserIDHybrid() % (m_client.HasLowID() ? _("LowID") : _("HighID")));
+        CastChild(ID_I2PTCP,wxTextCtrl)->SetValue(m_client.GetTCPDest().toString());
 
-	// Client IP/Port
-	CastChild(ID_DIP, wxStaticText)->SetLabel(
-		CFormat(wxT("%s:%i")) % m_client.GetFullIP() % m_client.GetUserPort());
+        CastChild(ID_I2PUDP,wxTextCtrl)->SetValue(m_client.GetUDPDest().toString());
 
 	// Server IP/Port/Name
-	if (m_client.GetServerIP()) {
-		wxString srvaddr = Uint32toStringIP(m_client.GetServerIP());
-		CastChild(ID_DSIP, wxStaticText)->SetLabel(
-			CFormat(wxT("%s:%i")) % srvaddr % m_client.GetServerPort());
+        if (m_client.GetServerIP().isValid()) {
+                CI2PAddress srvaddr = m_client.GetServerIP();
+                CastChild(ID_I2PTCP,wxStaticText)->SetLabel(
+                        srvaddr.humanReadable());
 		CastChild(ID_DSNAME, wxStaticText)->SetLabel(
 			m_client.GetServerName());
 	} else {
@@ -126,12 +122,6 @@ bool CClientDetailDialog::OnInitDialog() {
 	}
 	CastChild(IDT_OBFUSCATION, wxStaticText)->SetLabel(buffer);
 
-	// Kad
-	if (m_client.GetKadPort()) {
-		CastChild(IDT_KAD, wxStaticText)->SetLabel(_("Connected"));
-	} else {
-		CastChild(IDT_KAD, wxStaticText)->SetLabel(_("Disconnected"));
-	}
 
 	// File Name
 	const CKnownFile* file = m_client.GetUploadFile();
@@ -152,11 +142,11 @@ bool CClientDetailDialog::OnInitDialog() {
 
 	// Average Upload Rate
 	CastChild(ID_DAVUR, wxStaticText)->SetLabel(
-		CFormat(_("%.1f kB/s")) % m_client.GetKBpsDown());
+                CFormat(_("%.1f kB/s")) % m_client.GetAvgKBpsDown());
 
 	// Average Download Rate
 	CastChild(ID_DAVDR, wxStaticText)->SetLabel(
-		CFormat(_("%.1f kB/s")) % (m_client.GetUploadDatarate() / 1024.0f));
+                CFormat(_("%.1f kB/s")) % m_client.GetAvgKBpsUp());
 
 	// Total Upload
 	CastChild(ID_DUPTOTAL, wxStaticText)->SetLabel(
@@ -177,9 +167,9 @@ bool CClientDetailDialog::OnInitDialog() {
 	// Queue Score
 	if (m_client.GetUploadState() != US_NONE) {
 		CastChild(ID_QUEUERANK, wxStaticText)->SetLabel(
-			CFormat(wxT("%u")) % m_client.GetUploadQueueWaitingPosition());
+                        CFormat(wxT("%" PRIu16)) % m_client.GetUploadQueueWaitingPosition());
 		CastChild(ID_DSCORE, wxStaticText)->SetLabel(
-			CFormat(wxT("%u")) % m_client.GetScore());
+                        CFormat(wxT("%" PRIu32)) % m_client.GetScore());
 	} else {
 		CastChild(ID_QUEUERANK, wxStaticText)->SetLabel(wxT("-"));
 		CastChild(ID_DSCORE, wxStaticText)->SetLabel(wxT("-"));

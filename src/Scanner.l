@@ -29,8 +29,7 @@ extern int yyerror(wxString errstr);
 #define	YY_INPUT			ReadLexBuff
 #define	YY_FATAL_ERROR		FatalLexError
 
-static void ReadLexBuff(char* pcBuff, size_t& riResult, size_t uMaxSize);
-static void ReadLexBuff(char* pcBuff, int& riResult, size_t uMaxSize);
+static void ReadLexBuff(char* pcBuff, decltype(yy_n_chars)& riResult, size_t uMaxSize);
 static void FatalLexError(yyconst char msg[]);
 
 static char* _pszLexBuff;
@@ -168,7 +167,7 @@ keywordchar		[^ \"()]
 
 %%
 
-static void ReadLexBuff(char* pcBuff, size_t& riResult, size_t uMaxSize)
+static void ReadLexBuff(char* pcBuff, decltype(yy_n_chars)& riResult, size_t uMaxSize)
 {
 	wxASSERT( _pszLexBuff != NULL );
 
@@ -184,12 +183,6 @@ static void ReadLexBuff(char* pcBuff, size_t& riResult, size_t uMaxSize)
 	_pszLexBuff += uCharsRead;
 }
 
-static void ReadLexBuff(char* pcBuff, int& riResult, size_t uMaxSize)
-{
-	size_t st_result = static_cast<size_t>(riResult);
-	ReadLexBuff(pcBuff, st_result, uMaxSize);
-	riResult = static_cast<int>(st_result);
-}
 
 static void FatalLexError(yyconst char msg[])
 {
@@ -208,25 +201,7 @@ void LexInit(const wxString& pszInput)
 
 void LexFree()
 {
-	yylex_destroy();
-
-	yyleng = 0;
-	yytext = NULL;
-	yyin = NULL;
-	yyout = NULL;
-	yy_hold_char = '\0';
-	yy_n_chars = 0;
-	yy_c_buf_p = NULL;
-	yy_start = 0;
-	yy_did_buffer_switch_on_eof = 0;
-	yy_last_accepting_state = 0;
-	yy_last_accepting_cpos = NULL;
-
-#if YY_STACK_USED
-	yy_start_stack_ptr = 0;
-	yy_start_stack_depth = 0;
-	yy_start_stack = NULL;
-#endif
 
 	free(_pszLexStr);
+	yylex_destroy();
 }

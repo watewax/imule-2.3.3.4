@@ -43,6 +43,7 @@
 #include "DownloadQueue.h"		// Needed for CDownloadQueue
 #include "TransferWnd.h"		// Needed for CTransferWnd
 
+#include "tags/FileTags.h"		// Needed for TAG_COMPLETE_SOURCES and TAG_SOURCES
 
 BEGIN_EVENT_TABLE(CSharedFilesCtrl,CMuleListCtrl)
 	EVT_LIST_ITEM_RIGHT_CLICK(-1, CSharedFilesCtrl::OnRightClick)
@@ -269,7 +270,7 @@ void CSharedFilesCtrl::DoShowFile(CKnownFile* file, bool batch)
 
 void CSharedFilesCtrl::OnSetPriority( wxCommandEvent& event )
 {
-	int priority = 0;
+        uint8 priority = 0;
 
 	switch ( event.GetId() ) {
 		case MP_PRIOVERYLOW:	priority = PR_VERYLOW;	break;
@@ -359,7 +360,7 @@ void CSharedFilesCtrl::OnEditComment( wxCommandEvent& WXUNUSED(event) )
 }
 
 
-int CSharedFilesCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
+int CSharedFilesCtrl::SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData)
 {
 	CKnownFile* file1 = reinterpret_cast<CKnownFile*>(item1);
 	CKnownFile* file2 = reinterpret_cast<CKnownFile*>(item2);
@@ -424,7 +425,11 @@ int CSharedFilesCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
 
 		// Complete sources asc
 		case ID_SHARED_COL_CMPL:
+		if (altSorting) {
 			return mod * CmpAny( file1->m_nCompleteSourcesCount, file2->m_nCompleteSourcesCount );
+		} else {
+			return mod * CmpAny( file1->m_nSourcesCount, file2->m_nSourcesCount);
+		}
 
 		// Folders ascending
 		case ID_SHARED_COL_PATH: {
@@ -476,7 +481,7 @@ void CSharedFilesCtrl::OnDrawItem( int item, wxDC* dc, const wxRect& rect, const
 	wxASSERT( file );
 
 	if ( highlighted ) {
-		CMuleColour newcol(GetFocus() ? wxSYS_COLOUR_HIGHLIGHT : wxSYS_COLOUR_BTNSHADOW);
+                CMuleColour newcol(HasFocus() ? wxSYS_COLOUR_HIGHLIGHT : wxSYS_COLOUR_BTNSHADOW);
 		dc->SetBackground(newcol.Blend(125).GetBrush());
 		dc->SetTextForeground( CMuleColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
 		// The second blending goes over the first one.
@@ -581,6 +586,11 @@ void CSharedFilesCtrl::OnDrawItem( int item, wxDC* dc, const wxRect& rect, const
 					break;
 
 				case ID_SHARED_COL_CMPL:
+                                textBuffer = CFormat ( wxT("%llu/%llu") )
+                                             % file->m_nCompleteSourcesCount
+                                             % file->m_nSourcesCount ;
+
+#ifdef imule_keeps_counts_in_tags_and_there_are_no_such_things_as_low_ids_with_imule
 					if ( file->m_nCompleteSourcesCountLo == 0 ) {
 						if ( file->m_nCompleteSourcesCountHi ) {
 							textBuffer = CFormat(wxT("< %u")) % file->m_nCompleteSourcesCountHi;
@@ -593,6 +603,7 @@ void CSharedFilesCtrl::OnDrawItem( int item, wxDC* dc, const wxRect& rect, const
 						textBuffer = CFormat(wxT("%u - %u")) % file->m_nCompleteSourcesCountLo % file->m_nCompleteSourcesCountHi;
 					}
 
+#endif // imule_keeps_counts_in_tags_and_there_are_no_such_things_as_low_ids_with_imule
 					break;
 
 				case ID_SHARED_COL_PATH:
@@ -626,6 +637,7 @@ bool CSharedFilesCtrl::AltSortAllowed(unsigned column) const
 		case ID_SHARED_COL_REQ:
 		case ID_SHARED_COL_AREQ:
 		case ID_SHARED_COL_TRA:
+	case ID_SHARED_COL_CMPL:
 			return true;
 
 		default:

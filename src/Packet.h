@@ -48,6 +48,7 @@ public:
 
 	~CPacket();
 
+        static const uint32 &	UDPPacketMaxDataSize() ;
 	byte*			GetHeader();
 	byte*			GetUDPHeader();
 	byte*			GetPacket();

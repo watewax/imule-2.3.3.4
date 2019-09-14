@@ -100,7 +100,7 @@ void PlasmaMuleApplet::paintInterface(QPainter *painter,
 	if (!m_config_found)
 	{
 		painter->drawText(contentsRect, Qt::AlignCenter,
-		"aMule not configured or installed");
+		"iMule not configured or installed");
 	}
 	else if (!m_os_active)
 	{
@@ -109,7 +109,7 @@ void PlasmaMuleApplet::paintInterface(QPainter *painter,
 	} else if (m_uptime == 0)
 	{
 		painter->drawText(contentsRect, Qt::AlignCenter,
-		"aMule is not running\n");
+		"iMule is not running\n");
 	} else {
 		QString message;
 		painter->setPen(Qt::black);

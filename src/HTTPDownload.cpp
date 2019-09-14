@@ -53,7 +53,7 @@ DECLARE_LOCAL_EVENT_TYPE(wxEVT_HTTP_SHUTDOWN, wxANY_ID)
 class CHTTPDownloadDialog : public wxDialog
 {
 public:
-	CHTTPDownloadDialog(CHTTPDownloadThread* thread)
+        CHTTPDownloadDialog(CHTTPDownloadCoroutine* coroutine)
 	  : wxDialog(wxTheApp->GetTopWindow(), -1, _("Downloading..."),
 			wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxSYSTEM_MENU)
 	{
@@ -66,7 +66,7 @@ public:
 		m_ani->LoadData((const char*)inetDownload, sizeof(inetDownload));
 		m_ani->Start();
 
-		m_thread = thread;
+                m_coroutine = coroutine;
 	}
 
 	~CHTTPDownloadDialog() {
@@ -98,10 +98,10 @@ public:
 
 private:
 	void StopThread() {
-		if (m_thread) {
-			m_thread->Stop();
-			delete m_thread;
-			m_thread = NULL;
+                if (m_coroutine) {
+                        m_coroutine->Stop();
+                        delete m_coroutine;
+                        m_coroutine = NULL;
 		}
 	}
 
@@ -120,7 +120,7 @@ private:
 		Destroy();
 	}
 
-	CMuleThread*	m_thread;
+        CMuleCoroutine*	m_coroutine;
 	MuleGifCtrl*	m_ani;
 	wxGaugeControl* m_progressbar;
 
@@ -140,12 +140,12 @@ DEFINE_LOCAL_EVENT_TYPE(wxEVT_HTTP_SHUTDOWN)
 #endif
 
 
-CHTTPDownloadThread::CHTTPDownloadThread(const wxString& url, const wxString& filename, const wxString& oldfilename, HTTP_Download_File file_id,
-										bool showDialog, bool checkDownloadNewer)
+CHTTPDownloadCoroutine::CHTTPDownloadCoroutine(const wxString& url, const wxString& filename, const wxString& oldfilename, HTTP_Download_File file_id,
+                bool showDialog, bool checkDownloadNewer) :
 #ifdef AMULE_DAEMON
-	: CMuleThread(wxTHREAD_DETACHED),
+          CMuleCoroutine(CMuleCoroutine::DETACHED, 10),
 #else
-	: CMuleThread(showDialog ? wxTHREAD_JOINABLE : wxTHREAD_DETACHED),
+          CMuleCoroutine(showDialog ? CMuleCoroutine::JOINABLE : CMuleCoroutine::DETACHED, 10),
 #endif
 	  m_url(url),
 	  m_tempfile(filename),
@@ -169,14 +169,13 @@ CHTTPDownloadThread::CHTTPDownloadThread(const wxString& url, const wxString& fi
 			m_lastmodified = origFile.GetModificationTime();
 		}
 	}
-	wxMutexLocker lock(s_allThreadsMutex);
-	s_allThreads.insert(this);
+        s_allCoroutines.insert(this);
 }
 
 
 // Format the given date to a RFC-2616 compliant HTTP date
 // Example: Thu, 14 Jan 2010 15:40:23 GMT
-wxString CHTTPDownloadThread::FormatDateHTTP(const wxDateTime& date)
+wxString CHTTPDownloadCoroutine::FormatDateHTTP(const wxDateTime& date)
 {
 	static const wxChar* s_months[] = { wxT("Jan"), wxT("Feb"), wxT("Mar"), wxT("Apr"), wxT("May"), wxT("Jun"), wxT("Jul"), wxT("Aug"), wxT("Sep"), wxT("Oct"), wxT("Nov"), wxT("Dec") };
 	static const wxChar* s_dow[] = { wxT("Sun"), wxT("Mon"), wxT("Tue"), wxT("Wed"), wxT("Thu"), wxT("Fri"), wxT("Sat") };
@@ -185,23 +184,21 @@ wxString CHTTPDownloadThread::FormatDateHTTP(const wxDateTime& date)
 }
 
 
-CMuleThread::ExitCode CHTTPDownloadThread::Entry()
+bool CHTTPDownloadCoroutine::Continue()
 {
+#ifndef AMULE_DAEMON
 	if (TestDestroy()) {
-		return NULL;
+                CR_EXIT;
 	}
+        try {
+                CR_BEGIN;
+                AddDebugLogLineN(logHTTP, wxT("HTTP download coroutine started"));
 
-	wxHTTP* url_handler = NULL;
+                cont.proxy_data = thePrefs::GetProxyData();
 
-	AddDebugLogLineN(logHTTP, wxT("HTTP download thread started"));
+                cont.outfile.reset(new wxFFileOutputStream(m_tempfile));
 
-	const CProxyData* proxy_data = thePrefs::GetProxyData();
-	bool use_proxy = proxy_data != NULL && proxy_data->m_proxyEnable;
-
-	try {
-		wxFFileOutputStream outfile(m_tempfile);
-
-		if (!outfile.Ok()) {
+                if (!cont.outfile->Ok()) {
 			throw wxString(CFormat(_("Unable to create destination file %s for download!")) % m_tempfile);
 		}
 
@@ -210,20 +207,17 @@ CMuleThread::ExitCode CHTTPDownloadThread::Entry()
 			throw wxString(_("The URL to download can't be empty"));
 		}
 
-		url_handler = new wxHTTP;
-		url_handler->SetProxyMode(use_proxy);
+                cont.proxyAddr = cont.proxy_data->m_proxyHostName;
+                cont.proxyAddr << wxT(":") << cont.proxy_data->m_proxyPort;
 
-		// Build a conditional get request if the last modified date of the file being updated is known
-		if (m_lastmodified.IsValid()) {
-			// Set a flag in the HTTP header that we only download if the file is newer.
-			// see: http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.25
-			AddDebugLogLineN(logHTTP, wxT("If-Modified-Since: ") + FormatDateHTTP(m_lastmodified));
-			url_handler->SetHeader(wxT("If-Modified-Since"), FormatDateHTTP(m_lastmodified));
+                cont.url_handler . reset(new wxURL(m_url));
+                if (cont.url_handler->IsOk()) {
+                        cont.url_handler->SetProxy(cont.proxyAddr);
 		}
 
-		CScopedPtr<wxInputStream> url_read_stream(GetInputStream(url_handler, m_url, use_proxy));
-
-		if (!url_read_stream.get()) {
+                cont.url_read_stream = cont.url_handler->GetInputStream(); // iMule
+                if (!cont.url_read_stream) {
+                        m_response = 0 ; // iMule (no response with class wxURL)
 			if (m_response == 304) {
 				m_result = HTTP_Skipped;
 				AddDebugLogLineN(logHTTP, wxT("Skipped download because requested file is not newer."));
@@ -234,56 +228,62 @@ CMuleThread::ExitCode CHTTPDownloadThread::Entry()
 			}
 		}
 
-		int download_size = url_read_stream->GetSize();
+		cont.download_size = cont.url_read_stream->GetSize();
 #ifdef __DEBUG__
-		if (download_size == -1) {
+		if (cont.download_size == -1) {
 			AddDebugLogLineN(logHTTP, wxT("Download size not received, downloading until connection is closed"));
 		} else {
-			AddDebugLogLineN(logHTTP, CFormat(wxT("Download size: %i")) % download_size);
+                        AddDebugLogLineN(logHTTP, CFormat(wxT("Download size: %i")) % cont.download_size);
 		}
 #endif
 
-		// Here is our read buffer
-		// <ken> Still, I'm sure 4092 is probably a better size.
-		// MP: Most people can download at least at 32kb/s from http...
-		const unsigned MAX_HTTP_READ = 32768;
-
-		char buffer[MAX_HTTP_READ];
-		int current_read = 0;
-		int total_read = 0;
+                cont.current_read = 0;
+                cont.total_read = 0;
 		do {
-			url_read_stream->Read(buffer, MAX_HTTP_READ);
-			current_read = url_read_stream->LastRead();
-			if (current_read) {
-				total_read += current_read;
-				outfile.Write(buffer,current_read);
-				int current_write = outfile.LastWrite();
-				if (current_read != current_write) {
+                        cont.current_read = 0;
+                        while (! cont.url_read_stream->CanRead() && !TestDestroy() && cont.total_read != cont.download_size) {
+                                CR_RETURN;
+                        }
+                        if (! cont.url_read_stream->CanRead()) break;
+                        
+                        cont.url_read_stream->Read(cont.buffer, cont.MAX_HTTP_READ);
+                        cont.current_read = cont.url_read_stream->LastRead();
+                        if (cont.current_read) {
+                                cont.total_read += cont.current_read;
+                                cont.outfile->Write(cont.buffer,cont.current_read);
+                                AddDebugLogLineN(logHTTP, CFormat(wxT("wrote %d bytes to %s")) % cont.current_read % cont.outfile->GetFile()->GetName());
+                                int current_write = cont.outfile->LastWrite();
+                                if (cont.current_read != current_write) {
 					throw wxString(_("Critical error while writing downloaded file"));
 				} else if (m_companion) {
-#ifndef AMULE_DAEMON
-					CMuleInternalEvent evt(wxEVT_HTTP_PROGRESS);
-					evt.SetInt(total_read);
-					evt.SetExtraLong(download_size);
-					wxPostEvent(m_companion, evt);
-#endif
+                                        CMuleInternalEvent * evt = new CMuleInternalEvent(wxEVT_HTTP_PROGRESS);
+                                        evt->SetInt(cont.total_read);
+                                        evt->SetExtraLong(cont.download_size);
+                                        wxQueueEvent(m_companion, evt);
 				}
 			}
-		} while (current_read && !TestDestroy());
+                        CR_RETURN;
+                } while (cont.current_read && !TestDestroy());
 
-		if (current_read == 0) {
-			if (download_size == -1) {
+                if (cont.current_read == 0) {
+                        if (cont.download_size == -1) {
 				// Download was probably succesful.
-				AddLogLineN(CFormat(_("Downloaded %d bytes")) % total_read);
+                                AddLogLineN(CFormat(_("Downloaded %d bytes")) % cont.total_read);
 				m_result = HTTP_Success;
-			} else if (total_read != download_size) {
+                        } else if (cont.total_read != cont.download_size) {
 				m_result = HTTP_Error;
-				throw wxString(CFormat(_("Expected %d bytes, but downloaded %d bytes")) % download_size % total_read);
+                                throw wxString(CFormat(_("Expected %d bytes, but downloaded %d bytes")) % cont.download_size % cont.total_read);
 			} else {
 				// Download was succesful.
 				m_result = HTTP_Success;
 			}
 		}
+                if (m_result == HTTP_Success) {
+                        thePrefs::SetLastHTTPDownloadURL(m_file_id, m_url);
+                }
+                
+                AddDebugLogLineN(logHTTP, wxT("HTTP download coroutine ended"));
+                CR_END;
 	} catch (const wxString& error) {
 		if (wxFileExists(m_tempfile)) {
 			wxRemoveFile(m_tempfile);
@@ -293,41 +293,36 @@ CMuleThread::ExitCode CHTTPDownloadThread::Entry()
 		}
 	}
 
-	if (m_result == HTTP_Success) {
-		thePrefs::SetLastHTTPDownloadURL(m_file_id, m_url);
-	}
-
-	if (url_handler) {
-		url_handler->Destroy();
-	}
-
-	AddDebugLogLineN(logHTTP, wxT("HTTP download thread ended"));
+        CR_EXIT;
+#else
 
 	return 0;
+#endif
 }
 
 
-void CHTTPDownloadThread::OnExit()
+void CHTTPDownloadCoroutine::OnExit()
 {
 #ifndef AMULE_DAEMON
 	if (m_companion) {
-		CMuleInternalEvent termEvent(wxEVT_HTTP_SHUTDOWN);
-		wxPostEvent(m_companion, termEvent);
+                CMuleInternalEvent * termEvent = new CMuleInternalEvent(wxEVT_HTTP_SHUTDOWN);
+                wxQueueEvent(m_companion, termEvent);
 	}
 #endif
 
 	// Notice the app that the file finished download
-	CMuleInternalEvent evt(wxEVT_CORE_FINISHED_HTTP_DOWNLOAD);
-	evt.SetInt((int)m_file_id);
-	evt.SetExtraLong((long)m_result);
-	wxPostEvent(wxTheApp, evt);
-	wxMutexLocker lock(s_allThreadsMutex);
-	s_allThreads.erase(this);
+        CMuleInternalEvent * evt = new CMuleInternalEvent(wxEVT_CORE_FINISHED_HTTP_DOWNLOAD);
+        evt->SetInt((int)m_file_id);
+        evt->SetExtraLong((long)m_result);
+        wxQueueEvent(wxTheApp, evt);
+        s_allCoroutines.erase(this);
+        
+        CMuleCoroutine::OnExit();
 }
 
 
 //! This function's purpose is to handle redirections in a proper way.
-wxInputStream* CHTTPDownloadThread::GetInputStream(wxHTTP * & url_handler, const wxString& location, bool proxy)
+wxInputStream* CHTTPDownloadCoroutine::GetInputStream(wxHTTP * & url_handler, const wxString& location, bool proxy)
 {
 	if (TestDestroy()) {
 		return NULL;
@@ -372,11 +367,12 @@ wxInputStream* CHTTPDownloadThread::GetInputStream(wxHTTP * & url_handler, const
 		// This http url has a port
 		port = wxAtoi(host.AfterFirst(wxT(':')));
 		host = host.BeforeFirst(wxT(':'));
+				wxASSERT(port < 1 << 16);
 	}
 
 	wxIPV4address addr;
 	addr.Hostname(host);
-	addr.Service(port);
+        addr.Service((uint16_t)port);
 	if (!url_handler->Connect(addr, true)) {
 		throw wxString(_("Unable to connect to HTTP download server"));
 	}
@@ -437,19 +433,15 @@ wxInputStream* CHTTPDownloadThread::GetInputStream(wxHTTP * & url_handler, const
 	return url_read_stream;
 }
 
-void CHTTPDownloadThread::StopAll()
+void CHTTPDownloadCoroutine::StopAll()
 {
-	ThreadSet allThreads;
-	{
-		wxMutexLocker lock(s_allThreadsMutex);
-		std::swap(allThreads, s_allThreads);
-	}
-	for (ThreadSet::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
+        CoroutineSet allThreads;
+        std::swap(allThreads, s_allCoroutines);
+        for (CoroutineSet::iterator it = allThreads.begin(); it != allThreads.end(); ++it) {
 		(*it)->Stop();
 	}
 }
 
-CHTTPDownloadThread::ThreadSet CHTTPDownloadThread::s_allThreads;
-wxMutex CHTTPDownloadThread::s_allThreadsMutex;
+CHTTPDownloadCoroutine::CoroutineSet CHTTPDownloadCoroutine::s_allCoroutines;
 
 // File_checked_for_headers

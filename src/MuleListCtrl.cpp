@@ -55,7 +55,7 @@
 #endif
 
 
-BEGIN_EVENT_TABLE(CMuleListCtrl, MuleExtern::wxGenericListCtrl)
+BEGIN_EVENT_TABLE(CMuleListCtrl, wxLISTCTRLCLASS)
 	EVT_LIST_COL_CLICK( -1,			CMuleListCtrl::OnColumnLClick)
 	EVT_LIST_COL_RIGHT_CLICK( -1,	CMuleListCtrl::OnColumnRClick)
 	EVT_LIST_ITEM_SELECTED(-1,		CMuleListCtrl::OnItemSelected)
@@ -73,7 +73,7 @@ static wxImageList imgList(16, 16, true, 0);
 
 
 CMuleListCtrl::CMuleListCtrl(wxWindow *parent, wxWindowID winid, const wxPoint& pos, const wxSize& size, long style, const wxValidator& validator, const wxString& name)
-	: MuleExtern::wxGenericListCtrl(parent, winid, pos, size, style, validator, name)
+        : wxLISTCTRLCLASS(parent, winid, pos, size, style, validator, name)
 {
 	m_sort_func = NULL;
 	m_tts_time = 0;
@@ -128,7 +128,7 @@ long CMuleListCtrl::InsertColumn(long col, const wxString& heading, int format, 
 		}
 	}
 
-	return MuleExtern::wxGenericListCtrl::InsertColumn(col, heading, format, width);
+        return wxLISTCTRLCLASS::InsertColumn(col, heading, format, width);
 }
 
 void CMuleListCtrl::SaveSettings()
@@ -223,7 +223,7 @@ void CMuleListCtrl::LoadSettings()
 	wxString columnWidths = cfg->Read(wxT("/eMule/TableWidths") + m_name, wxEmptyString);
 
 	// Prevent sorting from occuring when calling SetSorting
-	MuleListCtrlCompare sortFunc = m_sort_func;
+        wxListCtrlCompare sortFunc = m_sort_func;
 	m_sort_func = NULL;
 
 	if (columnWidths.Find(wxT(':')) == wxNOT_FOUND) {
@@ -354,7 +354,7 @@ long CMuleListCtrl::GetInsertPos(wxUIntPtr data)
 }
 
 
-int CMuleListCtrl::CompareItems(wxUIntPtr item1, wxUIntPtr item2)
+int CMuleListCtrl::CompareItems(wxIntPtr item1, wxIntPtr item2)
 {
 	CSortingList::const_iterator it = m_sort_orders.begin();
 	for (; it != m_sort_orders.end(); ++it) {
@@ -368,7 +368,7 @@ int CMuleListCtrl::CompareItems(wxUIntPtr item1, wxUIntPtr item2)
 	return CmpAny(item1, item2);
 }
 
-int CMuleListCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long data)
+int CMuleListCtrl::SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr data)
 {
 	MuleSortData* sortdata = reinterpret_cast<MuleSortData*>(data);
 	const CSortingList& orders = sortdata->m_sort_orders;

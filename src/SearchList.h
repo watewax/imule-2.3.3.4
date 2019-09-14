@@ -26,7 +26,7 @@
 #ifndef SEARCHLIST_H
 #define SEARCHLIST_H
 
-#include "Timer.h"				// Needed for CTimer
+//#include "Timer.h"				// Needed for CTimer
 #include "ObservableQueue.h"	// Needed for CQueueObserver
 #include "SearchFile.h"			// Needed for CSearchFile
 #include <memory>		// Do_not_auto_remove (lionel's Mac, 10.3)
@@ -97,6 +97,9 @@ public:
 	/** Stops the current search (global or Kad), if any is in progress. */
 	void StopSearch(bool globalOnly = false);
 
+        /** Stops the specified Kad search. */
+        void StopSearch(wxUIntPtr searchID);
+
 	/** Returns the completion percentage of the current search. */
 	uint32 GetSearchProgress() const;
 
@@ -139,7 +142,7 @@ public:
 	 * @param serverIP The IP of the server sending the results.
 	 * @param serverPort The Port of the server sending the results.
 	 */
-	void	ProcessSearchAnswer(const uint8_t* packet, uint32_t size, bool optUTF8, uint32_t serverIP, uint16_t serverPort);
+        void    ProcessSearchAnswer(const uint8_t* packet, uint32_t size, bool optUTF8, const CI2PAddress & serverDest);
 
 	/**
 	 * Processes a search-result sent via UDP. Only one result is read from the packet.
@@ -149,7 +152,7 @@ public:
 	 * @param serverIP The IP of the server sending the results.
 	 * @param serverPort The Port of the server sending the results.
 	 */
-	void	ProcessUDPSearchAnswer(const CMemFile& packet, bool optUTF8, uint32 serverIP, uint16 serverPort);
+        void    ProcessUDPSearchAnswer(const CMemFile& packet, const CI2PAddress & serverDest);
 
 
 	/**
@@ -163,7 +166,7 @@ public:
 	 * @param kadPublishInfo The kademlia publish information of the result.
 	 * @param taglist List of additional tags associated with the search-result.
 	 */
-	void	KademliaSearchKeyword(uint32_t searchID, const Kademlia::CUInt128 *fileID, const wxString& name, uint64_t size, const wxString& type, uint32_t kadPublishInfo, const TagPtrList& taglist);
+        bool    KademliaSearchKeyword(uint32_t searchID, const Kademlia::CUInt128 *fileID, const wxString& name, uint64_t size, const wxString& type, uint32_t kadPublishInfo, const TagList& taglist);
 
 	/** Update a certain search result in all lists */
 	void UpdateSearchFileByHash(const CMD4Hash& hash);
@@ -173,7 +176,7 @@ public:
 
 private:
 	/** Event-handler for global searches. */
-	void OnGlobalSearchTimer(CTimerEvent& evt);
+        void OnGlobalSearchTimer(wxTimerEvent& evt);
 
 	/**
 	 * Adds the specified file to the current search's results.
@@ -187,15 +190,15 @@ private:
 	 */
 	bool AddToList(CSearchFile* toadd, bool clientResponse = false);
 
-	//! This auto-pointer is used to safely prevent leaks.
-	typedef std::auto_ptr<CMemFile> CMemFilePtr;
+        //! This smart pointer is used to safely prevent leaks.
+        typedef std::unique_ptr<CMemFile> CMemFilePtr;
 
 	/** Create a basic search-packet for the given search-type. */
 	CMemFilePtr CreateSearchData(CSearchParams& params, SearchType type, bool supports64bit, bool& packetUsing64bit);
 
 
 	//! Timer used for global search intervals.
-	CTimer	m_searchTimer;
+        wxTimer	m_searchTimer;
 
 	//! The current search-type, regarding the last/current search.
 	SearchType	m_searchType;

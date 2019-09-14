@@ -121,7 +121,12 @@ enum ECOpCodes {
 	EC_OP_CLIENT_SWAP_TO_ANOTHER_FILE   = 0x54,
 	EC_OP_SHARED_FILE_SET_COMMENT       = 0x55,
 	EC_OP_SERVER_SET_STATIC_PRIO        = 0x56,
-	EC_OP_FRIEND                        = 0x57
+	EC_OP_FRIEND                        = 0x57,
+	EC_OP_START_NETWORK                 = 0x58,
+	EC_OP_STOP_NETWORK                  = 0x59,
+	EC_OP_RESTART_NETWORK_IF_STARTED    = 0x5A,
+	EC_OP_KAD_GET_CONTACTS_STRING       = 0x5B,
+	EC_OP_KAD_CONTACTS_STRING           = 0x5C
 };
 
 enum ECTagNames {
@@ -224,6 +229,7 @@ enum ECTagNames {
 		EC_TAG_KNOWNFILE_COMPLETE_SOURCES         = 0x040D,
 		EC_TAG_KNOWNFILE_COMMENT                  = 0x040E,
 		EC_TAG_KNOWNFILE_RATING                   = 0x040F,
+		EC_TAG_KNOWNFILE_SOURCES                  = 0x04FF,
 	EC_TAG_SERVER                             = 0x0500,
 		EC_TAG_SERVER_NAME                        = 0x0501,
 		EC_TAG_SERVER_DESC                        = 0x0502,
@@ -282,6 +288,10 @@ enum ECTagNames {
 		EC_TAG_CLIENT_OS_INFO                     = 0x0629,
 		EC_TAG_CLIENT_AVAILABLE_PARTS             = 0x062A,
 		EC_TAG_CLIENT_UPLOAD_PART_STATUS          = 0x062B,
+		EC_TAG_CLIENT_UDPDEST                     = 0x062C,
+		EC_TAG_CLIENT_TCPDEST                     = 0x062D,
+		EC_TAG_CLIENT_AVG_UP_SPEED                = 0x06FF,
+		EC_TAG_CLIENT_AVG_DOWN_SPEED              = 0x06FE,
 	EC_TAG_SEARCHFILE                         = 0x0700,
 		EC_TAG_SEARCH_TYPE                        = 0x0701,
 		EC_TAG_SEARCH_NAME                        = 0x0702,
@@ -374,7 +384,12 @@ enum ECTagNames {
 			EC_TAG_FILES_ALLOC_FULL_SIZE              = 0x180C,
 			EC_TAG_FILES_CHECK_FREE_SPACE             = 0x180D,
 			EC_TAG_FILES_MIN_FREE_SPACE               = 0x180E,
-			EC_TAG_FILES_CREATE_NORMAL                = 0x180F,
+		EC_TAG_PREFS_SRCDROP                      = 0x1900,
+			EC_TAG_SRCDROP_NONEEDED                   = 0x1901,
+			EC_TAG_SRCDROP_DROP_FQS                   = 0x1902,
+			EC_TAG_SRCDROP_DROP_HQRS                  = 0x1903,
+			EC_TAG_SRCDROP_HQRS_VALUE                 = 0x1904,
+			EC_TAG_SRCDROP_AUTODROP_TIMER             = 0x1905,
 		EC_TAG_PREFS_DIRECTORIES                  = 0x1A00,
 			EC_TAG_DIRECTORIES_INCOMING               = 0x1A01,
 			EC_TAG_DIRECTORIES_TEMP                   = 0x1A02,
@@ -409,7 +424,36 @@ enum ECTagNames {
 			EC_TAG_CORETW_UL_QUEUE                    = 0x1D04,
 			EC_TAG_CORETW_SRV_KEEPALIVE_TIMEOUT       = 0x1D05,
 		EC_TAG_PREFS_KADEMLIA                     = 0x1E00,
-			EC_TAG_KADEMLIA_UPDATE_URL                = 0x1E01
+			EC_TAG_KADEMLIA_UPDATE_URL                = 0x1E01,
+			EC_TAG_KADEMLIA_FILENAME                  = 0x1E02,
+			EC_TAG_KADEMLIA_CONTACTS_STRING           = 0x1E03,
+		EC_TAG_PREFS_I2PCONNECTION		 = 0x1F00,
+			EC_TAG_I2PCONN_SERVER_DYNIP	 = 0x1F01,
+			EC_TAG_I2PCONN_SERVER_I2PTCPPORT	 = 0x1F02,
+			EC_TAG_I2PCONN_SERVER_I2PUDPPORT	 = 0x1F03,
+			EC_TAG_I2PCONN_SERVER_ISDYNIP	 = 0x1F04,
+			EC_TAG_I2PCONN_SERVERIP		 = 0x1F05,
+			EC_TAG_I2PCONN_SERVERPORT		 = 0x1F06,
+			EC_TAG_I2PCONN_SAMTCPPORT		 = 0x1F07,
+			EC_TAG_I2PCONN_SAMUDPPORT		 = 0x1F08,
+			EC_TAG_I2PCONN_IpToWatch		 = 0x1F09,
+			EC_TAG_I2PCONN_TcpPortToWatch	 = 0x1F0A,
+			EC_TAG_I2PCONN_UdpPortToWatch	 = 0x1F0B,
+			EC_TAG_I2PCONN_AddressFromRouter	 = 0x1F0C,
+			EC_TAG_I2PCONN_TcpPortFromRouter	 = 0x1F0D,
+			EC_TAG_I2PCONN_UdpPortFromRouter	 = 0x1F0E,
+			EC_TAG_I2PCONN_PROXYPORT		 = 0x1F0F,
+			EC_TAG_I2PCONN_SERVERINTERNAL	 = 0x1F10,
+			EC_TAG_I2PCONN_INBOUNDHOPS	 = 0x1F11,
+			EC_TAG_I2PCONN_OUTBOUNDHOPS	 = 0x1F12,
+			EC_TAG_I2PCONN_NBUDPTUNNELS	 = 0x1F13,
+			EC_TAG_I2PCONN_NBTCPTUNNELS	 = 0x1F14,
+			EC_TAG_I2PPROP_INBOUND_BANDWIDTH	 = 0x1F15,
+			EC_TAG_I2PPROP_OUTBOUND_BANDWIDTH	 = 0x1F16,
+			EC_TAG_I2PPROP_INBOUND_BURST_BANDWIDTH = 0x1F17,
+			EC_TAG_I2PPROP_OUTBOUND_BURST_BANDWIDTH = 0x1F18,
+			EC_TAG_I2PCONN_BANDWIDTHSHAREPERCENTAGE = 0x1F19,
+			EC_TAG_I2PCONN_CLIENTNAME		 = 0x1F1A
 };
 
 enum EC_DETAIL_LEVEL {
@@ -451,9 +495,18 @@ enum EcPrefs {
 	EC_PREFS_STATISTICS     = 0x00000400,
 	EC_PREFS_SECURITY       = 0x00000800,
 	EC_PREFS_CORETWEAKS     = 0x00001000,
-	EC_PREFS_KADEMLIA       = 0x00002000
+	EC_PREFS_KADEMLIA       = 0x00002000,
+	EC_PREFS_I2PCONNECTION  = 0x00004000
 };
 
+wxString GetDebugNameProtocolVersion(uint16 arg);
+wxString GetDebugNameECFlags(uint32 arg);
+wxString GetDebugNameECOpCodes(uint8 arg);
+wxString GetDebugNameECTagNames(uint16 arg);
+wxString GetDebugNameEC_DETAIL_LEVEL(uint8 arg);
+wxString GetDebugNameEC_SEARCH_TYPE(uint8 arg);
+wxString GetDebugNameEC_STATTREE_NODE_VALUE_TYPE(uint8 arg);
+wxString GetDebugNameEcPrefs(uint32 arg);
 #ifdef DEBUG_EC_IMPLEMENTATION
 
 wxString GetDebugNameProtocolVersion(uint16 arg)
@@ -556,6 +609,11 @@ wxString GetDebugNameECOpCodes(uint8 arg)
 		case 0x55: return wxT("EC_OP_SHARED_FILE_SET_COMMENT");
 		case 0x56: return wxT("EC_OP_SERVER_SET_STATIC_PRIO");
 		case 0x57: return wxT("EC_OP_FRIEND");
+		case 0x58: return wxT("EC_OP_START_NETWORK");
+		case 0x59: return wxT("EC_OP_STOP_NETWORK");
+		case 0x5A: return wxT("EC_OP_RESTART_NETWORK_IF_STARTED");
+		case 0x5B: return wxT("EC_OP_KAD_GET_CONTACTS_STRING");
+		case 0x5C: return wxT("EC_OP_KAD_CONTACTS_STRING");
 		default: return CFormat(wxT("unknown %d 0x%x")) % arg % arg;
 	}
 }
@@ -662,6 +720,7 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x040D: return wxT("EC_TAG_KNOWNFILE_COMPLETE_SOURCES");
 		case 0x040E: return wxT("EC_TAG_KNOWNFILE_COMMENT");
 		case 0x040F: return wxT("EC_TAG_KNOWNFILE_RATING");
+		case 0x04FF: return wxT("EC_TAG_KNOWNFILE_SOURCES");
 		case 0x0500: return wxT("EC_TAG_SERVER");
 		case 0x0501: return wxT("EC_TAG_SERVER_NAME");
 		case 0x0502: return wxT("EC_TAG_SERVER_DESC");
@@ -720,6 +779,10 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x0629: return wxT("EC_TAG_CLIENT_OS_INFO");
 		case 0x062A: return wxT("EC_TAG_CLIENT_AVAILABLE_PARTS");
 		case 0x062B: return wxT("EC_TAG_CLIENT_UPLOAD_PART_STATUS");
+		case 0x062C: return wxT("EC_TAG_CLIENT_UDPDEST");
+		case 0x062D: return wxT("EC_TAG_CLIENT_TCPDEST");
+		case 0x06FF: return wxT("EC_TAG_CLIENT_AVG_UP_SPEED");
+		case 0x06FE: return wxT("EC_TAG_CLIENT_AVG_DOWN_SPEED");
 		case 0x0700: return wxT("EC_TAG_SEARCHFILE");
 		case 0x0701: return wxT("EC_TAG_SEARCH_TYPE");
 		case 0x0702: return wxT("EC_TAG_SEARCH_NAME");
@@ -812,7 +875,12 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x180C: return wxT("EC_TAG_FILES_ALLOC_FULL_SIZE");
 		case 0x180D: return wxT("EC_TAG_FILES_CHECK_FREE_SPACE");
 		case 0x180E: return wxT("EC_TAG_FILES_MIN_FREE_SPACE");
-		case 0x180F: return wxT("EC_TAG_FILES_CREATE_NORMAL");
+		case 0x1900: return wxT("EC_TAG_PREFS_SRCDROP");
+		case 0x1901: return wxT("EC_TAG_SRCDROP_NONEEDED");
+		case 0x1902: return wxT("EC_TAG_SRCDROP_DROP_FQS");
+		case 0x1903: return wxT("EC_TAG_SRCDROP_DROP_HQRS");
+		case 0x1904: return wxT("EC_TAG_SRCDROP_HQRS_VALUE");
+		case 0x1905: return wxT("EC_TAG_SRCDROP_AUTODROP_TIMER");
 		case 0x1A00: return wxT("EC_TAG_PREFS_DIRECTORIES");
 		case 0x1A01: return wxT("EC_TAG_DIRECTORIES_INCOMING");
 		case 0x1A02: return wxT("EC_TAG_DIRECTORIES_TEMP");
@@ -848,6 +916,35 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x1D05: return wxT("EC_TAG_CORETW_SRV_KEEPALIVE_TIMEOUT");
 		case 0x1E00: return wxT("EC_TAG_PREFS_KADEMLIA");
 		case 0x1E01: return wxT("EC_TAG_KADEMLIA_UPDATE_URL");
+		case 0x1E02: return wxT("EC_TAG_KADEMLIA_FILENAME");
+		case 0x1E03: return wxT("EC_TAG_KADEMLIA_CONTACTS_STRING");
+		case 0x1F00: return wxT("EC_TAG_PREFS_I2PCONNECTION");
+		case 0x1F01: return wxT("EC_TAG_I2PCONN_SERVER_DYNIP");
+		case 0x1F02: return wxT("EC_TAG_I2PCONN_SERVER_I2PTCPPORT");
+		case 0x1F03: return wxT("EC_TAG_I2PCONN_SERVER_I2PUDPPORT");
+		case 0x1F04: return wxT("EC_TAG_I2PCONN_SERVER_ISDYNIP");
+		case 0x1F05: return wxT("EC_TAG_I2PCONN_SERVERIP");
+		case 0x1F06: return wxT("EC_TAG_I2PCONN_SERVERPORT");
+		case 0x1F07: return wxT("EC_TAG_I2PCONN_SAMTCPPORT");
+		case 0x1F08: return wxT("EC_TAG_I2PCONN_SAMUDPPORT");
+		case 0x1F09: return wxT("EC_TAG_I2PCONN_IpToWatch");
+		case 0x1F0A: return wxT("EC_TAG_I2PCONN_TcpPortToWatch");
+		case 0x1F0B: return wxT("EC_TAG_I2PCONN_UdpPortToWatch");
+		case 0x1F0C: return wxT("EC_TAG_I2PCONN_AddressFromRouter");
+		case 0x1F0D: return wxT("EC_TAG_I2PCONN_TcpPortFromRouter");
+		case 0x1F0E: return wxT("EC_TAG_I2PCONN_UdpPortFromRouter");
+		case 0x1F0F: return wxT("EC_TAG_I2PCONN_PROXYPORT");
+		case 0x1F10: return wxT("EC_TAG_I2PCONN_SERVERINTERNAL");
+		case 0x1F11: return wxT("EC_TAG_I2PCONN_INBOUNDHOPS");
+		case 0x1F12: return wxT("EC_TAG_I2PCONN_OUTBOUNDHOPS");
+		case 0x1F13: return wxT("EC_TAG_I2PCONN_NBUDPTUNNELS");
+		case 0x1F14: return wxT("EC_TAG_I2PCONN_NBTCPTUNNELS");
+		case 0x1F15: return wxT("EC_TAG_I2PPROP_INBOUND_BANDWIDTH");
+		case 0x1F16: return wxT("EC_TAG_I2PPROP_OUTBOUND_BANDWIDTH");
+		case 0x1F17: return wxT("EC_TAG_I2PPROP_INBOUND_BURST_BANDWIDTH");
+		case 0x1F18: return wxT("EC_TAG_I2PPROP_OUTBOUND_BURST_BANDWIDTH");
+		case 0x1F19: return wxT("EC_TAG_I2PCONN_BANDWIDTHSHAREPERCENTAGE");
+		case 0x1F1A: return wxT("EC_TAG_I2PCONN_CLIENTNAME");
 		default: return CFormat(wxT("unknown %d 0x%x")) % arg % arg;
 	}
 }
@@ -901,11 +998,13 @@ wxString GetDebugNameEcPrefs(uint32 arg)
 		case 0x00000020: return wxT("EC_PREFS_ONLINESIG");
 		case 0x00000040: return wxT("EC_PREFS_SERVERS");
 		case 0x00000080: return wxT("EC_PREFS_FILES");
+		case 0x00000100: return wxT("EC_PREFS_SRCDROP");
 		case 0x00000200: return wxT("EC_PREFS_DIRECTORIES");
 		case 0x00000400: return wxT("EC_PREFS_STATISTICS");
 		case 0x00000800: return wxT("EC_PREFS_SECURITY");
 		case 0x00001000: return wxT("EC_PREFS_CORETWEAKS");
 		case 0x00002000: return wxT("EC_PREFS_KADEMLIA");
+		case 0x00004000: return wxT("EC_PREFS_I2PCONNECTION");
 		default: return CFormat(wxT("unknown %d 0x%x")) % arg % arg;
 	}
 }

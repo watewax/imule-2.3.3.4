@@ -25,7 +25,7 @@
 //
 
 #include "NetworkFunctions.h"	// Interface declaration
-#include "amuleIPV4Address.h"
+#include <wx/socket.h>
 #include <common/Macros.h>	// Needed for itemsof()
 
 
@@ -80,7 +80,7 @@ uint32 StringHosttoUint32(const wxString &Host)
 	if (Host.IsEmpty()) {
 		return 0;
 	}
-	amuleIPV4Address solver;
+	wxIPV4address solver;
 	if (solver.Hostname(Host)) {
 		uint32 result = StringIPtoUint32(solver.IPAddress());
 		if (result != (uint32)-1) {	// should not happen
@@ -140,7 +140,7 @@ bool IsGoodIP(uint32 ip, bool filterLAN) throw()
 
 	return !(filterLAN && IsLanIP(ip));
 }
-
+#ifdef LAN_DISTINCTION_IN_IMULE // imule: no lan distinction
 bool IsLanIP(uint32_t ip) throw()
 {
 	for (unsigned int i = 0; i < itemsof(lan_ranges); ++i) {
@@ -150,3 +150,10 @@ bool IsLanIP(uint32_t ip) throw()
 	}
 	return false;
 }
+#else
+bool IsLanIP(uint32_t WXUNUSED(ip)) throw()
+{
+        return false;
+}
+#endif // imule: no lan distinction
+

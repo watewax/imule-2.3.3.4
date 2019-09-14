@@ -45,7 +45,7 @@
 
 #include <list>			// Needed for std::list
 #include <wx/string.h>		// Needed for wxString
-#include <wx/thread.h>		// Needed for wxMutex
+#include "MuleThread.h"
 #include "Types.h"
 
 #ifndef CLIENT_GUI
@@ -172,7 +172,7 @@ public:
 	 *
 	 * @return true if this node has children, false otherwise.
 	 */
-	bool HasChildren() { wxMutexLocker lock(m_lock); return !m_children.empty(); }
+        bool HasChildren() { wiMutexLocker lock(m_lock); return !m_children.empty(); }
 
 	/**
 	 * Check for visible children.
@@ -240,7 +240,7 @@ public:
 	/**
 	 * Resorts children for the stSortByValue flag.
 	 */
-	void ReSortChildren() { wxMutexLocker lock(m_lock); m_children.sort(ValueSort); }
+        void ReSortChildren() { wiMutexLocker lock(m_lock); m_children.sort(ValueSort); }
 #endif
 
 #ifndef AMULE_DAEMON
@@ -262,7 +262,7 @@ public:
 	 * This function is used by CStatisticsDlg to be able to lock the
 	 * core tree while updating the GUI tree.
 	 */
-	wxMutex& GetLock() { return m_lock; }
+        wiMutex& GetLock() { return m_lock; }
 
 	/**
 	 * Returns the unique ID of this node.
@@ -330,7 +330,7 @@ private:
 	std::list<CStatTreeItemBase*>	m_children;
 
 	//! Lock to protect list from simultanous access.
-	wxMutex m_lock;
+        wiMutex m_lock;
 };
 
 

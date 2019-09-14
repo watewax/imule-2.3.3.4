@@ -35,6 +35,7 @@
 #include <memory>
 
 #include "UPnPCompatibility.h"
+#include "MuleThread.h"
 
 extern std::string stdEmptyString;
 
@@ -365,7 +366,7 @@ public:
 	const std::string &GetKey() const
 		{ return m_serviceId; }
 	bool IsSubscribed() const
-		{ return m_SCPD.get() != NULL; }
+        { return (bool)m_SCPD; }
 	void SetSCPD(CUPnPSCPD *SCPD)
 		{ m_SCPD.reset(SCPD); }
 

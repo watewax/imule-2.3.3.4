@@ -33,6 +33,8 @@
 #include "OtherStructs.h"	// Needed for Requested_Block_Struct
 #include "DeadSourceList.h"	// Needed for CDeadSourceList
 #include "GapList.h"
+#include <i2p/CI2PAddress.h>
+#include "MuleThread.h"
 
 class CSearchFile;
 class CMemFile;
@@ -124,14 +126,16 @@ public:
 	bool	GetNextRequestedBlock(CUpDownClient* sender, std::vector<Requested_Block_Struct*>& toadd, uint16& count);
 	void	WritePartStatus(CMemFile* file);
 	void	WriteCompleteSourcesCount(CMemFile* file);
-	static bool	CanAddSource(uint32 userid, uint16 port, uint32 serverip, uint16 serverport, uint8* pdebug_lowiddropped = NULL, bool ed2kID = true);
-	void	AddSources(CMemFile& sources, uint32 serverip, uint16 serverport, unsigned origin, bool bWithObfuscationAndHash);
+        static bool CanAddSource(const CI2PAddress & dest, const CI2PAddress & serverdest, uint8 * pdebug_lowiddropped = NULL, bool ed2kID = true);
+        void AddSources(CMemFile & sources, const CI2PAddress & serverdest, unsigned origin, bool bWithObfuscationAndHash);
 #ifdef CLIENT_GUI
 	uint8	GetStatus() const { return status; }
 	uint8	GetStatus(bool /*ignorepause = false*/) const { return status; }
 #else
 	uint8	GetStatus(bool ignorepause = false) const;
 #endif
+        uint16 GetECTagStatus() { return status | (m_paused << 4) | (m_stopped << 5) | (m_insufficient << 6); } // mkvore
+        void SetECTagStatus(uint16 s) { status=(s & 0xF)!=0; m_paused=(s & (1<<4)) != 0; m_stopped=(s & (1<<5)) != 0; m_insufficient=(s & (1<<6)) != 0;} // mkvore
 	virtual void	UpdatePartsInfo();
 	const CPath& GetPartMetFileName() const { return m_partmetfilename; }
 	uint16	GetPartMetNumber() const;
@@ -150,7 +154,7 @@ public:
 #endif
 	uint16	GetTransferingSrcCount() const	{ return transferingsrc; }
 	uint16  GetNotCurrentSourcesCount()	const	{ return m_notCurrentSources; };
-	uint16	GetValidSourcesCount() const	{ return m_validSources; };
+        uint16	GetValidSourcesCount() const	{ return (uint16) m_validSources; };
 
 	uint64	GetNeededSpace();
 
@@ -259,13 +263,6 @@ public:
 	 * @param client The source to be recorded as dead for this file.
 	 */
 	void		AddDeadSource(const CUpDownClient* client);
-
-	/**
-	 * Set the current progress of hashing and display it in the download list control.
-	 *
-	 * @param part Number of part currently being hashed. 0 for no hashing in progress.
-	 */
-	virtual	void SetHashingProgress(uint16 part) const;
 
 	/**
 	 * Checks if a source is recorded as being dead for this file.
@@ -419,7 +416,9 @@ public:
   // Read data for sharing
 	bool ReadData(class CFileArea & area, uint64 offset, uint32 toread);
 
+        static const uint16 NO_PART;
 private:
+        wiMutex blocklistMutex;
 	/* downloading sources list */
 	CClientRefList m_downloadingSourcesList;
 

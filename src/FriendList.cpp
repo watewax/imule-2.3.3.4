@@ -59,9 +59,9 @@ void CFriendList::AddFriend(CFriend* toadd, bool notify)
 }
 
 
-void CFriendList::AddFriend(const CMD4Hash& userhash, uint32 lastUsedIP, uint32 lastUsedPort, const wxString& name, uint32 lastSeen, uint32 lastChatted)
+void CFriendList::AddFriend(const CMD4Hash& userhash, const CI2PAddress & lastUsedDest, const wxString& name, uint32 lastSeen, uint32 lastChatted)
 {
-	CFriend* NewFriend = new CFriend( userhash, lastSeen, lastUsedIP, lastUsedPort, lastChatted, name);
+        CFriend* NewFriend = new CFriend( userhash, lastSeen, lastUsedDest, lastChatted, name);
 
 	AddFriend( NewFriend );
 
@@ -151,7 +151,7 @@ void CFriendList::SaveList()
 }
 
 
-CFriend* CFriendList::FindFriend(const CMD4Hash& userhash, uint32 dwIP, uint16 nPort)
+CFriend* CFriendList::FindFriend(const CMD4Hash& userhash, const CI2PAddress & nDest, uint16 WXUNUSED(port))
 {
 
 	for(FriendList::iterator it = m_FriendList.begin(); it != m_FriendList.end(); ++it) {
@@ -164,7 +164,7 @@ CFriend* CFriendList::FindFriend(const CMD4Hash& userhash, uint32 dwIP, uint16 n
 			if (cur_friend->GetUserHash() == userhash) {
 				return cur_friend;
 			}
-		} else if (cur_friend->GetIP() == dwIP && cur_friend->GetPort() == nPort) {
+                } else if (cur_friend->GetTCPDest() == nDest) {
 			if (!userhash.IsEmpty() && !cur_friend->HasHash() ) {
 				// Friend without hash (probably IP entered through dialog)
 				// -> save the hash
@@ -192,7 +192,7 @@ CFriend* CFriendList::FindFriend(uint32 ecid)
 }
 
 
-bool CFriendList::IsAlreadyFriend( uint32 dwLastUsedIP, uint32 nLastUsedPort )
+bool CFriendList::IsAlreadyFriend( const CI2PAddress & dwLastUsedIP, uint16 nLastUsedPort )
 {
 	return (FindFriend( CMD4Hash(), dwLastUsedIP, nLastUsedPort ) != NULL);
 }
@@ -214,7 +214,7 @@ void CFriendList::RequestSharedFileList(CFriend* cur_friend)
 	if (cur_friend) {
 		CUpDownClient* client = cur_friend->GetLinkedClient().GetClient();
 		if (!client) {
-			client = new CUpDownClient(cur_friend->GetPort(), cur_friend->GetIP(), 0, 0, 0, true, true);
+                        client = new CUpDownClient(cur_friend->GetTCPDest(), CI2PAddress::null, 0, true, true);
 			client->SetUserName(cur_friend->GetName());
 			theApp->clientlist->AddClient(client);
 			cur_friend->LinkClient(CCLIENTREF(client, wxT("CFriendList::RequestSharedFileList")));
@@ -239,8 +239,7 @@ void CFriendList::StartChatSession(CFriend* Friend)
 	if (Friend) {
 		CUpDownClient* client = Friend->GetLinkedClient().GetClient();
 		if (!client) {
-			client = new CUpDownClient(Friend->GetPort(), Friend->GetIP(), 0, 0, 0, true, true);
-			client->SetIP(Friend->GetIP());
+                        client = new CUpDownClient(Friend->GetTCPDest(), CI2PAddress::null, 0, true, true);
 			client->SetUserName(Friend->GetName());
 			theApp->clientlist->AddClient(client);
 			Friend->LinkClient(CCLIENTREF(client, wxT("CFriendList::StartChatSession")));

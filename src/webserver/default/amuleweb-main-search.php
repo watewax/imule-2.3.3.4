@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title>aMule control panel</title>
+<title>iMule control panel</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <script language="JavaScript" type="text/JavaScript">
@@ -176,9 +176,7 @@ function formCommandSubmit(command)
                   <td align="right">Search type :</td>
                   <td> 
                     <select name="searchtype" id="select">
-                      <option selected>Local</option>
-                      <option>Global</option>
-                      <option>Kad</option>
+                      <option selected>Kad</option>
                     </select></td>
                   <td>Max Size : </td>
                   <td>

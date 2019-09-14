@@ -34,6 +34,7 @@
 
 #include "Proxy.h"
 #include "OtherStructs.h"
+#include "i2p/CI2PAddress.h"
 
 #include <common/ClientVersion.h>	// Needed for __SVN__
 
@@ -210,14 +211,60 @@ public:
 	static void		SetUserNick(const wxString& nick) { s_nick = nick; }
 	static Cfg_Lang_Base * GetCfgLang()		{ return s_cfgLang; }
 
-	static const wxString&	GetAddress()			{ return s_Addr; }
-	static uint16		GetPort()			{ return s_port; }
-	static void		SetPort(uint16 val);
-	static uint16		GetUDPPort()			{ return s_udpport; }
-	static uint16		GetEffectiveUDPPort()	{ return s_UDPEnable ? s_udpport : 0; }
-	static void		SetUDPPort(uint16 val)		{ s_udpport = val; }
+        static const wxString&	GetTcpPrivKey()			{ return s_tcpPrivKey; }
+        static void		SetTcpPrivKey(wxString v)	{ s_tcpPrivKey = v; }
+        static const wxString&	GetUdpPrivKey()			{ return s_udpPrivKey; }
+        static void		SetUdpPrivKey(wxString v)	{ s_udpPrivKey = v; }
+        static std::map<wxString,wxString> GetI2PRouterProps();
+        static std::map<wxString,wxString> GetI2PTCPSocketProps();
+        static std::map<wxString,wxString> GetI2PUDPSocketProps();
+
+        static bool		GetI2PServerUseDynIP()		{ return s_I2PServerUseDynIP; }
+        static const wxString&	GetI2PServerDynIP()		{ return s_I2PServerDynIP; }
+        static uint16_t		GetI2PServerI2PTcpPort()	{ return s_I2PServerI2PTcpPort; }
+        static uint16_t		GetI2PServerI2PUdpPort()	{ return s_I2PServerI2PUdpPort; }
+        static uint16_t		GetI2PPROP_INBOUND_BANDWIDTH()	{ return s_I2PPROP_INBOUND_BANDWIDTH; }
+        static uint16_t		GetI2PPROP_OUTBOUND_BANDWIDTH()	{ return s_I2PPROP_OUTBOUND_BANDWIDTH; }
+        static uint16_t		GetI2PPROP_INBOUND_BURST_BANDWIDTH()	{ return s_I2PPROP_INBOUND_BURST_BANDWIDTH; }
+        static uint16_t		GetI2PPROP_OUTBOUND_BURST_BANDWIDTH()	{ return s_I2PPROP_OUTBOUND_BURST_BANDWIDTH; }
+
+        static bool		GetI2PServerInternal()		{ return s_I2PServerInternal; }
+        static const wxString	GetI2PServerIP()		{ return GetI2PServerInternal() ? wxT("127.0.0.1") : s_I2PServerIP; }
+        static uint16_t		GetI2PServerPort()		{ return (uint16_t) (GetI2PServerInternal() ? 7654 : s_I2PServerPort); }
+        static uint16_t		GetI2PSamTcpPort()		{ return s_I2PSamTcpPort; }
+        static uint16_t		GetI2PProxyPort()		{ return s_I2PProxyPort; }
+        static const wxString&	GetI2PClientName()		{ return s_I2PClientName; }
+        static uint8_t		GetI2PInboundHops()		{ return s_I2PInboundHops; }
+        static uint8_t		GetI2POutboundHops()		{ return s_I2POutboundHops; }
+        static uint8_t		GetI2PNbUDPTunnels()		{ return s_I2PNbUDPTunnels; }
+        static uint8_t		GetI2PNbTCPTunnels()		{ return s_I2PNbTCPTunnels; }
+        static uint8_t		GetI2PBandwidthSharePercentage() { return s_I2PBandwidthSharePercentage; }
+
+        static void		SetI2PServerUseDynIP(bool s)	        { s_I2PServerUseDynIP=s; }
+        static void		SetI2PServerDynIP(const wxString & s)	{ s_I2PServerDynIP=s; }
+        static void		SetI2PServerI2PTcpPort(uint16_t v)        { s_I2PServerI2PTcpPort=v; }
+        static void		SetI2PServerI2PUdpPort(uint16_t v)        { s_I2PServerI2PUdpPort=v; }
+
+        static void		SetI2PPROP_INBOUND_BANDWIDTH(uint16_t v)        { s_I2PPROP_INBOUND_BANDWIDTH=v; }
+        static void		SetI2PPROP_OUTBOUND_BANDWIDTH(uint16_t v)        { s_I2PPROP_OUTBOUND_BANDWIDTH=v; }
+        static void		SetI2PPROP_INBOUND_BURST_BANDWIDTH(uint16_t v)        { s_I2PPROP_INBOUND_BURST_BANDWIDTH=v; }
+        static void		SetI2PPROP_OUTBOUND_BURST_BANDWIDTH(uint16_t v)        { s_I2PPROP_OUTBOUND_BURST_BANDWIDTH=v; }
+
+        static void		SetI2PServerInternal(bool s)	        { s_I2PServerInternal=s; }
+        static void		SetI2PServerIP(const wxString & s)	{ s_I2PServerIP=s; }
+        static void		SetI2PServerPort(uint16_t v)	        { s_I2PServerPort=v; }
+        static void		SetI2PSamTcpPort(uint16_t v)		{ s_I2PSamTcpPort=v; }
+        //static void		SetI2PSamUdpPort(uint16_t v)		{ s_I2PSamUdpPort=v; }
+        static void		SetI2PProxyPort(uint16_t v)	        { s_I2PProxyPort=v; }
+        static void		SetI2PClientName(const wxString & s)	{ s_I2PClientName=s; }
+        static void		SetI2PInboundHops(uint8_t  v)	        { s_I2PInboundHops=v; }
+        static void		SetI2POutboundHops(uint8_t v)	        { s_I2POutboundHops=v; }
+        static void		SetI2PNbUDPTunnels(uint8_t v)		{ s_I2PNbUDPTunnels=v; }
+        static void		SetI2PNbTCPTunnels(uint8_t v)		{ s_I2PNbTCPTunnels=v; }
+        static void		SetI2PBandwidthSharePercentage(uint8_t v) { s_I2PBandwidthSharePercentage=v; }
+
 	static bool		IsUDPDisabled()			{ return !s_UDPEnable; }
-	static void		SetUDPDisable(bool val)		{ s_UDPEnable = !val; }
+        static void		SetUDPDisable(bool /*val*/)		{ s_UDPEnable = true; }
 	static const CPath&	GetIncomingDir()		{ return s_incomingdir; }
 	static void		SetIncomingDir(const CPath& dir){ s_incomingdir = dir; }
 	static const CPath&	GetTempDir()			{ return s_tempdir; }
@@ -327,7 +374,7 @@ public:
 	static bool		AddNewFilesPaused()		{ return s_addnewfilespaused; }
 	static void		SetAddNewFilesPaused(bool val)	{ s_addnewfilespaused = val; }
 
-	static void		SetMaxConsPerFive(int in)	{ s_MaxConperFive=in; }
+        static void		SetMaxConsPerFive(int in)	{ s_MaxConperFive=(uint16) in; }
 
 	static uint16		GetMaxConperFive()		{ return s_MaxConperFive; }
 	static uint16		GetDefaultMaxConperFive();
@@ -412,12 +459,25 @@ public:
 	static bool		ShowCatTabInfos()		{ return s_showCatTabInfos; }
 	static void		ShowCatTabInfos(bool in)	{ s_showCatTabInfos=in; }
 
+        // Sources Dropping Tweaks
+        static bool		DropNoNeededSources() 		{ return s_NoNeededSources > 0; }
+        static bool		SwapNoNeededSources() 		{ return s_NoNeededSources == 2; }
+        static uint8		GetNoNeededSources()		{ return s_NoNeededSources; }
+        static void		SetNoNeededSources(uint8 val)	{ s_NoNeededSources = val; }
+        static bool		DropFullQueueSources() 		{ return s_DropFullQueueSources; }
+        static void		SetDropFullQueueSources(bool val) { s_DropFullQueueSources = val; }
+        static bool		DropHighQueueRankingSources() 	{ return s_DropHighQueueRankingSources; }
+        static void		SetDropHighQueueRankingSources(bool val) { s_DropHighQueueRankingSources = val; }
+        static uint32		HighQueueRanking() 		{ return s_HighQueueRanking; }
+        static void		SetHighQueueRanking(uint32 val)	{ s_HighQueueRanking = val; }
+        static uint32		GetAutoDropTimer() 		{ return s_AutoDropTimer; }
+        static void		SetAutoDropTimer(uint32 val)	{ s_AutoDropTimer = val; }
 	// External Connections
 	static bool		AcceptExternalConnections()	{ return s_AcceptExternalConnections; }
 	static void			EnableExternalConnections( bool val ) { s_AcceptExternalConnections = val; }
 	static const wxString&	GetECAddress()			{ return s_ECAddr; }
-	static uint32		ECPort()			{ return s_ECPort; }
-	static void			SetECPort(uint32 val) { s_ECPort = val; }
+        static uint16 		ECPort()			{ return s_ECPort; }
+        static void			SetECPort(uint16 val) { s_ECPort = val; }
 	static const wxString&	ECPassword()			{ return s_ECPassword; }
 	static void		SetECPass(const wxString& pass)	{ s_ECPassword = pass; }
 	static bool		IsTransmitOnlyUploadingClients() { return s_TransmitOnlyUploadingClients; }
@@ -533,7 +593,7 @@ public:
 	static bool GetNetworkKademlia()		{ return s_ConnectToKad; }
 	static void SetNetworkKademlia(bool val)	{ s_ConnectToKad = val; }
 	static bool GetNetworkED2K()			{ return s_ConnectToED2K; }
-	static void SetNetworkED2K(bool val)		{ s_ConnectToED2K = val; }
+        static void SetNetworkED2K(bool)		{ s_ConnectToED2K = false; } // no server yet with iMule
 
 	// Statistics
 	static unsigned		GetMaxClientVersions()		{ return s_maxClientVersions; }
@@ -548,6 +608,11 @@ public:
 	static const wxString& GetEd2kServersUrl() { return s_Ed2kURL; }
 	static void SetEd2kServersUrl(const wxString& url) { s_Ed2kURL = url; }
 
+        // Special
+        static uint32_t GetKeepKadContacts()					{ return s_KeepKadContacts; }
+        static void     SetKeepKadContacts(uint32_t val)			{ s_KeepKadContacts = val; }
+        static bool    GetWriteMyselfToNodesDat()			{ return s_WriteMyselfToNodesDat;}
+        static void    SetWriteMyselfToNodesDat(bool val)		{ s_WriteMyselfToNodesDat = val; }
 	// Crypt
 	static bool		IsClientCryptLayerSupported()		{return s_IsClientCryptLayerSupported;}
 	static bool		IsClientCryptLayerRequested()		{return IsClientCryptLayerSupported() && s_bCryptLayerRequested;}
@@ -580,6 +645,7 @@ public:
 	static bool		GetPreventSleepWhileDownloading() { return s_preventSleepWhileDownloading; }
 	static void		SetPreventSleepWhileDownloading(bool status) { s_preventSleepWhileDownloading = status; }
 protected:
+        void	CreateUserHash();
 	static	int32 GetRecommendedMaxConnections();
 
 	//! Temporary storage for statistic-colors.
@@ -614,9 +680,30 @@ protected:
 	static uint16	s_maxupload;
 	static uint16	s_maxdownload;
 	static uint16	s_slotallocation;
-	static wxString s_Addr;
-	static uint16	s_port;
-	static uint16	s_udpport;
+        // I2P connection
+        static wxString s_I2PServerDynIP;
+        static uint16_t	s_I2PServerI2PTcpPort;
+        static uint16_t	s_I2PServerI2PUdpPort;
+        static bool     s_I2PServerUseDynIP;
+        static bool     s_I2PServerInternal;
+        static uint8_t	s_I2PInboundHops;
+        static uint8_t	s_I2POutboundHops;
+        static uint8_t	s_I2PNbUDPTunnels;
+        static uint8_t	s_I2PNbTCPTunnels;
+        static uint16_t	s_I2PPROP_INBOUND_BANDWIDTH;
+        static uint16_t	s_I2PPROP_OUTBOUND_BANDWIDTH;
+        static uint16_t	s_I2PPROP_INBOUND_BURST_BANDWIDTH;
+        static uint16_t	s_I2PPROP_OUTBOUND_BURST_BANDWIDTH;
+        static uint8_t    s_I2PBandwidthSharePercentage;
+        static wxString s_I2PClientName;
+        static wxString s_I2PServerIP;
+        static uint16_t	s_I2PServerPort; // unused
+        static uint16_t	s_I2PSamTcpPort;
+        //static uint16_t	s_I2PSamUdpPort;
+        static uint16_t	s_I2PProxyPort;
+
+        static wxString s_tcpPrivKey;
+        static wxString s_udpPrivKey;
 	static bool	s_UDPEnable;
 	static uint16	s_maxconnections;
 	static bool	s_reconnect;
@@ -724,10 +811,16 @@ protected:
 	static bool	s_showCatTabInfos;
 	static AllCategoryFilter s_allcatFilter;
 
+        // Madcat - Sources Dropping Tweaks
+        static uint8	s_NoNeededSources; // 0: Keep, 1: Drop, 2:Swap
+        static bool	s_DropFullQueueSources;
+        static bool	s_DropHighQueueRankingSources;
+        static uint32	s_HighQueueRanking;
+        static uint32	s_AutoDropTimer;
 	// Kry - external connections
 	static bool	s_AcceptExternalConnections;
 	static wxString s_ECAddr;
-	static uint32	s_ECPort;
+        static uint16	s_ECPort;
 	static wxString	s_ECPassword;
 	static bool		s_TransmitOnlyUploadingClients;
 
@@ -789,6 +882,9 @@ protected:
 
 	// Statistics
 	static	unsigned	s_maxClientVersions;	// 0 = unlimited
+        // Special
+        static uint32_t s_KeepKadContacts;
+        static bool s_WriteMyselfToNodesDat;
 
 	// Drop slow sources if needed
 	static bool s_DropSlowSources;

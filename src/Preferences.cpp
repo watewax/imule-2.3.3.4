@@ -90,10 +90,40 @@ Cfg_Lang_Base * CPreferences::s_cfgLang;
 uint16		CPreferences::s_maxupload;
 uint16		CPreferences::s_maxdownload;
 uint16		CPreferences::s_slotallocation;
-wxString	CPreferences::s_Addr;
-uint16		CPreferences::s_port;
-uint16		CPreferences::s_udpport;
-bool		CPreferences::s_UDPEnable;
+// I2P
+wxString                CPreferences::s_tcpPrivKey;
+wxString                CPreferences::s_udpPrivKey;
+
+bool            		CPreferences::s_I2PServerUseDynIP;
+wxString				CPreferences::s_I2PServerDynIP;
+uint16_t				CPreferences::s_I2PServerI2PTcpPort;
+uint16_t				CPreferences::s_I2PServerI2PUdpPort;
+bool           			CPreferences::s_I2PServerInternal;
+wxString				CPreferences::s_I2PServerIP;
+uint16_t				CPreferences::s_I2PServerPort;
+uint16_t				CPreferences::s_I2PSamTcpPort;
+//uint16_t				CPreferences::s_I2PSamUdpPort;
+//wxString				CPreferences::s_IpToWatch;
+//uint16_t				CPreferences::s_TcpPortToWatch;
+//uint16_t				CPreferences::s_UdpPortToWatch;
+//wxString				CPreferences::s_AddressFromRouter;
+//uint16_t				CPreferences::s_TcpPortFromRouter;
+//uint16_t				CPreferences::s_UdpPortFromRouter;
+
+uint16_t				CPreferences::s_I2PProxyPort;
+uint8_t           			CPreferences::s_I2PInboundHops;
+uint8_t           			CPreferences::s_I2POutboundHops;
+uint8_t           			CPreferences::s_I2PNbUDPTunnels;
+uint8_t           			CPreferences::s_I2PNbTCPTunnels;
+
+uint8_t           			CPreferences::s_I2PBandwidthSharePercentage;
+uint16_t				CPreferences::s_I2PPROP_INBOUND_BANDWIDTH;
+uint16_t				CPreferences::s_I2PPROP_OUTBOUND_BANDWIDTH;
+uint16_t				CPreferences::s_I2PPROP_INBOUND_BURST_BANDWIDTH;
+uint16_t				CPreferences::s_I2PPROP_OUTBOUND_BURST_BANDWIDTH;
+
+wxString        			CPreferences::s_I2PClientName;
+bool		CPreferences::s_UDPEnable = true;
 uint16		CPreferences::s_maxconnections;
 bool		CPreferences::s_reconnect;
 bool		CPreferences::s_autoconnect;
@@ -176,9 +206,14 @@ bool		CPreferences::s_bWebLowEnabled;
 wxString	CPreferences::s_WebTemplate;
 bool		CPreferences::s_showCatTabInfos;
 AllCategoryFilter CPreferences::s_allcatFilter;
+uint8		CPreferences::s_NoNeededSources;
+bool		CPreferences::s_DropFullQueueSources;
+bool		CPreferences::s_DropHighQueueRankingSources;
+uint32		CPreferences::s_HighQueueRanking;
+uint32		CPreferences::s_AutoDropTimer;
 bool		CPreferences::s_AcceptExternalConnections;
 wxString	CPreferences::s_ECAddr;
-uint32		CPreferences::s_ECPort;
+uint16		CPreferences::s_ECPort;
 wxString	CPreferences::s_ECPassword;
 bool		CPreferences::s_TransmitOnlyUploadingClients;
 bool		CPreferences::s_IPFilterClients;
@@ -215,6 +250,8 @@ bool		CPreferences::s_NewVersionCheck;
 bool		CPreferences::s_ConnectToKad;
 bool		CPreferences::s_ConnectToED2K;
 unsigned	CPreferences::s_maxClientVersions;
+uint32_t	CPreferences::s_KeepKadContacts;
+bool		CPreferences::s_WriteMyselfToNodesDat ;
 bool		CPreferences::s_DropSlowSources;
 bool		CPreferences::s_IsClientCryptLayerSupported;
 bool		CPreferences::s_bCryptLayerRequested;
@@ -569,14 +606,15 @@ public:
 	{}
 
 
-	virtual void LoadFromFile(wxConfigBase* cfg)
-	{
-		cfg->Read( GetKey(), &m_value, m_default );
+        virtual void LoadFromFile(wxConfigBase* cfg) {
+                wxString v;
+                wxString defaut = ( m_default ? wxT("1") : wxT("0")  );
+                cfg->Read( GetKey(), &v, defaut );
+                m_value = (v==wxT("1") ) ;
 	}
 
-	virtual void SaveToFile(wxConfigBase* cfg)
-	{
-		cfg->Write( GetKey(), m_value );
+        virtual void SaveToFile(wxConfigBase* cfg) {
+                cfg->Write( GetKey(), m_value ? wxT("1") : wxT("0") );
 	}
 };
 
@@ -942,7 +980,7 @@ CPreferences::CPreferences()
 
 	if (s_userhash.IsEmpty()) {
 		for (int i = 0; i < 8; i++) {
-			RawPokeUInt16(s_userhash.GetHash() + (i * 2), rand());
+                        RawPokeUInt16(s_userhash.GetHash() + (i * 2), (uint16)rand());
 		}
 
 		Save();
@@ -980,7 +1018,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	/**
 	 * User settings
 	 **/
-	NewCfgItem(IDC_NICK,		(new Cfg_Str(  wxT("/eMule/Nick"), s_nick, wxT("http://www.aMule.org") )));
+        NewCfgItem(IDC_NICK,		(new Cfg_Str(  wxT("/eMule/Nick"), s_nick, wxT("http://www.imule.i2p") )));
 #ifndef AMULE_DAEMON
 	Cfg_Lang * cfgLang = new Cfg_Lang();
 	s_cfgLang = cfgLang;
@@ -1006,13 +1044,13 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_QUEUESIZE,	(MkCfg_Int( wxT("/eMule/QueueSizePref"), s_iQueueSize, 50 )));
 
 
-#ifdef __DEBUG__
+//#ifdef __DEBUG__
 	/**
 	 * Debugging
 	 **/
 	NewCfgItem(ID_VERBOSEDEBUG, (new Cfg_Bool( wxT("/eMule/VerboseDebug"), s_bVerbose, false )));
 	NewCfgItem(ID_VERBOSEDEBUGLOGFILE, (new Cfg_Bool( wxT("/eMule/VerboseDebugLogfile"), s_bVerboseLogfile, false )));
-#endif
+//#endif
 
 	/**
 	 * Connection settings
@@ -1020,27 +1058,41 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_MAXUP,		(MkCfg_Int( wxT("/eMule/MaxUpload"), s_maxupload, 0 )));
 	NewCfgItem(IDC_MAXDOWN,		(MkCfg_Int( wxT("/eMule/MaxDownload"), s_maxdownload, 0 )));
 	NewCfgItem(IDC_SLOTALLOC,	(MkCfg_Int( wxT("/eMule/SlotAllocation"), s_slotallocation, 2 )));
-	NewCfgItem(IDC_PORT,		(MkCfg_Int( wxT("/eMule/Port"), s_port, DEFAULT_TCP_PORT )));
-	NewCfgItem(IDC_UDPPORT,		(MkCfg_Int( wxT("/eMule/UDPPort"), s_udpport, DEFAULT_UDP_PORT )));
-	NewCfgItem(IDC_UDPENABLE,	(new Cfg_Bool( wxT("/eMule/UDPEnable"), s_UDPEnable, true )));
-	NewCfgItem(IDC_ADDRESS,		(new Cfg_Str( wxT("/eMule/Address"), s_Addr, wxEmptyString)));
 	NewCfgItem(IDC_AUTOCONNECT,	(new Cfg_Bool( wxT("/eMule/Autoconnect"), s_autoconnect, true )));
 	NewCfgItem(IDC_MAXSOURCEPERFILE,	(MkCfg_Int( wxT("/eMule/MaxSourcesPerFile"), s_maxsourceperfile, 300 )));
 	NewCfgItem(IDC_MAXCON,		(MkCfg_Int( wxT("/eMule/MaxConnections"), s_maxconnections, GetRecommendedMaxConnections() )));
 	NewCfgItem(IDC_MAXCON5SEC,	(MkCfg_Int( wxT("/eMule/MaxConnectionsPerFiveSeconds"), s_MaxConperFive, 20 )));
 
 	/**
-	 * Proxy
+         * Special settings
+         */
+
+        NewCfgItem(IDC_KEEPKADCONTACTS,	(MkCfg_Int( wxT("/Kad/KeepKadContacts"), s_KeepKadContacts, 0 )));
+        NewCfgItem(IDC_WRITEMYSELFTONODESDAT,
+                   ( new Cfg_Bool( wxT("/Kad/WriteMyselfToNodesDat"), s_WriteMyselfToNodesDat, false )));
+
+        /**
+         * I2P connection settings
 	 **/
-	NewCfgItem(ID_PROXY_ENABLE_PROXY,	(new Cfg_Bool( wxT("/Proxy/ProxyEnableProxy"), s_ProxyData.m_proxyEnable, false )));
-	NewCfgItem(ID_PROXY_TYPE,		(MkCfg_Int( wxT("/Proxy/ProxyType"), s_ProxyData.m_proxyType, 0 )));
-	NewCfgItem(ID_PROXY_NAME,		(new Cfg_Str( wxT("/Proxy/ProxyName"), s_ProxyData.m_proxyHostName, wxEmptyString )));
-	NewCfgItem(ID_PROXY_PORT,		(MkCfg_Int( wxT("/Proxy/ProxyPort"), s_ProxyData.m_proxyPort, 1080 )));
-	NewCfgItem(ID_PROXY_ENABLE_PASSWORD,	(new Cfg_Bool( wxT("/Proxy/ProxyEnablePassword"), s_ProxyData.m_enablePassword, false )));
-	NewCfgItem(ID_PROXY_USER,		(new Cfg_Str( wxT("/Proxy/ProxyUser"), s_ProxyData.m_userName, wxEmptyString )));
-	NewCfgItem(ID_PROXY_PASSWORD,		(new Cfg_Str( wxT("/Proxy/ProxyPassword"), s_ProxyData.m_password, wxEmptyString )));
-// These were copied from eMule config file, maybe someone with windows can complete this?
-//	NewCfgItem(ID_PROXY_AUTO_SERVER_CONNECT_WITHOUT_PROXY,	(new Cfg_Bool( wxT("/Proxy/Proxy????"), s_Proxy????, false )));
+        NewCfgItem(IDC_I2PSERVER_ISDYNIP, ( new Cfg_Bool ( wxT("/i2p/I2PServerUseDynIP"), s_I2PServerUseDynIP, false )));
+        NewCfgItem(IDC_I2PSERVER_DYNIP,	  ( new Cfg_Str  ( wxT("/i2p/I2PServerDynIP"),    s_I2PServerDynIP, wxT("") )));
+        NewCfgItem(IDC_I2PSERVER_I2PTCPPORT, (   MkCfg_Int  ( wxT("/i2p/I2PServerI2PTcpPort"),  s_I2PServerI2PTcpPort, 8887 )));
+        NewCfgItem(IDC_I2PSERVER_I2PUDPPORT, (   MkCfg_Int  ( wxT("/i2p/I2PServerI2PUdpPort"),  s_I2PServerI2PUdpPort, 8887 )));
+        NewCfgItem(IDC_I2PSAMTCPPORT,	  ( MkCfg_Int  ( wxT("/i2p/I2PSamTcpPort"),     s_I2PSamTcpPort, 7656 )));
+        NewCfgItem(IDC_I2PSERVERIP,	  ( new Cfg_Str  ( wxT("/i2p/I2PServerIP"),       s_I2PServerIP, wxT("127.0.0.1") )));
+        NewCfgItem(IDC_I2PPROXYPORT,	  (   MkCfg_Int  ( wxT("/i2p/I2PProxyPort"),     s_I2PProxyPort, 4444 )));
+        NewCfgItem(IDC_I2PSERVERINTERNAL, ( new Cfg_Bool ( wxT("/i2p/I2PServerInternal"), s_I2PServerInternal, true )));
+        NewCfgItem(IDC_I2PINBOUNDHOPS,    (   MkCfg_Int  ( wxT("/i2p/I2PInboundHops"),    s_I2PInboundHops, 2 )));
+        NewCfgItem(IDC_I2POUTBOUNDHOPS,   (   MkCfg_Int  ( wxT("/i2p/I2POutboundHops"),   s_I2POutboundHops, 2 )));
+        NewCfgItem(IDC_I2PNBUDPTUNNELS,   (   MkCfg_Int  ( wxT("/i2p/I2PNbUDPTunnes"),   s_I2PNbUDPTunnels, 2 )));
+        NewCfgItem(IDC_I2PNBTCPTUNNELS,   (   MkCfg_Int  ( wxT("/i2p/I2PNbTCPTunnes"),   s_I2PNbTCPTunnels, 2 )));
+        NewCfgItem(IDC_I2PPROP_INBOUND_BANDWIDTH,   (   MkCfg_Int  ( wxT("/i2p/I2PPROP_INBOUND_BANDWIDTH"),   s_I2PPROP_INBOUND_BANDWIDTH, 64 )));
+        NewCfgItem(IDC_I2PPROP_OUTBOUND_BANDWIDTH,   (   MkCfg_Int  ( wxT("/i2p/I2PPROP_OUTBOUND_BANDWIDTH"),   s_I2PPROP_OUTBOUND_BANDWIDTH, 32 )));
+        NewCfgItem(IDC_I2PPROP_INBOUND_BURST_BANDWIDTH,   (   MkCfg_Int  ( wxT("/i2p/I2PPROP_INBOUND_BURST_BANDWIDTH"),   s_I2PPROP_INBOUND_BURST_BANDWIDTH, 128 )));
+        NewCfgItem(IDC_I2PPROP_OUTBOUND_BURST_BANDWIDTH,   (   MkCfg_Int  ( wxT("/i2p/I2PPROP_OUTBOUND_BURST_BANDWIDTH"),   s_I2PPROP_OUTBOUND_BURST_BANDWIDTH, 64 )));
+        NewCfgItem(IDC_I2PBANDWIDTHSHAREPERCENTAGE,
+                   (   MkCfg_Int  ( wxT("/i2p/I2PBandwidthSharePercentage"),    s_I2PBandwidthSharePercentage, 80 )));
+        NewCfgItem(IDC_I2PCLIENTNAME,     ( new Cfg_Str  ( wxT("/i2p/I2PClientName"),     s_I2PClientName, wxT("iMule") )));
 
 	/**
 	 * Servers
@@ -1060,7 +1112,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_SMARTIDCHECK,	(new Cfg_Bool( wxT("/eMule/SmartIdCheck"), s_smartidcheck, true )));
 	// Enabled networks
 	NewCfgItem( IDC_NETWORKKAD, (new Cfg_Bool( wxT("/eMule/ConnectToKad"),	s_ConnectToKad, true )) );
-	NewCfgItem( IDC_NETWORKED2K, ( new Cfg_Bool( wxT("/eMule/ConnectToED2K"),	s_ConnectToED2K, true ) ));
+        NewCfgItem( IDC_NETWORKED2K, ( new Cfg_Bool( wxT("/eMule/ConnectToED2K"),	s_ConnectToED2K, false ) ));
 
 
 	/**
@@ -1074,7 +1126,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 			// There is a built-in possibility for this call to fail, though I can't imagine a reason for that.
 			incpath = appdir + wxT("Incoming");
 		} else {
-			incpath = JoinPaths(incpath, wxT("aMule Downloads"));
+                incpath = JoinPaths(incpath, wxT("imule Downloads"));
 		}
 	#else
 		wxString incpath = appdir + wxT("Incoming");
@@ -1086,12 +1138,12 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_CHECKDISKSPACE,	(new Cfg_Bool( wxT("/eMule/CheckDiskspace"), s_checkDiskspace, true )));
 	NewCfgItem(IDC_MINDISKSPACE,	(MkCfg_Int( wxT("/eMule/MinFreeDiskSpace"), s_uMinFreeDiskSpace, 1 )));
 	NewCfgItem(IDC_ADDNEWFILESPAUSED,	(new Cfg_Bool( wxT("/eMule/AddNewFilesPaused"), s_addnewfilespaused, false )));
-	NewCfgItem(IDC_PREVIEWPRIO,	(new Cfg_Bool( wxT("/eMule/PreviewPrio"), s_bpreviewprio, false )));
+        NewCfgItem(IDC_PREVIEWPRIO,	(new Cfg_Bool( wxT("/eMule/PreviewPrio"), s_bpreviewprio, true )));
 	NewCfgItem(IDC_MANUALSERVERHIGHPRIO,	(new Cfg_Bool( wxT("/eMule/ManualHighPrio"), s_bmanualhighprio, false )));
 	NewCfgItem(IDC_STARTNEXTFILE,	(new Cfg_Bool( wxT("/eMule/StartNextFile"), s_bstartnextfile, false )));
 	NewCfgItem(IDC_STARTNEXTFILE_SAME,	(new Cfg_Bool( wxT("/eMule/StartNextFileSameCat"), s_bstartnextfilesame, false )));
 	NewCfgItem(IDC_STARTNEXTFILE_ALPHA,	(new Cfg_Bool( wxT("/eMule/StartNextFileAlpha"), s_bstartnextfilealpha, false )));
-	NewCfgItem(IDC_SRCSEEDS,	(new Cfg_Bool( wxT("/ExternalConnect/UseSrcSeeds"), s_UseSrcSeeds, false )));
+        NewCfgItem(IDC_SRCSEEDS,	(new Cfg_Bool( wxT("/ExternalConnect/UseSrcSeeds"), s_UseSrcSeeds, true )));
 	NewCfgItem(IDC_FILEBUFFERSIZE,	(MkCfg_Int( wxT("/eMule/FileBufferSizePref"), s_iFileBufferSize, 16 )));
 	NewCfgItem(IDC_DAP,		(new Cfg_Bool( wxT("/eMule/DAPPref"), s_bDAP, true )));
 	NewCfgItem(IDC_UAP,		(new Cfg_Bool( wxT("/eMule/UAPPref"), s_bUAP, true )));
@@ -1130,7 +1182,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_MACHIDEONCLOSE,	(new Cfg_Bool( wxT("/GUI/HideOnClose"), s_hideonclose, false )));
 	NewCfgItem(IDC_ENABLETRAYICON,	(new Cfg_Bool( wxT("/eMule/EnableTrayIcon"), s_trayiconenabled, false )));
 	NewCfgItem(IDC_MINTRAY,		(new Cfg_Bool( wxT("/eMule/MinToTray"), s_mintotray, false )));
-	NewCfgItem(IDC_EXIT,		(new Cfg_Bool( wxT("/eMule/ConfirmExit"), s_confirmExit, true )));
+        NewCfgItem(IDC_EXIT,		(new Cfg_Bool( wxT("/eMule/ConfirmExit"), s_confirmExit, false )));
 	NewCfgItem(IDC_STARTMIN,	(new Cfg_Bool( wxT("/eMule/StartupMinimized"), s_startMinimized, false )));
 
 	/**
@@ -1145,7 +1197,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	NewCfgItem(IDC_PERCENT,		(new Cfg_Bool( wxT("/ExternalConnect/ShowPercent"), s_Percent, true )));
 	NewCfgItem(IDC_SKIN,		(new Cfg_Skin(  wxT("/SkinGUIOptions/Skin"), s_Skin, wxEmptyString )));
 	NewCfgItem(IDC_VERTTOOLBAR,	(new Cfg_Bool( wxT("/eMule/VerticalToolbar"), s_ToolbarOrientation, false )));
-	NewCfgItem(IDC_SHOW_COUNTRY_FLAGS,	(new Cfg_Bool( wxT("/eMule/GeoIPEnabled"), s_GeoIPEnabled, true )));
+//         NewCfgItem(IDC_SHOW_COUNTRY_FLAGS,	(new Cfg_Bool( wxT("/eMule/GeoIPEnabled"), s_GeoIPEnabled, true )));
 #ifndef __SVN__
 	NewCfgItem(IDC_SHOWVERSIONONTITLE,	(new Cfg_Bool( wxT("/eMule/ShowVersionOnTitle"), s_showVersionOnTitle, false )));
 #endif
@@ -1169,16 +1221,15 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	/**
 	 * Security
 	 **/
-	NewCfgItem(IDC_SEESHARES,	(MkCfg_Int( wxT("/eMule/SeeShare"),	s_iSeeShares, 2 )));
+        NewCfgItem(IDC_SEESHARES,	(MkCfg_Int( wxT("/eMule/SeeShare"),	s_iSeeShares, 0 )));
 	NewCfgItem(IDC_SECIDENT,        (new Cfg_Bool( wxT("/ExternalConnect/UseSecIdent"), s_SecIdent, true )));
 	NewCfgItem(IDC_IPFCLIENTS,	(new Cfg_Bool( wxT("/ExternalConnect/IpFilterClients"), s_IPFilterClients, true )));
 	NewCfgItem(IDC_IPFSERVERS,	(new Cfg_Bool( wxT("/ExternalConnect/IpFilterServers"), s_IPFilterServers, true )));
-	NewCfgItem(IDC_FILTERLAN,		(new Cfg_Bool( wxT("/eMule/FilterLanIPs"), s_filterLanIP, true )));
 	NewCfgItem(IDC_PARANOID,		(new Cfg_Bool( wxT("/eMule/ParanoidFiltering"), s_paranoidfilter, true )));
 	NewCfgItem(IDC_AUTOIPFILTER,	(new Cfg_Bool( wxT("/eMule/IPFilterAutoLoad"), s_IPFilterAutoLoad, true )));
 	NewCfgItem(IDC_IPFILTERURL,	(new Cfg_Str(  wxT("/eMule/IPFilterURL"), s_IPFilterURL, wxEmptyString )));
 	NewCfgItem(ID_IPFILTERLEVEL,	(MkCfg_Int( wxT("/eMule/FilterLevel"), s_filterlevel, 127 )));
-	NewCfgItem(IDC_IPFILTERSYS,	(new Cfg_Bool( wxT("/eMule/IPFilterSystem"), s_IPFilterSys, false )));
+//         NewCfgItem(IDC_IPFILTERSYS,	(new Cfg_Bool( wxT("/eMule/IPFilterSystem"), s_IPFilterSys, false )));
 
 	/**
 	 * Message Filter
@@ -1217,7 +1268,7 @@ void CPreferences::BuildItemList( const wxString& appdir )
 	  * Obfuscation
 	  **/
 	NewCfgItem( IDC_SUPPORT_PO, ( new Cfg_Bool( wxT("/Obfuscation/IsClientCryptLayerSupported"), s_IsClientCryptLayerSupported, true )));
-	NewCfgItem( IDC_ENABLE_PO_OUTGOING, ( new Cfg_Bool( wxT("/Obfuscation/IsCryptLayerRequested"), s_bCryptLayerRequested, true )));
+        NewCfgItem( IDC_ENABLE_PO_OUTGOING, ( new Cfg_Bool( wxT("/Obfuscation/IsCryptLayerRequested"), s_bCryptLayerRequested, false )));
 	NewCfgItem( IDC_ENFORCE_PO_INCOMING, ( new Cfg_Bool( wxT("/Obfuscation/IsClientCryptLayerRequired"), s_IsClientCryptLayerRequired, false )));
 #ifndef CLIENT_GUI
 	// There is no need for GUI items for this two.
@@ -1243,19 +1294,21 @@ void CPreferences::BuildItemList( const wxString& appdir )
 
 	s_MiscList.push_back( MkCfg_Int( wxT("/eMule/SmartIdState"), s_smartidstate, 0 ) );
 
+        s_MiscList.push_back( new Cfg_Str( wxT("/i2p/tcpPrivKey"), s_tcpPrivKey, wxT("") ));
+        s_MiscList.push_back( new Cfg_Str( wxT("/i2p/udpPrivKey"), s_udpPrivKey, wxT("") ));
 	s_MiscList.push_back( new Cfg_Bool( wxT("/eMule/DropSlowSources"),		s_DropSlowSources, false ) );
 
-	s_MiscList.push_back( new Cfg_Str(  wxT("/eMule/KadNodesUrl"),			s_KadURL, wxT("http://upd.emule-security.org/nodes.dat") ) );
-	s_MiscList.push_back( new Cfg_Str(	wxT("/eMule/Ed2kServersUrl"),		s_Ed2kURL, wxT("http://upd.emule-security.org/server.met") ) );
+        s_MiscList.push_back( new Cfg_Str(  wxT("/iMule/KadNodesUrl"),			s_KadURL, wxT("http://www.imule.i2p/nodes2.dat") ) );
+        s_MiscList.push_back( new Cfg_Str(  wxT("/eMule/Ed2kServersUrl"),		s_Ed2kURL, wxT("http://??.org/server.met.gz") ) );
 	s_MiscList.push_back( MkCfg_Int( wxT("/eMule/ShowRatesOnTitle"),		s_showRatesOnTitle, 0 ));
 
-	s_MiscList.push_back( new Cfg_Str(  wxT("/eMule/GeoLiteCountryUpdateUrl"),		s_GeoIPUpdateUrl, wxT("http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz") ) );
-	wxConfigBase::Get()->DeleteEntry(wxT("/eMule/GeoIPUpdateUrl")); // get rid of the old one for a while
+//        s_MiscList.push_back( new Cfg_Str(  wxT("/eMule/GeoLiteCountryUpdateUrl"),		s_GeoIPUpdateUrl, wxT("http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz") ) );
+//        wxConfigBase::Get()->DeleteEntry(wxT("/eMule/GeoIPUpdateUrl")); // get rid of the old one for a while
 
-	s_MiscList.push_back( new Cfg_Str( wxT("/WebServer/Path"),				s_sWebPath, wxT("amuleweb") ) );
+        s_MiscList.push_back( new Cfg_Str( wxT("/WebServer/Path"),				s_sWebPath, wxT("imuleweb") ) );
 
 	s_MiscList.push_back( new Cfg_Str( wxT("/eMule/StatsServerName"),		s_StatsServerName,	wxT("Shorty's ED2K stats") ) );
-	s_MiscList.push_back( new Cfg_Str( wxT("/eMule/StatsServerURL"),		s_StatsServerURL,	wxT("http://ed2k.shortypower.dyndns.org/?hash=") ) );
+        s_MiscList.push_back( new Cfg_Str( wxT("/eMule/StatsServerURL"),		s_StatsServerURL,	wxT("http://??.dyndns.org/?hash=") ) );
 
 	s_MiscList.push_back( new Cfg_Bool( wxT("/ExternalConnect/TransmitOnlyUploadingClients"),	s_TransmitOnlyUploadingClients, false ) );
 	s_MiscList.push_back( new Cfg_Bool( wxT("/eMule/CreateSparseFiles"),		s_createFilesSparse, true ) );
@@ -1344,7 +1397,7 @@ void CPreferences::LoadAllItems(wxConfigBase* cfg)
 		cfg->DeleteEntry(wxT("/SkinGUIOptions/UseSkinFiles"));
 	}
 
-#ifdef __DEBUG__
+//#ifdef __DEBUG__
 	// Load debug-categories
 	int count = theLogger.GetDebugCategoryCount();
 
@@ -1356,17 +1409,32 @@ void CPreferences::LoadAllItems(wxConfigBase* cfg)
 
 		theLogger.SetEnabled( cat.GetType(), enabled );
 	}
-#endif
+//#endif
 
 	// Now do some post-processing / sanity checking on the values we just loaded
 #ifndef CLIENT_GUI
 	CheckUlDlRatio();
-	SetPort(s_port);
+	//SetPort(s_port);
 	if (s_byCryptTCPPaddingLength > 254) {
 		s_byCryptTCPPaddingLength = GetRandomUint8() % 254;
 	}
 	SetSlotAllocation(s_slotallocation);
 #endif
+
+        /**
+         * Proxy (only in iMule : http proxy mandatory)
+         **/
+        s_ProxyData.m_proxyEnable = true;
+        s_ProxyData.m_proxyType = PROXY_HTTP;
+        s_ProxyData.m_proxyHostName = s_I2PServerIP;
+        s_ProxyData.m_proxyPort = s_I2PProxyPort;
+        s_ProxyData.m_enablePassword = false;
+        s_ProxyData.m_userName = wxEmptyString;
+        s_ProxyData.m_password = wxEmptyString;
+// These were copied from eMule config file, maybe someone with windows can complete this?
+//      NewCfgItem(ID_PROXY_AUTO_SERVER_CONNECT_WITHOUT_PROXY,  (new Cfg_Bool( wxT("/Proxy/Proxy????"), s_Proxy????, false )));
+
+
 }
 
 
@@ -1383,15 +1451,15 @@ void CPreferences::SaveAllItems(wxConfigBase* cfg)
 
 
 // Save debug-categories
-#ifdef __DEBUG__
+//#ifdef __DEBUG__
 	int count = theLogger.GetDebugCategoryCount();
 
 	for ( int i = 0; i < count; i++ ) {
 		const CDebugCategory& cat = theLogger.GetDebugCategory( i );
 
-		cfg->Write( wxT("/Debug/Cat_") + cat.GetName(), cat.IsEnabled() );
+                cfg->Write( wxT("/Debug/Cat_") + cat.GetName(), wxString() << ( cat.IsEnabled() ? 1 : 0 ));
 	}
-#endif
+//#endif
 }
 
 void CPreferences::SetMaxUpload(uint16 in)
@@ -1543,7 +1611,7 @@ void CPreferences::SaveCats()
 			cfg->Write( wxT("Title"),	m_CatList[i]->title );
 			cfg->Write( wxT("Incoming"),	CPath::ToUniv(m_CatList[i]->path) );
 			cfg->Write( wxT("Comment"),	m_CatList[i]->comment );
-			cfg->Write( wxT("Color"),	wxString(CFormat(wxT("%u")) % m_CatList[i]->color));
+                        cfg->Write( wxT("Color"),	wxString(CFormat(wxT("%x")) % m_CatList[i]->color));
 			cfg->Write( wxT("Priority"),	(int)m_CatList[i]->prio );
 		}
 		// remove deleted cats from config
@@ -1671,7 +1739,8 @@ bool CPreferences::CreateCategory(
 	category = new Category_Struct();
 	category->path = thePrefs::GetIncomingDir();	// set a default in case path is invalid
 	uint32 cat = AddCat(category);
-	return UpdateCategory(cat, name, path, comment, color, prio);
+		wxASSERT(cat < 1 << 8);
+        return UpdateCategory((uint8)cat, name, path, comment, color, prio);
 }
 
 bool CPreferences::UpdateCategory(
@@ -1760,18 +1829,6 @@ void CPreferences::SetIPFilterLevel(uint8 level)
 	}
 }
 
-void CPreferences::SetPort(uint16 val)
-{
-	// Warning: Check for +3, because server UDP is TCP+3
-
-	if (val +3 > 65535) {
-		AddLogLineC(_("TCP port can't be higher than 65532 due to server UDP socket being TCP+3"));
-		AddLogLineN(CFormat(_("Default port will be used (%d)")) % DEFAULT_TCP_PORT);
-		s_port = DEFAULT_TCP_PORT;
-	} else {
-		s_port = val;
-	}
-}
 
 
 void CPreferences::ReloadSharedFolders()
@@ -1850,5 +1907,94 @@ void CPreferences::SetLastHTTPDownloadURL(uint8 t, const wxString& val)
 	wxString key = CFormat(wxT("/HTTPDownload/URL_%d")) % t;
 	cfg->Write(key, val);
 }
+
+/**
+ *
+ *              I2P stuff
+ *
+ */
+
+std::map<wxString,wxString> CPreferences::GetI2PRouterProps()
+{
+        std::map<wxString,wxString> p ;
+
+        //! Host and ports
+
+        p[wxT("i2cp.tcp.host")]                     = GetI2PServerIP()   ;
+
+        p[wxT("i2cp.tcp.port")]                     = wxString() << GetI2PServerPort() ;
+
+        p[wxT("sam.host")]                          = GetI2PServerIP()   ;
+
+        p[wxT("sam.tcp.port")]                      = wxString() << GetI2PSamTcpPort() ;
+
+//	p[wxT("sam.udp.port")]                      = wxString() << GetI2PSamUdpPort() ;
+
+        p[wxT("eepProxy.port")]                     = wxString() << GetI2PProxyPort() ;
+
+
+        p[wxT("i2np.tcp.port")]                     = wxString() << GetI2PServerI2PTcpPort();
+
+        p[wxT("i2np.udp.port")]                     = wxString() << GetI2PServerI2PUdpPort();
+
+        p[wxT("i2np.udp.internalPort")]             = wxString() << GetI2PServerI2PUdpPort();
+
+        if ( thePrefs::GetI2PServerUseDynIP() ) {
+                p[wxT("i2np.tcp.hostname")]         = GetI2PServerDynIP() ;
+
+                p[wxT("i2np.udp.host")]             = GetI2PServerDynIP() ;
+        }
+
+
+        //! Config locations
+        p[wxT("router.pingFile")]                   = wxFileName(CConfigDir::GetConfigDir(),wxT("i2prouter.ping")) .GetFullPath() ;
+
+        p[wxT("router.configLocation")]             = wxFileName(CConfigDir::GetConfigDir(),wxT("router.config"))  .GetFullPath();
+
+        //! bandwidth properties
+        p[wxT("router.sharePercentage")]                      = wxString() << GetI2PBandwidthSharePercentage();
+
+        p[wxT("i2np.bandwidth.inboundKBytesPerSecond")]       = wxString() << GetI2PPROP_INBOUND_BANDWIDTH();
+
+        p[wxT("i2np.bandwidth.outboundKBytesPerSecond")]      = wxString() << GetI2PPROP_OUTBOUND_BANDWIDTH();
+
+        p[wxT("i2np.bandwidth.inboundBurstKBytesPerSecond")]  = wxString() << GetI2PPROP_INBOUND_BURST_BANDWIDTH();
+
+        p[wxT("i2np.bandwidth.outboundBurstKBytesPerSecond")] = wxString() << GetI2PPROP_OUTBOUND_BURST_BANDWIDTH();
+
+        p[wxT("i2np.bandwidth.inboundBurstKBytes")]           = wxString() << 60*GetI2PPROP_INBOUND_BURST_BANDWIDTH();
+
+        p[wxT("i2np.bandwidth.outboundBurstKBytes")]          = wxString() << 60*GetI2PPROP_OUTBOUND_BURST_BANDWIDTH();
+
+
+        return p ;
+}
+
+std::map<wxString,wxString> CPreferences::GetI2PUDPSocketProps()
+{
+        std::map<wxString,wxString> p ;
+        p[wxT("inbound.length")]                              = wxString() << GetI2PInboundHops() ;
+        p[wxT("outbound.length")]                             = wxString() << GetI2POutboundHops() ;
+        p[wxT("inbound.nickname")]                            = GetI2PClientName() + wxT("_UDP");
+        p[wxT("i2p.streaming.connectTimeout")]                = wxT("600000") ;
+        p[wxT("sam.forceFlush")]                              = wxT("true") ;
+        p[wxT("inbound.quantity")]                            = wxString() << GetI2PNbUDPTunnels();
+        p[wxT("outbound.quantity")]                           = wxString() << GetI2PNbUDPTunnels();
+        return p ;
+}
+
+std::map<wxString,wxString> CPreferences::GetI2PTCPSocketProps()
+{
+        std::map<wxString,wxString> p ;
+        p[wxT("inbound.length")]                              = wxString() << GetI2PInboundHops() ;
+        p[wxT("outbound.length")]                             = wxString() << GetI2POutboundHops() ;
+        p[wxT("inbound.nickname")]                            = GetI2PClientName() + wxT("_TCP");
+        p[wxT("i2p.streaming.connectTimeout")]                = wxT("600000") ;
+        p[wxT("sam.forceFlush")]                              = wxT("true") ;
+        p[wxT("inbound.quantity")]                            = wxString() << GetI2PNbTCPTunnels();
+        p[wxT("outbound.quantity")]                           = wxString() << GetI2PNbTCPTunnels();
+        return p ;
+}
+
 
 // File_checked_for_headers

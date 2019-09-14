@@ -580,7 +580,7 @@ bool CAICHHashSet::ReadRecoveryData(uint64 nPartStartPos, CMemFile* fileDataIn)
 			return false;
 		}
 
-// TODO: DEBUG_ONLY( theApp->QueueDebugLogLine(/*DLP_VERYHIGH,*/ false, _T("read RecoveryData for %s - Received packet with  %u 32bit hash identifiers)"), m_pOwner->GetFileName(), nHashsAvailable ) );
+// TODO: DEBUG_ONLY( theApp->QueueDebugLogLine(/*DLP_VERYHIGH,*/ false, _T("read RecoveryData for %s - Received packet with  %" PRIu16 " 32bit hash identifiers)"), m_pOwner->GetFileName(), nHashsAvailable ) );
 		for (uint32 i = 0; i != nHashsToRead; i++) {
 			uint32 wHashIdent = fileDataIn->ReadUInt32();
 			if (wHashIdent == 1 /*never allow masterhash to be overwritten*/
@@ -695,7 +695,7 @@ bool CAICHHashSet::SaveHashSet()
 			AddDebugLogLineC(logSHAHashSet, wxT("Failed to save HashSet: Calculated and real size of hashset differ!"));
 			return false;
 		}
-		AddDebugLogLineN(logSHAHashSet, CFormat(wxT("Successfully saved eMuleAC Hashset, %u Hashs + 1 Masterhash written")) % nHashCount);
+                AddDebugLogLineN(logSHAHashSet, CFormat(wxT("Successfully saved eMuleAC Hashset, %" PRIu32 " Hashs + 1 Masterhash written")) % nHashCount);
 	} catch (const CSafeIOException& e) {
 		AddDebugLogLineC(logSHAHashSet, wxT("IO error while saving AICH HashSet: ") + e.what());
 		return false;
@@ -873,10 +873,10 @@ void CAICHHashSet::UntrustedHashReceived(const CAICHHash& Hash, uint32 dwFromIP)
 		(nMostTrustedIPs >= MINUNIQUEIPS_TOTRUST && (100 * nMostTrustedIPs)/nSigningIPsTotal >= MINPERCENTAGE_TOTRUST)) {
 		//trusted
 		AddDebugLogLineN(logSHAHashSet,
-			CFormat(wxT("AICH Hash received (%sadded), We have now %u hash(es) from %u unique IP(s). ")
-					wxT("We trust the Hash %s from %u client(s) (%u%%). File: %s"))
+                                 CFormat(wxT("AICH Hash received (%sadded), We have now %" PRIu64 " hash(es) from %" PRIu32 " unique IP(s). ")
+                                         wxT("We trust the Hash %s from %" PRIu32 " client(s) (%" PRIu32 "%%). File: %s"))
 				% (bAdded ? wxT("") : wxT("not "))
-				% m_aUntrustedHashs.size()
+                                 % (uint64)m_aUntrustedHashs.size()
 				% nSigningIPsTotal
 				% m_aUntrustedHashs[nMostTrustedPos].m_Hash.GetString()
 				% nMostTrustedIPs
@@ -891,10 +891,10 @@ void CAICHHashSet::UntrustedHashReceived(const CAICHHash& Hash, uint32 dwFromIP)
 	} else {
 		// untrusted
 		AddDebugLogLineN(logSHAHashSet,
-			CFormat(wxT("AICH Hash received (%sadded), We have now %u hash(es) from %u unique IP(s). ")
-					wxT("Best Hash %s from %u clients (%u%%) - but we don't trust it yet. File: %s"))
+                                 CFormat(wxT("AICH Hash received (%sadded), We have now %" PRIu64 " hash(es) from %" PRIu32 " unique IP(s). ")
+                                         wxT("Best Hash %s from %" PRIu32 " clients (%" PRIu32 "%%) - but we don't trust it yet. File: %s"))
 				% (bAdded ? wxT(""): wxT("not "))
-				% m_aUntrustedHashs.size()
+                                 % (uint64)m_aUntrustedHashs.size()
 				% nSigningIPsTotal
 				% m_aUntrustedHashs[nMostTrustedPos].m_Hash.GetString()
 				% nMostTrustedIPs
@@ -921,7 +921,7 @@ void CAICHHashSet::ClientAICHRequestFailed(CUpDownClient* pClient)
 	}
 	if( theApp->downloadqueue->IsPartFile(data.m_pPartFile)) {
 		AddDebugLogLineN(logSHAHashSet,
-			CFormat(wxT("AICH Request failed, Trying to ask another client (File: '%s', Part: %u, Client '%s'"))
+                                 CFormat(wxT("AICH Request failed, Trying to ask another client (File: '%s', Part: %" PRIu16 ", Client '%s'"))
 				% data.m_pPartFile->GetFileName() % data.m_nPart % pClient->GetClientFullInfo());
 		data.m_pPartFile->RequestAICHRecovery(data.m_nPart);
 	}
@@ -1023,13 +1023,13 @@ void CAICHHashSet::DbgTest()
 		uint32 j;
 		for (j = 0; j+EMBLOCKSIZE < 9728000; j += EMBLOCKSIZE) {
 			VERIFY( m_pHashTree.FindHash(i+j, EMBLOCKSIZE, &curLevel) );
-			//TRACE(wxT("%u - %s\r\n"), cHash, m_pHashTree.FindHash(i+j, EMBLOCKSIZE, &curLevel)->m_Hash.GetString());
+                        //TRACE(wxT("%" PRIu32 " - %s\r\n"), cHash, m_pHashTree.FindHash(i+j, EMBLOCKSIZE, &curLevel)->m_Hash.GetString());
 			maxLevel = max(curLevel, maxLevel);
 			curLevel = 0;
 			cHash++;
 		}
 		VERIFY( m_pHashTree.FindHash(i+j, 9728000-j, &curLevel) );
-		//TRACE(wxT("%u - %s\r\n"), cHash, m_pHashTree.FindHash(i+j, 9728000-j, &curLevel)->m_Hash.GetString());
+                //TRACE(wxT("%" PRIu32 " - %s\r\n"), cHash, m_pHashTree.FindHash(i+j, 9728000-j, &curLevel)->m_Hash.GetString());
 		maxLevel = max(curLevel, maxLevel);
 		curLevel = 0;
 		cHash++;
@@ -1042,13 +1042,13 @@ void CAICHHashSet::DbgTest()
 	TestHashSet.FreeHashSet();
 	for (uint64 j = 0; j+EMBLOCKSIZE < TESTSIZE-i; j += EMBLOCKSIZE) {
 		VERIFY( m_pHashTree.FindHash(i+j, EMBLOCKSIZE, &curLevel) );
-		//TRACE(wxT("%u - %s\r\n"), cHash,m_pHashTree.FindHash(i+j, EMBLOCKSIZE, &curLevel)->m_Hash.GetString());
+                //TRACE(wxT("%" PRIu32 " - %s\r\n"), cHash,m_pHashTree.FindHash(i+j, EMBLOCKSIZE, &curLevel)->m_Hash.GetString());
 		maxLevel = max(curLevel, maxLevel);
 		curLevel = 0;
 		cHash++;
 	}
 	//VERIFY( m_pHashTree.FindHash(i+j, (TESTSIZE-i)-j, &curLevel) );
-	//TRACE(wxT("%u - %s\r\n"), cHash,m_pHashTree.FindHash(i+j, (TESTSIZE-i)-j, &curLevel)->m_Hash.GetString());
+        //TRACE(wxT("%" PRIu32 " - %s\r\n"), cHash,m_pHashTree.FindHash(i+j, (TESTSIZE-i)-j, &curLevel)->m_Hash.GetString());
 	maxLevel = max(curLevel, maxLevel);
 #endif
 }

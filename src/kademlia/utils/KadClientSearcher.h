@@ -42,7 +42,7 @@ class CKadClientSearcher
 {
       public:
 	virtual	void KadSearchNodeIDByIPResult(EKadClientSearchRes status, const unsigned char* nodeID) = 0;
-	virtual	void KadSearchIPByNodeIDResult(EKadClientSearchRes status, uint32_t ip, uint16_t port) = 0;
+        virtual	void KadSearchIPByNodeIDResult(EKadClientSearchRes status, const CI2PAddress & dest) = 0;
 };
 
 }

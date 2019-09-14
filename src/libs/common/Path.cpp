@@ -51,11 +51,6 @@
 // Helper functions
 
 
-/** Creates a deep copy of the string, avoiding its ref. counting. */
-inline wxString DeepCopy(const wxString& str)
-{
-	return wxString(str.c_str(), str.Length());
-}
 
 
 wxString Demangle(const wxCharBuffer& fn, const wxString& filename)
@@ -79,7 +74,7 @@ wxString Demangle(const wxCharBuffer& fn, const wxString& filename)
 
 			default:
 				// Nothing to do, the filename is probably Ok.
-				result = DeepCopy(filename);
+                        result = filename.Clone();
 		}
 	}
 
@@ -234,7 +229,7 @@ CPath::CPath(const wxString& filename)
 		// Filename is valid in the current locale. This means that
 		// it either originated from a (wx)system-call, or from a
 		// user with a properly setup system.
-		m_filesystem = DeepCopy(filename);
+                m_filesystem = filename.Clone();
 		m_printable  = Demangle(fn, filename);
 	} else {
 		// It's not a valid filename in the current locale, so we'll
@@ -244,14 +239,14 @@ CPath::CPath(const wxString& filename)
 		// his system ...
 #ifdef __WINDOWS__
 		// Magic fails on Windows where we always work with wide char file names.
-		m_filesystem = DeepCopy(filename);
+                m_filesystem = filename.Clone();
 		m_printable = m_filesystem;
 #else
 		fn = filename.utf8_str();
 		m_filesystem = wxConvFile.cMB2WC(fn);
 
 		// There's no need to try to unmangle the filename here.
-		m_printable = DeepCopy(filename);
+                m_printable = filename.Clone();
 #endif
 	}
 
@@ -261,8 +256,8 @@ CPath::CPath(const wxString& filename)
 
 
 CPath::CPath(const CPath& other)
-	: m_printable(DeepCopy(other.m_printable))
-	, m_filesystem(DeepCopy(other.m_filesystem))
+        : m_printable(other.m_printable.Clone())
+        , m_filesystem(other.m_filesystem.Clone())
 {}
 
 
@@ -287,8 +282,8 @@ wxString CPath::ToUniv(const CPath& path)
 CPath& CPath::operator=(const CPath& other)
 {
 	if (this != &other) {
-		m_printable = DeepCopy(other.m_printable);
-		m_filesystem = DeepCopy(other.m_filesystem);
+                m_printable = other.m_printable.Clone();
+                m_filesystem = other.m_filesystem.Clone();
 	}
 
 	return *this;
@@ -365,7 +360,7 @@ wxString CPath::GetRaw() const
 {
 	// Copy as c-strings to ensure that the CPath objects can safely
 	// be passed across threads (avoiding wxString ref. counting).
-	return DeepCopy(m_filesystem);
+        return m_filesystem.Clone();
 }
 
 
@@ -373,7 +368,7 @@ wxString CPath::GetPrintable() const
 {
 	// Copy as c-strings to ensure that the CPath objects can safely
 	// be passed across threads (avoiding wxString ref. counting).
-	return DeepCopy(m_printable);
+        return m_printable.Clone();
 }
 
 
@@ -416,6 +411,11 @@ sint64 CPath::GetFileSize() const
 	return wxInvalidOffset;
 }
 
+bool CPath::Touch() const
+{
+        wxFile f ;
+        return f.Create( m_filesystem ) ;
+}
 
 bool CPath::IsSameDir(const CPath& other) const
 {
@@ -443,7 +443,7 @@ CPath CPath::JoinPaths(const CPath& other) const
 	}
 
 	CPath joinedPath;
-	// DeepCopy shouldn't be needed, as JoinPaths results in the creation of a new string.
+        // Clone() shouldn't be needed, as JoinPaths results in the creation of a new string.
 	joinedPath.m_printable = ::JoinPaths(m_printable, other.m_printable);
 	joinedPath.m_filesystem = ::JoinPaths(m_filesystem, other.m_filesystem);
 

@@ -33,7 +33,6 @@
 #include "amule.h"
 #include "Logger.h"
 #include "MemFile.h"
-#include "ScopedPtr.h"
 #include "SearchList.h"		// Needed for UpdateSearchFileByHash
 #include <common/Format.h>
 #include "Preferences.h"	// Needed for thePrefs
@@ -94,12 +93,12 @@ bool CKnownFileList::Init()
 			return false;
 		}
 
-		wxMutexLocker sLock(list_mut);
+                wiMutexLocker sLock(list_mut);
 		uint32 RecordsNumber = file.ReadUInt32();
 		AddDebugLogLineN(logKnownFiles, CFormat(wxT("Reading %i known files from file format 0x%2.2x."))
 			% RecordsNumber % version);
 		for (uint32 i = 0; i < RecordsNumber; i++) {
-			CScopedPtr<CKnownFile> record;
+                        std::unique_ptr<CKnownFile> record(new CKnownFile);
 			if (record->LoadFromFile(&file)) {
 				AddDebugLogLineN(logKnownFiles,
 					CFormat(wxT("Known file read: %s")) % record->GetFileName());
@@ -128,14 +127,14 @@ void CKnownFileList::Save()
 		return;
 	}
 
-	wxMutexLocker sLock(list_mut);
+        wiMutexLocker sLock(list_mut);
 	AddDebugLogLineN(logKnownFiles, CFormat(wxT("start saving %s")) % m_filename);
 
 	try {
 		// Kry - This is the version, but we don't know it till
 		// we know if any largefile is saved. This allows the list
 		// to be compatible with previous versions.
-		bool bContainsAnyLargeFiles = false;
+                bool bContainsAnyLargeFiles = true;
 		file.WriteUInt8(0);
 
 		file.WriteUInt32(m_knownFileMap.size() + m_duplicateFileList.size());
@@ -170,7 +169,7 @@ void CKnownFileList::Save()
 
 void CKnownFileList::Clear()
 {
-	wxMutexLocker sLock(list_mut);
+        wiMutexLocker sLock(list_mut);
 
 	DeleteContents(m_knownFileMap);
 	DeleteContents(m_duplicateFileList);
@@ -183,7 +182,7 @@ CKnownFile* CKnownFileList::FindKnownFile(
 	time_t in_date,
 	uint64 in_size)
 {
-	wxMutexLocker sLock(list_mut);
+        wiMutexLocker sLock(list_mut);
 
 	if (m_knownSizeMap) {
 		std::pair<KnownFileSizeMap::const_iterator, KnownFileSizeMap::const_iterator> p;
@@ -237,7 +236,7 @@ CKnownFile *CKnownFileList::IsOnDuplicates(
 
 CKnownFile* CKnownFileList::FindKnownFileByID(const CMD4Hash& hash)
 {
-	wxMutexLocker sLock(list_mut);
+        wiMutexLocker sLock(list_mut);
 
 	if (!hash.IsEmpty()) {
 		if (m_knownFileMap.find(hash) != m_knownFileMap.end()) {
@@ -255,7 +254,7 @@ bool CKnownFileList::SafeAddKFile(CKnownFile* toadd, bool afterHashing)
 {
 	bool ret;
 	{
-		wxMutexLocker sLock(list_mut);
+	        wiMutexLocker sLock(list_mut);
 		ret = Append(toadd, afterHashing);
 	}
 	if (ret) {

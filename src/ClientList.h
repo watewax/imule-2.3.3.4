@@ -32,6 +32,7 @@
 #include <deque>
 #include <set>
 
+class CI2PAddress;
 class CUpDownClient;
 class CClientTCPSocket;
 class CDeletedClient;
@@ -323,7 +324,7 @@ public:
 	 *
 	 * @return Success
 	 */
-	 bool	SendChatMessage(uint64 client_id, const wxString& message);
+        bool	SendChatMessage(const CI2PAddress & client_id, const wxString& message);
 
 	/**
 	 * Stops a chat session with a client.
@@ -332,6 +333,7 @@ public:
 	 void	SetChatState(uint64 client_id, uint8 state);
 
 	uint8	GetBuddyStatus() const {return m_nBuddyStatus;}
+#ifdef I2P_kad_stuff_seems_related_to_firewalls_only
 	// This must be used on CreateKadSourceLink and if we ever add the columns
 	// on shared files control.
 	CUpDownClient* GetBuddy() { return m_pBuddy.GetClient(); }
@@ -353,6 +355,7 @@ public:
 	void	AddTrackCallbackRequests(uint32_t ip);
 	bool	AllowCallbackRequest(uint32_t ip) const;
 
+#endif
 protected:
 	/*
 	 * Avoids unwanted clients to be forever in the client list
@@ -435,6 +438,7 @@ private:
 	CClientRef		m_pBuddy;
 	uint8 m_nBuddyStatus;
 
+#ifdef I2P_kad_stuff_seems_related_to_firewalls_only
 	typedef struct {
 		uint32 ip;
 		uint32 inserted;
@@ -445,6 +449,7 @@ private:
 	typedef CClientRefList	DirectCallbackList;
 	DirectCallbackList		m_currentDirectCallbacks;
 	IpAndTicksList			m_directCallbackRequests;
+#endif
 };
 
 #endif

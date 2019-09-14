@@ -289,7 +289,7 @@ static inline PlatformSpecific::EFSType doGetFilesystemType(const CPath& WXUNUSE
 #endif
 
 #include <map>
-#include <wx/thread.h>
+#include "MuleThread.h"
 
 PlatformSpecific::EFSType PlatformSpecific::GetFilesystemType(const CPath& path)
 {
@@ -297,11 +297,11 @@ PlatformSpecific::EFSType PlatformSpecific::GetFilesystemType(const CPath& path)
 	// Caching previous results, to speed up further checks.
 	static FSMap	s_fscache;
 	// Lock used to ensure the integrity of the cache.
-	static wxMutex	s_lock;
+        static wiMutex	s_lock;
 
 	wxCHECK_MSG(path.IsOk(), fsOther, wxT("Invalid path in GetFilesystemType()"));
 
-	wxMutexLocker locker(s_lock);
+        wiMutexLocker locker(s_lock);
 
 	FSMap::iterator it = s_fscache.find(path.GetRaw());
 	if (it != s_fscache.end()) {

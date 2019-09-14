@@ -48,6 +48,8 @@
 #	include <cxxabi.h>
 #endif
 
+#include "../../MuleThread.h"
+#include <wx/utils.h> // Do_not_auto_remove (Old wx < 2.7)
 
 #if wxUSE_STACKWALKER && defined(__WINDOWS__)
 	#include <wx/stackwalk.h> // Do_not_auto_remove
@@ -100,6 +102,8 @@ void OnUnhandledException()
 			fprintf(output, "\twhat(): %s\n", (const char*)unicode2char(e.what()));
 		} catch (const wxString& e) {
 			fprintf(output, "\twhat(): %s\n", (const char*)unicode2char(e));
+                } catch (const char* e) {
+                        fprintf(output, "\twhat(): %s\n", e);
 		} catch (...) {
 			// Unable to retrieve cause of exception
 		}
@@ -417,7 +421,7 @@ wxString get_backtrace(unsigned n)
 	hasLineNumberInfo = true;
 
 #else	/* !HAVE_BFD */
-	if (wxThread::IsMain()) {
+        if (wiThread::IsMain()) {
 		wxString command;
 		command << wxT("addr2line -C -f -s -e /proc/") <<
 		getpid() << wxT("/exe ") << AllAddresses;
@@ -570,7 +574,8 @@ wxString get_backtrace(unsigned n)
 
 wxString get_backtrace(unsigned WXUNUSED(n))
 {
-	return wxT("--== no BACKTRACE for your platform ==--\n\n");
+        fprintf(stderr, "--== no BACKTRACE for your platform ==--\n\n");
+        return wxEmptyString;
 }
 
 #endif /* !__LINUX__ */

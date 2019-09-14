@@ -32,17 +32,15 @@
 void CFriend::Init()
 {
 	m_dwLastSeen = 0;
-	m_dwLastUsedIP = 0;
-	m_nLastUsedPort = 0;
+        m_nLastUsedTCPDest = CI2PAddress::null;
 	m_dwLastChatted = 0;
 }
 
 
-CFriend::CFriend( const CMD4Hash& userhash, uint32 tm_dwLastSeen, uint32 tm_dwLastUsedIP, uint32 tm_nLastUsedPort, uint32 tm_dwLastChatted, const wxString& tm_strName)
+CFriend::CFriend( const CMD4Hash& userhash, uint32_t tm_dwLastSeen, const CI2PAddress & tm_nLastUsedDest, uint32_t tm_dwLastChatted, const wxString& tm_strName)
 {
 	m_dwLastSeen = tm_dwLastSeen;
-	m_dwLastUsedIP = tm_dwLastUsedIP;
-	m_nLastUsedPort = tm_nLastUsedPort;
+        m_nLastUsedTCPDest = tm_nLastUsedDest;
 	m_dwLastChatted = tm_dwLastChatted;
 	m_UserHash = userhash;
 
@@ -88,8 +86,7 @@ void CFriend::LinkClient(CClientRef client)
 		m_strName = wxT("?");
 	}
 	m_UserHash = client.GetUserHash();
-	m_dwLastUsedIP = client.GetIP();
-	m_nLastUsedPort = client.GetUserPort();
+        m_nLastUsedTCPDest = client.GetTCPDest();
 	m_dwLastSeen = time(NULL);
 	// This will update the Link status also on GUI.
 	Notify_ChatUpdateFriend(this);
@@ -118,15 +115,14 @@ void CFriend::LoadFromFile(CFileDataIO* file)
 	wxASSERT( file );
 
 	m_UserHash = file->ReadHash();
-	m_dwLastUsedIP = file->ReadUInt32();
-	m_nLastUsedPort = file->ReadUInt16();
+        m_nLastUsedTCPDest = file->ReadAddress();
 	m_dwLastSeen = file->ReadUInt32();
 	m_dwLastChatted = file->ReadUInt32();
 
-	uint32 tagcount = file->ReadUInt32();
-	for ( uint32 j = 0; j != tagcount; j++) {
-		CTag newtag(*file, true);
-		switch ( newtag.GetNameID() ) {
+        TagList tags(*file, true);
+        for ( TagList::const_iterator it = tags.begin(); it!=tags.end(); it++) {
+                CTag newtag = (*it) ;
+                switch ( newtag.GetID() ) {
 			case FF_NAME:
 				if (m_strName.IsEmpty()) {
 					m_strName = newtag.GetStr();
@@ -146,13 +142,12 @@ void CFriend::WriteToFile(CFileDataIO* file)
 	file->WriteUInt32(m_dwLastSeen);
 	file->WriteUInt32(m_dwLastChatted);
 
-	uint32 tagcount = ( m_strName.IsEmpty() ? 0 : 2 );
-	file->WriteUInt32(tagcount);
+        TagList tags ;
 	if ( !m_strName.IsEmpty() ) {
-		CTagString nametag(FF_NAME, m_strName);
-		nametag.WriteTagToFile(file, utf8strOptBOM);
-		nametag.WriteTagToFile(file);
+                tags.push_back( CTag(FF_NAME, m_strName) );
+                tags.push_back( CTag(FF_NAME, m_strName) );
 	}
+        tags.WriteTo(file);
 }
 
 

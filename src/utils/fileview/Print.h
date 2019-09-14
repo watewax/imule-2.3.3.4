@@ -70,9 +70,9 @@ inline __attribute_always_inline__ std::ostream& operator<<(std::ostream& x, con
 inline std::ostream& operator<<(std::ostream& x, const Kademlia::CUInt128& y)	{ return x << y.ToHexString(); }
 inline std::ostream& operator<<(std::ostream& x, const CMD4Hash& y)		{ return x << y.Encode(); }
 
-inline wxString hex(uint8_t value)	{ return wxString::Format(wxT("0x%02x"), value); }
-inline wxString hex(uint16_t value)	{ return wxString::Format(wxT("0x%04x"), value); }
-inline wxString hex(uint32_t value)	{ return wxString::Format(wxT("0x%08x"), value); }
+inline wxString hex(uint8_t value)	{ return wxString::Format(wxT("0x%02" PRIx8 ""), value); }
+inline wxString hex(uint16_t value)	{ return wxString::Format(wxT("0x%04" PRIx16 ""), value); }
+inline wxString hex(uint32_t value)	{ return wxString::Format(wxT("0x%08" PRIx32 ""), value); }
 
 inline void PrintByteArray(const void *buf, unsigned int size)
 {
@@ -80,7 +80,7 @@ inline void PrintByteArray(const void *buf, unsigned int size)
 //	cout << MakePrintableString(wxString::From8BitData(static_cast<const char *>(buf), size));
 // #else
 	for (unsigned int i = 0; i < size; i++) {
-		cout << wxString::Format(wxT("%02X "), static_cast<const unsigned char *>(buf)[i]);
+                cout << wxString::Format(wxT("%02" PRIX8 " "), static_cast<const unsigned char *>(buf)[i]);
 	}
 // #endif
 }

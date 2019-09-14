@@ -1,5 +1,5 @@
 //
-// This file is part of the aMule Project.
+// This file is part of the imule Project.
 //
 // Copyright (c) 2004-2011 Angel Vidal ( kry@amule.org )
 // Copyright (c) 2004-2011 aMule Team ( admin@amule.org / http://www.amule.org )
@@ -42,6 +42,9 @@ there client on the eMule forum..
 #include <map>
 #include <list>
 #include <set>
+#include <ctime>
+#include <functional>
+#include <memory>
 
 ////////////////////////////////////////
 namespace Kademlia {
@@ -49,12 +52,46 @@ namespace Kademlia {
 
 class CUInt128;
 class CContact;
+        class CSearchContact;
 
-typedef std::map<CUInt128, CContact*> ContactMap;
-typedef std::list<CContact*> ContactList;
+        typedef std::set <CContact>           ContactSet;
+        typedef std::list<CContact>           ContactList;
 typedef std::list<CUInt128> UIntList;
-typedef std::set<CUInt128> UIntSet;
+//typedef std::set<CUInt128> UIntSet;
 
+        class ContactMap
+        {
+        public:
+                void clear() ;
+                bool empty() const { return size()==0; }
+                size_t size() const;
+                void apply(std::function<void(CSearchContact&)>);
+                virtual void add(CSearchContact contact);
+                void moveContactTo(CSearchContact contact, ContactMap *);
+                virtual bool contains(const CSearchContact & c) const;
+                CSearchContact get_if(std::function<bool(const CSearchContact&)>) const;
+                CSearchContact & ref(CSearchContact);
+        protected:
+                virtual std::map<CUInt128, CSearchContact>::iterator get(CSearchContact&c);
+                std::map <CUInt128, CSearchContact> m_map;
+        };
+
+        class TargetContactMap : public ContactMap
+        {
+        public:
+                TargetContactMap(CUInt128 target);
+                virtual void add(CSearchContact contact);
+                const CUInt128 & getClosestDistance() const;
+                CSearchContact popClosest();
+                void pop_back();
+                const CUInt128 & getFurthestDistance() const;
+                void moveFurthestTo(ContactMap *);
+                virtual bool contains(const CSearchContact & c) const;
+        protected:
+                virtual std::map<CUInt128, CSearchContact>::iterator get(CSearchContact&c);
+        private:
+                std::unique_ptr<CUInt128> m_target;
+        };
 } // End namespace
 
 #endif // __KAD_MAPS_H__

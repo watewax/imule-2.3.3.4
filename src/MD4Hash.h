@@ -163,7 +163,7 @@ public:
 		}
 
 		for ( size_t i = 0; i < MD4HASH_LENGTH * 2; i++ ) {
-			unsigned char word = toupper(hash[i]);
+                        unsigned char word = (unsigned char) toupper(hash[i]);
 
 			if ((word >= '0') && (word <= '9')) {
 				word -= '0';

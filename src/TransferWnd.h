@@ -83,7 +83,8 @@ public:
 	 * Remove category
 	 */
 	void RemoveCategory(int index);
-	void RemoveCategoryPage(int index);
+
+    void RemoveCategoryPage(uint8 index);
 
 	/**
 	 * Helper-function which updates the displayed titles of all existing categories.

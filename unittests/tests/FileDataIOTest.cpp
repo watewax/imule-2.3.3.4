@@ -8,14 +8,6 @@
 using Kademlia::CUInt128;
 using namespace muleunit;
 
-namespace muleunit
-{
-	template <>
-	wxString StringFrom<CPath>(const CPath& path)
-	{
-		return path.GetPrintable();
-	}
-}
 
 
 //! The max file-size of auto-generated files to test.
@@ -31,7 +23,7 @@ namespace muleunit {
 	//! Needed for ASSERT_EQUALS with CUInt128 values
 	template <>
 	wxString StringFrom<CUInt128>(const CUInt128& value) {
-		return value.ToHexString();
+		return value.toHexString();
 	}
 }
 
@@ -82,22 +74,19 @@ public:
 	CFile* m_predefFile;
 
 	void setUp() {
-		m_emptyFile = m_predefFile = NULL;
-		const CPath emptyPath = CPath(wxT("FileDataIOTest.empty"));
-		const CPath datPath   = CPath(wxT("FileDataIOTest.dat"));
 
 		m_emptyFile = new CFile();
-		m_emptyFile->Create(emptyPath, true);
+		m_emptyFile->Create(wxT("FileDataIOTest.empty"), true);
 		ASSERT_TRUE(m_emptyFile->IsOpened());
 		m_emptyFile->Close();
-		m_emptyFile->Open(emptyPath, CFile::read_write);
+		m_emptyFile->Open(wxT("FileDataIOTest.empty"), CFile::read_write);
 		ASSERT_TRUE(m_emptyFile->IsOpened());
 
 		m_predefFile = new CFile();
-		m_predefFile->Create(datPath, true);
+		m_predefFile->Create(wxT("FileDataIOTest.dat"), true);
 		ASSERT_TRUE(m_predefFile->IsOpened());
 		m_predefFile->Close();
-		m_predefFile->Open(datPath, CFile::read_write);
+		m_predefFile->Open(wxT("FileDataIOTest.dat"), CFile::read_write);
 		ASSERT_TRUE(m_predefFile->IsOpened());
 
 		writePredefData(m_predefFile);
@@ -127,7 +116,6 @@ public:
 	CMemFile* m_predefFile;
 
 	void setUp() {
-		m_emptyFile = m_predefFile = NULL;
 
 		m_emptyFile = new CMemFile();
 		m_predefFile = new CMemFile();
@@ -247,12 +235,12 @@ struct RWInterface<CUInt128>
 {
 	static CUInt128 genValue(size_t j) {
 		CUInt128 value;
-		for (size_t y = 0; y < 16; y += 4) {
-			value.Set32BitChunk(y >> 2,
-					    ((j + y    ) & 0xff)       |
-					    ((j + y + 1) & 0xff) << 8  |
-					    ((j + y + 2) & 0xff) << 16 |
-					    ((j + y + 3) & 0xff) << 24);
+		uint32* data = (uint32*)value.getDataPtr();
+		for (size_t y = 0; y < 4; y++) {
+			data[y] = (j + 3 + y * 4) & 0xff;
+			data[y] = (data[y] << 8) | (j + 2 + y * 4) & 0xff;
+			data[y] = (data[y] << 8) | (j + 1 + y * 4) & 0xff;
+			data[y] = (data[y] << 8) | (j + 0 + y * 4) & 0xff;
 		}
 
 		return value;

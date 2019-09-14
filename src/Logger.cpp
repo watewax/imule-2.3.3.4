@@ -54,6 +54,8 @@ CDebugCategory g_debugcats[] = {
 	CDebugCategory( logCredits,		wxT("Credits") ),
 	CDebugCategory( logClientUDP,		wxT("ClientUDPSocket") ),
 	CDebugCategory( logDownloadQueue,	wxT("DownloadQueue") ),
+        CDebugCategory( logUploadQueue,         wxT("UploadQueue" ) ),
+        CDebugCategory( logUploadSlots,         wxT("UploadSlots" ) ),
 	CDebugCategory( logIPFilter,		wxT("IPFilter") ),
 	CDebugCategory( logKnownFiles,		wxT("KnownFileList") ),
 	CDebugCategory( logPartFile,		wxT("PartFiles") ),
@@ -66,6 +68,7 @@ CDebugCategory g_debugcats[] = {
 	CDebugCategory( logKadSearch,		wxT("Kademlia Search") ),
 	CDebugCategory( logKadRouting,		wxT("Kademlia Routing") ),
 	CDebugCategory( logKadIndex,		wxT("Kademlia Indexing") ),
+        CDebugCategory( logKadPublish,		wxT("Kademlia Publishing") ),
 	CDebugCategory( logKadMain,		wxT("Kademlia Main Thread") ),
 	CDebugCategory( logKadPrefs,		wxT("Kademlia Preferences") ),
 	CDebugCategory( logPfConvert,		wxT("PartFileConvert") ),
@@ -77,7 +80,28 @@ CDebugCategory g_debugcats[] = {
 	CDebugCategory( logKadEntryTracking,	wxT("Kademlia Entry Tracking") ),
 	CDebugCategory( logEC,			wxT("External Connect") ),
 	CDebugCategory( logHTTP,		wxT("HTTP") ),
-	CDebugCategory( logAsio,		wxT("Asio Sockets") )
+	CDebugCategory( logAsio,		wxT("Asio Sockets") ),
+        ,CDebugCategory ( logED2KLink,		wxT ( "ED2KLink" ) ),
+        CDebugCategory ( logI2PDatagramSocket,   	wxT ( "I2PDatagramSocket" ) ),
+        CDebugCategory ( logI2PEvents,		wxT ( "I2PEvents" ) ),
+        CDebugCategory ( logI2PSocketClient,	wxT ( "I2PSocketClient" ) ),
+        CDebugCategory ( logI2PSocketBase,		wxT ( "I2PSocketBase" ) ),
+        CDebugCategory ( logI2PRouter,	        wxT ( "I2PRouter" ) ),
+        CDebugCategory ( logI2PSocketServer,	wxT ( "I2PSocketServer" ) ),
+        CDebugCategory ( logI2PSocket,	        wxT ( "I2PSocket" ) ),
+        CDebugCategory ( logI2PSocketReadThreads, 	wxT ( "I2PSocketReadThreads" ) ),
+        CDebugCategory ( logI2PSocketWriteThreads,	wxT ( "I2PSocketWriteThreads" ) ),
+        CDebugCategory ( logAddress,	        wxT ( "I2PAddress" ) ),
+        CDebugCategory ( logMyMutex,	        wxT ( "MyMutex" ) ),
+        CDebugCategory ( logCTag,	        	wxT ( "CTag" ) ),
+        CDebugCategory ( logI2PClient,	        wxT ( "I2PClient" ) ),
+        CDebugCategory ( logWxEvents,	        wxT ( "wxAddPendingEvent" ) ),
+        CDebugCategory ( logKadSourceCount,		wxT ( "Kad source count" ) ),
+        CDebugCategory ( logSamLauncher,		wxT ( "Sam launcher" ) ),
+        CDebugCategory ( logSamSession,		wxT ( "Sam session" ) ),
+        CDebugCategory ( logCrypto,                     wxT ( "Crypto" ) ),
+        CDebugCategory ( logSocketList,                 wxT ( "SocketList" ) )
+
 };
 
 
@@ -85,7 +109,7 @@ const int categoryCount = itemsof(g_debugcats);
 
 
 
-#ifdef __DEBUG__
+// #ifdef __DEBUG__
 bool CLogger::IsEnabled( DebugType type ) const
 {
 	int index = (int)type;
@@ -100,7 +124,7 @@ bool CLogger::IsEnabled( DebugType type ) const
 	wxFAIL;
 	return false;
 }
-#endif
+// #endif
 
 
 void CLogger::SetEnabled( DebugType type, bool enabled )
@@ -155,7 +179,7 @@ void CLogger::AddLogLine(
 	}
 #endif
 
-	if (toGUI && !wxThread::IsMain()) {
+	if (toGUI && !wiThread::IsMain()) {
 		// put to background
 		CLoggingEvent Event(critical, toStdout, toGUI, msg);
 		AddPendingEvent(Event);
@@ -253,7 +277,7 @@ void CLogger::DoLines(const wxString & lines, bool critical, bool toStdout, bool
 void CLogger::DoLine(const wxString & line, bool toStdout, bool GUI_ONLY(toGUI))
 {
 	{
-		wxMutexLocker lock(m_lineLock);
+		wiMutexLocker lock(m_lineLock);
 		++m_count;
 
 		// write to logfile
@@ -393,7 +417,7 @@ bool CLoggerAccess::HasString()
 			m_bufferlen += 1024;
 			m_buffer->extend(m_bufferlen);
 		}
-		m_buffer->data()[m_pos++] = c;
+                m_buffer->data()[m_pos++] = (byte)c;
 		if (c == '\n') {
 			if (m_buffer->data()[0] == '.') {
 				// Log-only line, skip
@@ -427,7 +451,7 @@ bool ECLogIsEnabled()
 void DoECLogLine(const wxString &line)
 {
 	// without file/line
-	theLogger.AddLogLine(wxEmptyString, 0, false, logStandard, line, false, false);
+        theLogger.AddLogLine(wxEmptyString, 0, false, logEC, line, true, false);
 }
 
 // File_checked_for_headers

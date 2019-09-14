@@ -28,9 +28,14 @@
 #define HTTPDOWNLOAD_H
 
 #include "GuiEvents.h"		// Needed for HTTP_Download_File
-#include "MuleThread.h"		// Needed for CMuleThread
+//#include "MuleThread.h"		// Needed for CMuleThread
 #include <wx/datetime.h>	// Needed for wxDateTime
 #include <set>
+#include "common/coroutine.h"
+#include <wx/timer.h>
+#include <wx/url.h> // iMule: needed for Proxy handling
+#include <wx/wfstream.h>
+#include <memory>
 
 class wxEvtHandler;
 class wxHTTP;
@@ -42,17 +47,20 @@ enum HTTPDownloadResult {
 	HTTP_Skipped
 };
 
-class CHTTPDownloadThread : public CMuleThread
+class CHTTPDownloadCoroutine : public CMuleCoroutine
 {
 public:
-	/** Note: wxChar* is used to circumvent the thread-unsafe wxString reference counting. */
-	CHTTPDownloadThread(const wxString& url, const wxString& filename, const wxString& oldfilename, HTTP_Download_File file_id,
+        CHTTPDownloadCoroutine(const wxString& url, const wxString& filename, const wxString& oldfilename, HTTP_Download_File file_id,
 						bool showDialog, bool checkDownloadNewer);
 
+        virtual ~CHTTPDownloadCoroutine() {}
 	static void StopAll();
+protected:
+        virtual bool            Continue();
 private:
-	ExitCode		Entry();
 	virtual void		OnExit();
+
+        wxTimer                 m_sleep;
 
 	wxString		m_url;
 	wxString		m_tempfile;
@@ -62,12 +70,27 @@ private:
 	int			m_error;	//! Additional error code (@see wxProtocol class)
 	HTTP_Download_File	m_file_id;
 	wxEvtHandler*		m_companion;
-	typedef std::set<CHTTPDownloadThread *>	ThreadSet;
-	static ThreadSet	s_allThreads;
-	static wxMutex		s_allThreadsMutex;
+        typedef std::set<CHTTPDownloadCoroutine *>	CoroutineSet;
+        static CoroutineSet	s_allCoroutines;
 
 	wxInputStream* GetInputStream(wxHTTP * & url_handler, const wxString& location, bool proxy);
 	static wxString FormatDateHTTP(const wxDateTime& date);
+        struct {
+                std::unique_ptr<wxURL> url_handler;
+                const CProxyData* proxy_data;
+                // Here is our read buffer
+                // <ken> Still, I'm sure 4092 is probably a better size.
+                // MP: Most people can download at least at 32kb/s from http...
+                const unsigned MAX_HTTP_READ = 32768;
+                
+                char buffer[32768];
+                int current_read;
+                int total_read;
+                int download_size;
+                wxInputStream * url_read_stream;
+                wxString proxyAddr;
+                std::unique_ptr<wxFFileOutputStream> outfile;
+        } cont;        
 };
 
 #endif // HTTPDOWNLOAD_H

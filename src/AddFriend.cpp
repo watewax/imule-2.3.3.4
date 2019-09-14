@@ -53,12 +53,14 @@ void CAddFriend::OnAddBtn(wxCommandEvent& WXUNUSED(evt))
 {
 	wxString name = CastChild(ID_USERNAME, wxTextCtrl)->GetValue().Strip(wxString::both);
 	wxString hash = CastChild(ID_USERHASH, wxTextCtrl)->GetValue().Strip(wxString::both);
-	wxString fullip = CastChild(ID_IPADDRESS, wxTextCtrl)->GetValue().Strip(wxString::both);
-	uint16 port = StrToULong( CastChild(ID_IPORT, wxTextCtrl)->GetValue() );
-	uint32 ip = StringIPtoUint32(fullip);
+        /*wxString fullip = CastChild(ID_IPADDRESS, wxTextCtrl)->GetValue().Strip(wxString::both);
+        uint16_t port = StrToULong( CastChild(ID_IPORT, wxTextCtrl)->GetValue() );
+        uint32_t ip = StringIPtoUint32(fullip);
+        */
+        CI2PAddress dest = CI2PAddress::fromString(CastChild(ID_DESTADDRESS, wxTextCtrl)->GetValue().Strip(wxString::both));
 
-	if (!ip || !port) {
-		wxMessageBox(_("You have to enter a valid IP and port!"), _("Information"), wxOK | wxICON_INFORMATION, this);
+        if (!dest.isValid()) {
+                wxMessageBox(_("You have to enter a valid Destination!"), _("Information"), wxOK | wxICON_INFORMATION, this);
 		return;
 	}
 
@@ -70,10 +72,10 @@ void CAddFriend::OnAddBtn(wxCommandEvent& WXUNUSED(evt))
 
 	// Better than nothing at all...
 	if ( name.IsEmpty() ) {
-		name = fullip;
+                name = dest.humanReadable();
 	}
 
-	theApp->friendlist->AddFriend(userhash, ip, port, name);
+        theApp->friendlist->AddFriend(userhash, dest, name);
 
 	EndModal(true); // Friend added
 }

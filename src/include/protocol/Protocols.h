@@ -31,24 +31,24 @@
 
 // Known protocols
 enum Protocols {
-	OP_EDONKEYHEADER		= 0xE3,
-	OP_EDONKEYPROT			= OP_EDONKEYHEADER,
-	OP_PACKEDPROT			= 0xD4,
-	OP_EMULEPROT			= 0xC5,
+        OP_EDONKEYHEADER        = 0x01,
+        OP_EDONKEYPROT          = 0x02,
+        OP_PACKEDPROT           = 0x03,
+        OP_EMULEPROT            = 0x04,
 
 	// Reserved for later UDP headers (important for EncryptedDatagramSocket)
 	OP_UDPRESERVEDPROT1 = 0xA3,
 	OP_UDPRESERVEDPROT2 = 0xB2,
 
 	// Kademlia 1/2
-	OP_KADEMLIAHEADER		= 0xE4,
-	OP_KADEMLIAPACKEDPROT	= 0xE5,
+        OP_KADEMLIAHEADER       = 0x05,
+        OP_KADEMLIAPACKEDPROT   = 0x06,
 
 	// Kry tests
 	OP_ED2KV2HEADER			= 0xF4,
 	OP_ED2KV2PACKEDPROT		= 0xF5,
 
-	OP_MLDONKEYPROT			= 0x00
+        OP_MLDONKEYPROT         = 0x07,
 };
 
 #endif // ED2KPROTOCOLS_H

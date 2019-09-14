@@ -32,10 +32,12 @@
 #include "OtherFunctions.h"	/* for EncodeBase64()		*/
 #include <common/StringFunctions.h>	/* for unicode2char */
 #include "GuiEvents.h"
+#include "MuleThread.h"
 
 //------------------------------------------------------------------------------
 // CProxyData
 //------------------------------------------------------------------------------
+DEFINE_EVENT_TYPE(ID_PROXY_SOCKET_EVENT);
 
 CProxyData::CProxyData()
 {
@@ -1301,7 +1303,7 @@ CProxySocket(flags, proxyData, PROXY_CMD_CONNECT)
 
 bool CSocketClientProxy::Connect(amuleIPV4Address &address, bool wait)
 {
-	wxMutexLocker lock(m_socketLocker);
+        wiMutexLocker lock(m_socketLocker);
 	bool ok;
 
 	if (GetUseProxy() && ProxyIsCapableOf(PROXY_CMD_CONNECT)) {
@@ -1315,13 +1317,13 @@ bool CSocketClientProxy::Connect(amuleIPV4Address &address, bool wait)
 
 uint32 CSocketClientProxy::Read(void *buffer, wxUint32 nbytes)
 {
-	wxMutexLocker lock(m_socketLocker);
+	wiMutexLocker lock(m_socketLocker);
 	return CProxySocket::Read(buffer, nbytes);
 }
 
 uint32 CSocketClientProxy::Write(const void *buffer, wxUint32 nbytes)
 {
-	wxMutexLocker lock(m_socketLocker);
+	wiMutexLocker lock(m_socketLocker);
 	return CProxySocket::Write(buffer, nbytes);
 }
 
@@ -1368,7 +1370,7 @@ CDatagramSocketProxy::~CDatagramSocketProxy()
 uint32 CDatagramSocketProxy::RecvFrom(amuleIPV4Address& addr, void* buf, uint32 nBytes)
 {
 	uint32 read = 0;
-	wxMutexLocker lock(m_socketLocker);
+	wiMutexLocker lock(m_socketLocker);
 	m_lastUDPOperation = UDP_OPERATION_RECV_FROM;
 	if (m_proxyTCPSocket.GetUseProxy()) {
 		if (m_udpSocketOk) {
@@ -1436,7 +1438,7 @@ uint32 CDatagramSocketProxy::RecvFrom(amuleIPV4Address& addr, void* buf, uint32 
 uint32 CDatagramSocketProxy::SendTo(const amuleIPV4Address& addr, const void* buf, uint32 nBytes)
 {
 	uint32 sent = 0;
-	wxMutexLocker lock(m_socketLocker);
+	wiMutexLocker lock(m_socketLocker);
 	m_lastUDPOperation = UDP_OPERATION_SEND_TO;
 	m_lastUDPOverhead = PROXY_UDP_OVERHEAD_IPV4;
 	if (m_proxyTCPSocket.GetUseProxy()) {

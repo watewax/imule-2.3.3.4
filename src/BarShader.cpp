@@ -79,7 +79,7 @@ void CBarShader::SetWidth(int width)
 }
 
 
-void CBarShader::Set3dDepth(unsigned depth)
+void CBarShader::Set3dDepth(uint8 depth)
 {
 	if ( depth < 1 ) {
 		depth = 1;
@@ -176,9 +176,9 @@ void CBarShader::Draw( wxDC* dc, int iLeft, int iTop, bool bFlat )
 		// draw flat bar
 		unsigned idx = 0;
 		for (unsigned x = 0; x < m_Width; x++) {
-			unsigned cRed   = m_Content[x].Red();
-			unsigned cGreen = m_Content[x].Green();
-			unsigned cBlue  = m_Content[x].Blue();
+                        unsigned char cRed   = m_Content[x].Red();
+                        unsigned char cGreen = m_Content[x].Green();
+                        unsigned char cBlue  = m_Content[x].Blue();
 			buf[idx++] = cRed;
 			buf[idx++] = cGreen;
 			buf[idx++] = cBlue;
@@ -203,9 +203,9 @@ void CBarShader::Draw( wxDC* dc, int iLeft, int iTop, bool bFlat )
 				cRed   = std::min(255u, cRed);
 				cGreen = std::min(255u, cGreen);
 				cBlue  = std::min(255u, cBlue);
-				buf[idx++] = cRed;
-				buf[idx++] = cGreen;
-				buf[idx++] = cBlue;
+                                buf[idx++] = (byte)cRed;
+                                buf[idx++] = (byte)cGreen;
+                                buf[idx++] = (byte)cBlue;
 			}
 		}
 		unsigned linelength = m_Width * 3;

@@ -32,7 +32,7 @@
 
 #include "EMSocket.h"		// Needed for CEMSocket
 
-class CProxyData;
+#include <wx/event.h>
 
 //------------------------------------------------------------------------------
 // CClientTCPSocket
@@ -41,11 +41,12 @@ class CProxyData;
 class CUpDownClient;
 class CPacket;
 class CTimerWnd;
+class CI2PSocketEvent;
 
 class CClientTCPSocket : public CEMSocket
 {
 public:
-	CClientTCPSocket(CUpDownClient* in_client = NULL, const CProxyData *ProxyData = NULL);
+        CClientTCPSocket(CUpDownClient* in_client = NULL);
 	virtual ~CClientTCPSocket();
 
 	void		Disconnect(const wxString& strReason);
@@ -57,6 +58,8 @@ public:
 	void		Safe_Delete();
 	void		Safe_Delete_Client();
 
+	void            OnSocketEvent(CI2PSocketEvent&);
+
 	void		OnConnect(int nErrorCode);
 	void		OnSend(int nErrorCode);
 	void		OnReceive(int nErrorCode);
@@ -64,7 +67,7 @@ public:
 	void		OnClose(int nErrorCode);
 	void		OnError(int nErrorCode);
 
-	uint32		GetRemoteIP() const { return m_remoteip; }
+        const CI2PAddress& GetRemoteDest() const { return m_remotedest; }
 
 	CUpDownClient* GetClient() { return m_client; }
 
@@ -85,7 +88,8 @@ private:
 	void	SetClient(CUpDownClient* client);
 
 	uint32	timeout_timer;
-	uint32	m_remoteip;
+        CI2PAddress m_remotedest;
+        wxString encodeDirName(const CPath & dirName);
 };
 
 #endif // CLIENTTCPSOCKET_H

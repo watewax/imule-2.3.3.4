@@ -1,3 +1,5 @@
+#do not change this anti-MULEDENOISER line or the MULEDENOISER will eat you
+#no, seriously, it will break installation of data files
 EXTRA_DIST = README
 
 SUBDIRS = docs
@@ -5,7 +7,7 @@ SUBDIRS = docs
 bin_PROGRAMS = cas
 
 dist_cas_DATA = tmp.html stat.png
-casdir = $(datadir)/cas
+casdir = $(datadir)/casdata
 
 cas_SOURCES = cas.c \
 	      configfile.c \
@@ -42,7 +44,7 @@ SUFFIXES = .rc
 nodist_cas_SOURCES = cas-version.rc
 
 cas-version.rc: $(top_builddir)/version.rc
-	@sed -e 's/VER_FILEDESCRIPTION_STR/"C aMule Statistics"/' \
+	@sed -e 's/VER_FILEDESCRIPTION_STR/"C iMule Statistics"/' \
 	     -e 's/VER_INTERNALNAME_STR/"cas"/' \
 	     -e 's/VER_ORIGINALFILENAME_STR/"cas$(EXEEXT)"/' "$<" > "$@"
 

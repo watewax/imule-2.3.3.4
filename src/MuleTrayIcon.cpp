@@ -148,7 +148,9 @@ void CMuleTrayIcon::ServerConnection(wxCommandEvent& WXUNUSED(event))
 
 void CMuleTrayIcon::ShowHide(wxCommandEvent& WXUNUSED(event))
 {
-	theApp->amuledlg->DoIconize(theApp->amuledlg->IsShown());
+        bool iconize = theApp->amuledlg->IsShown() && ! theApp->amuledlg->IsIconized();
+        //         AddLogLineN(CFormat(wxT("shown: %d, iconized: %d => to iconize: %d")) % (theApp->amuledlg->IsShown()) % (theApp->amuledlg->IsIconized()) % iconize);
+        theApp->amuledlg->DoIconize(iconize);
 }
 
 
@@ -287,7 +289,7 @@ wxMenu* CMuleTrayIcon::CreatePopupMenu()
 {
 	// Creates dinamically the menu to show the user.
 	wxMenu *traymenu = new wxMenu();
-	traymenu->SetTitle(_("aMule Tray Menu"));
+	traymenu->SetTitle(_("iMule Tray Menu"));
 
 	// Build the Top string name
 	wxString label = MOD_VERSION_LONG;
@@ -337,7 +339,7 @@ wxMenu* CMuleTrayIcon::CreatePopupMenu()
 		wxString temp = _("ClientID: ");
 
 		if (theApp->IsConnectedED2K()) {
-			temp += CFormat(wxT("%u")) % theApp->GetED2KID();
+                        temp += CFormat(wxT("%" PRIu32 "")) % theApp->GetED2KID();
 		} else {
 			temp += _("Not connected");
 		}
@@ -347,44 +349,37 @@ wxMenu* CMuleTrayIcon::CreatePopupMenu()
 	// Current Server and Server IP
 	{
 		wxString temp_name = _("ServerName: ");
-		wxString temp_ip   = _("ServerIP: ");
+                wxString temp_dest   = _("ServerDest: ");
 
 		if ( theApp->serverconnect->GetCurrentServer() ) {
 			temp_name += theApp->serverconnect->GetCurrentServer()->GetListName();
-			temp_ip   += theApp->serverconnect->GetCurrentServer()->GetFullIP();
+                        temp_dest   += theApp->serverconnect->GetCurrentServer()->GetDest().humanReadable();
 		} else {
 			temp_name += _("Not connected");
-			temp_ip   += _("Not Connected");
+                        temp_dest   += _("Not Connected");
 		}
 		ClientInfoMenu->Append(TRAY_MENU_CLIENTINFO_ITEM,temp_name);
-		ClientInfoMenu->Append(TRAY_MENU_CLIENTINFO_ITEM,temp_ip);
+                ClientInfoMenu->Append(TRAY_MENU_CLIENTINFO_ITEM,temp_dest);
 	}
 
-	// IP Address
-	{
-		wxString temp = CFormat(_("IP: %s")) % ( (theApp->GetPublicIP()) ? Uint32toStringIP(theApp->GetPublicIP()) : wxString(_("Unknown")) );
-
-		ClientInfoMenu->Append(TRAY_MENU_CLIENTINFO_ITEM,temp);
-	}
-
-	// TCP PORT
+        // I2P TCP destination
 	{
 		wxString temp;
-		if (thePrefs::GetPort()) {
-			temp = CFormat(_("TCP port: %d")) % thePrefs::GetPort();
+                if (theApp->GetTcpDest().isValid()) {
+                        temp = wxT("TCP Dest: ") + (wxString) theApp->GetTcpDest().humanReadable();
 		} else {
-			temp=_("TCP port: Not ready");
+                        temp= wxT("TCP Dest: Not Ready");
 		}
 		ClientInfoMenu->Append(TRAY_MENU_CLIENTINFO_ITEM,temp);
 	}
 
-	// UDP PORT
+        // I2P TCP destination
 	{
 		wxString temp;
-		if (thePrefs::GetEffectiveUDPPort()) {
-			temp = CFormat(_("UDP port: %d")) % thePrefs::GetEffectiveUDPPort();
+                if (!thePrefs::IsUDPDisabled()) {
+                        temp = _("UDP Dest: ") + (wxString) theApp->GetUdpDest().humanReadable();
 		} else {
-			temp=_("UDP port: Not ready");
+                        temp=_("UDP Dest: Not Ready");
 		}
 		ClientInfoMenu->Append(TRAY_MENU_CLIENTINFO_ITEM,temp);
 	}
@@ -502,12 +497,13 @@ wxMenu* CMuleTrayIcon::CreatePopupMenu()
 	// Separator
 	traymenu->AppendSeparator();
 
-	if (theApp->amuledlg->IsShown()) {
+        bool iconize = theApp->amuledlg->IsShown() && ! theApp->amuledlg->IsIconized();
+        if (iconize) {
 		//hide item
-		traymenu->Append(TRAY_MENU_HIDE, _("Hide aMule"));
+                traymenu->Append(TRAY_MENU_HIDE, _("Hide iMule"));
 	} else {
 		//show item
-		traymenu->Append(TRAY_MENU_SHOW, _("Show aMule"));
+                traymenu->Append(TRAY_MENU_SHOW, _("Show iMule"));
 	}
 
 	// Separator
@@ -521,6 +517,7 @@ wxMenu* CMuleTrayIcon::CreatePopupMenu()
 
 void CMuleTrayIcon::SwitchShow(wxTaskBarIconEvent&)
 {
-	theApp->amuledlg->DoIconize(theApp->amuledlg->IsShown());
+        bool iconize = theApp->amuledlg->IsShown() && ! theApp->amuledlg->IsIconized();
+        theApp->amuledlg->DoIconize(iconize);
 }
 // File_checked_for_headers

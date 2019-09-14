@@ -39,7 +39,7 @@ echo no Boost found, using wx sockets
 
 :finish
 echo #define CRYPTOPP_INCLUDE_PREFIX	../cryptopp>>config.h
-echo #define PACKAGE "amule">>config.h
+echo #define PACKAGE "imule">>config.h
 echo #define HAVE_ERRNO_H>>config.h
 echo #define HAVE_STRERROR>>config.h
 echo #endif>>config.h

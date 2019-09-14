@@ -36,10 +36,10 @@
 
 #include <wx/wx.h>
 #include <wx/string.h>
+#include <i2p/wxI2PSocketClient.h>
 
 // cryptoPP used for DH integer calculations
 #include "CryptoPP_Inc.h"	// Needed for Crypto functions
-#include "Proxy.h"
 #include "Types.h"
 
 #include "RC4Encrypt.h"
@@ -84,10 +84,10 @@ enum EEncryptionMethods {
 };
 
 
-class CEncryptedStreamSocket : public CSocketClientProxy
+class CEncryptedStreamSocket : public wxI2PSocketClient
 {
 public:
-	CEncryptedStreamSocket(muleSocketFlags flags = MULE_SOCKET_NONE, const CProxyData *proxyData = NULL);
+	CEncryptedStreamSocket(muleSocketFlags flags = MULE_SOCKET_NONE);
 	virtual ~CEncryptedStreamSocket();
 
 	void SetConnectionEncryption(bool bEnabled, const uint8_t *pTargetClientHash, bool bServerConnection);

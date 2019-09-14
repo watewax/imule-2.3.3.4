@@ -49,24 +49,25 @@
 #ifndef CLIENT_GUI
 #include "InternalEvents.h"		// Needed for wxEVT_*
 
+DEFINE_EVENT_TYPE(ID_CORE_TIMER_EVENT);         // in amule-gui.cpp
 BEGIN_EVENT_TABLE(CamuleGuiApp, wxApp)
 
 #ifndef ASIO_SOCKETS
 	// Socket handlers
 	// Listen Socket
-	EVT_SOCKET(ID_LISTENSOCKET_EVENT, CamuleGuiApp::ListenSocketHandler)
+	//EVT_SOCKET(ID_LISTENSOCKET_EVENT, CamuleGuiApp::ListenSocketHandler)
 
 	// UDP Socket (servers)
-	EVT_SOCKET(ID_SERVERUDPSOCKET_EVENT, CamuleGuiApp::UDPSocketHandler)
+	//EVT_SOCKET(ID_SERVERUDPSOCKET_EVENT, CamuleGuiApp::UDPSocketHandler)
 	// UDP Socket (clients)
-	EVT_SOCKET(ID_CLIENTUDPSOCKET_EVENT, CamuleGuiApp::UDPSocketHandler)
+	//EVT_SOCKET(ID_CLIENTUDPSOCKET_EVENT, CamuleGuiApp::UDPSocketHandler)
 #endif
 
 	// Socket timers (TCP + UDP)
-	EVT_MULE_TIMER(ID_SERVER_RETRY_TIMER_EVENT, CamuleGuiApp::OnTCPTimer)
+        EVT_TIMER(ID_SERVER_RETRY_TIMER_EVENT, CamuleGuiApp::OnTCPTimer)
 
 	// Core timer
-	EVT_MULE_TIMER(ID_CORE_TIMER_EVENT, CamuleGuiApp::OnCoreTimer)
+        EVT_TIMER(ID_CORE_TIMER_EVENT, CamuleGuiApp::OnCoreTimer)
 
 	EVT_MULE_NOTIFY(CamuleGuiApp::OnNotifyEvent)
 
@@ -99,6 +100,7 @@ IMPLEMENT_APP(CamuleGuiApp)
 CamuleGuiBase::CamuleGuiBase()
 {
 	amuledlg = NULL;
+    //m_FileDetailDialogActive = 0;
 }
 
 
@@ -194,6 +196,8 @@ int CamuleGuiBase::InitGui(bool geometry_enabled, wxString &geom_string)
 		amuledlg = new CamuleDlg(NULL, m_FrameTitle);
 	}
 
+        //amuledlg->Bind(wxEVT_CLOSE_WINDOW, &AMULE_APP::ShutDown, (AMULE_APP*)this);
+
 	return 0;
 }
 
@@ -202,15 +206,15 @@ void CamuleGuiBase::ResetTitle()
 {
 #ifdef SVNDATE
 	#ifdef CLIENT_GUI
-		m_FrameTitle = CFormat(wxT("aMule remote control %s %s")) % wxT( VERSION ) % wxT( SVNDATE );
+		m_FrameTitle = CFormat(wxT("iMule remote control %s %s")) % wxT( VERSION ) % wxT( SVNDATE );
 	#else
-		m_FrameTitle = CFormat(wxT("aMule %s %s")) % wxT( VERSION ) % wxT( SVNDATE );
+		m_FrameTitle = CFormat(wxT("iMule %s %s")) % wxT( VERSION ) % wxT( SVNDATE );
 	#endif
 #else
 	#ifdef CLIENT_GUI
-		m_FrameTitle = _("aMule remote control");
+		m_FrameTitle = _("iMule remote control");
 	#else
-		m_FrameTitle = _("aMule");
+		m_FrameTitle = _("iMule");
 	#endif
 
 	if (thePrefs::ShowVersionOnTitle()) {
@@ -290,7 +294,7 @@ bool CamuleGuiApp::OnInit()
 	}
 
 	// Create the Core timer
-	core_timer = new CTimer(this,ID_CORE_TIMER_EVENT);
+        core_timer = new wxTimer(this,ID_CORE_TIMER_EVENT);
 	if (!core_timer) {
 		AddLogLineCS(_("Fatal Error: Failed to create Core Timer"));
 		OnExit();

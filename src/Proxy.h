@@ -31,6 +31,7 @@
 #include "amuleIPV4Address.h"	// For amuleIPV4address
 #include "StateMachine.h"	// For CStateMachine
 #include "LibSocket.h"
+#include "MuleThread.h"
 
 /******************************************************************************/
 
@@ -514,7 +515,7 @@ public:
 	uint32 Write(const void *buffer, wxUint32 nbytes);
 
 private:
-	wxMutex			m_socketLocker;
+        wiMutex			m_socketLocker;
 };
 
 //------------------------------------------------------------------------------
@@ -573,7 +574,7 @@ private:
 	CProxySocket		m_proxyTCPSocket;
 	enum UDPOperation	m_lastUDPOperation;
 	unsigned int		m_lastUDPOverhead;
-	wxMutex			m_socketLocker;
+        wiMutex			m_socketLocker;
 };
 
 /******************************************************************************/

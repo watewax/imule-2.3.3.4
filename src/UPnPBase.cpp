@@ -436,7 +436,7 @@ m_SCPDURL    (IXML::Element::GetChildValueByTag(service, "SCPDURL")),
 m_controlURL (IXML::Element::GetChildValueByTag(service, "controlURL")),
 m_eventSubURL(IXML::Element::GetChildValueByTag(service, "eventSubURL")),
 m_timeout(1801),
-m_SCPD(NULL)
+        m_SCPD(nullptr)
 {
 	std::ostringstream msg;
 	int errcode;
@@ -552,7 +552,7 @@ bool CUPnPService::Execute(
 	const std::vector<CUPnPArgumentValue> &ArgValue) const
 {
 	std::ostringstream msg;
-	if (m_SCPD.get() == NULL) {
+                if (!m_SCPD) {
 		msg << "Service without SCPD Document, cannot execute action '" << ActionName <<
 			"' for service '" << GetServiceType() << "'.";
 		AddDebugLogLineN(logUPnP, msg);
@@ -1383,7 +1383,7 @@ upnpEventSubscriptionExpired:
 #if UPNP_VERSION >= 10800
 			publisherUrl,
 #else
-			GET_UPNP_STRING(es_event->PublisherUrl),
+			GET_UPNP_STRING((const char *) es_event->PublisherUrl),
 #endif
 			&TimeOut,
 			newSID);
@@ -1403,7 +1403,7 @@ upnpEventSubscriptionExpired:
 #if UPNP_VERSION >= 10800
 				upnpCP->m_ServiceMap.find(publisherUrl);
 #else
-				upnpCP->m_ServiceMap.find(GET_UPNP_STRING(es_event->PublisherUrl));
+				upnpCP->m_ServiceMap.find(GET_UPNP_STRING((const char *) es_event->PublisherUrl));
 #endif
 			if (it != upnpCP->m_ServiceMap.end()) {
 				CUPnPService &service = *(it->second);

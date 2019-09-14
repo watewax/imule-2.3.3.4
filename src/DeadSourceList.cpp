@@ -25,6 +25,8 @@
 
 #include "DeadSourceList.h"
 
+#include "updownclient.h"
+#include "NetworkFunctions.h"
 #include <common/Macros.h>
 
 #include "updownclient.h"		// Needed for CUpDownClient
@@ -38,12 +40,11 @@
 //// CDeadSource
 
 
-CDeadSourceList::CDeadSource::CDeadSource(uint32 ID, uint16 Port, uint32 ServerIP, uint16 KadPort)
+CDeadSourceList::CDeadSource::CDeadSource(uint32 Dest, uint32 ServerDest, uint32 KadDest)
 {
-	m_ID = ID;
-	m_Port = Port;
-	m_KadPort = KadPort;
-	m_ServerIP = ServerIP;
+        m_Dest = Dest;
+        m_KadDest = KadDest;
+        m_ServerDest = ServerDest;
 	m_TimeStamp = 0;
 }
 
@@ -62,14 +63,8 @@ uint32 CDeadSourceList::CDeadSource::GetTimeout() const
 
 bool CDeadSourceList::CDeadSource::operator==(const CDeadSource& other) const
 {
-	if ( m_ID == other.m_ID ) {
-		if ( m_Port == other.m_Port || m_KadPort == other.m_KadPort ) {
-			if ( IsLowID( m_ID ) ) {
-				return m_ServerIP == other.m_ServerIP;
-			} else {
+        if ( m_Dest == other.m_Dest || m_KadDest == other.m_KadDest ) {
 				return true;
-			}
-		}
 	}
 
 	return false;
@@ -95,14 +90,13 @@ uint32 CDeadSourceList::GetDeadSourcesCount() const
 bool CDeadSourceList::IsDeadSource(const CUpDownClient* client)
 {
 	CDeadSource source(
-		client->GetUserIDHybrid(),
-		client->GetUserPort(),
+                client->GetTCPDest(),
 		client->GetServerIP(),
-		client->GetKadPort()
+                client->GetUDPDest()
 	);
 
 
-	DeadSourcePair range = m_sources.equal_range( client->GetUserIDHybrid() );
+        DeadSourcePair range = m_sources.equal_range( client->GetTCPDest() );
 	for ( ; range.first != range.second; range.first++ ) {
 		if ( range.first->second == source ) {
 			// Check if the entry is still valid
@@ -123,14 +117,13 @@ bool CDeadSourceList::IsDeadSource(const CUpDownClient* client)
 void CDeadSourceList::AddDeadSource( const CUpDownClient* client )
 {
 	CDeadSource source(
-		client->GetUserIDHybrid(),
-		client->GetUserPort(),
+                client->GetTCPDest(),
 		client->GetServerIP(),
-		client->GetKadPort()
+                client->GetUDPDest()
 	);
 
 	// Set the timeout for the new source
-	source.SetTimeout( client->HasLowID() ? BLOCKTIMEFW : BLOCKTIME );
+        source.SetTimeout( BLOCKTIME );
 
 	// Check if the source is already listed
 	DeadSourcePair range = m_sources.equal_range( client->GetUserIDHybrid() );

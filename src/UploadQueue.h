@@ -61,7 +61,7 @@ public:
 	const CClientRefList& GetWaitingList() const { return m_waitinglist; }
 	const CClientRefList& GetUploadingList() const { return m_uploadinglist; }
 
-	CUpDownClient* GetWaitingClientByIP_UDP(uint32 dwIP, uint16 nUDPPort, bool bIgnorePortOnUniqueIP, bool* pbMultipleIPs = NULL);
+        CUpDownClient* GetWaitingClientByIP_UDP(const CI2PAddress & nUDPDest);
 
 	uint16	SuspendUpload(const CMD4Hash &, bool terminate);
 	void	ResumeUpload(const CMD4Hash &);

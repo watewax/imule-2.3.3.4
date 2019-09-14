@@ -45,6 +45,9 @@ BEGIN_EVENT_TABLE(CServerWnd,wxPanel)
 	EVT_TEXT_ENTER(IDC_SERVERLISTURL,CServerWnd::OnBnClickedUpdateservermetfromurl)
 	EVT_BUTTON(ID_BTN_RESET, CServerWnd::OnBnClickedResetLog)
 	EVT_BUTTON(ID_BTN_RESET_SERVER, CServerWnd::OnBnClickedResetServerLog)
+#ifdef INTERNAL_ROUTER
+        EVT_BUTTON ( ID_BTN_UPDATE_ROUTERSTATUS, CServerWnd::OnBnClickedUpdateRouterStatus )
+#endif
 	EVT_SPLITTER_SASH_POS_CHANGED(ID_SRV_SPLITTER,CServerWnd::OnSashPositionChanged)
 END_EVENT_TABLE()
 
@@ -62,7 +65,7 @@ CServerWnd::CServerWnd(wxWindow* pParent /*=NULL*/, int splitter_pos)
 	CastChild( ID_SRV_SPLITTER, wxSplitterWindow )->SetSashPosition(splitter_pos, true);
 	CastChild( ID_SRV_SPLITTER, wxSplitterWindow )->SetSashGravity(0.5f);
 	CastChild( IDC_NODESLISTURL, wxTextCtrl )->SetValue(thePrefs::GetKadNodesUrl());
-	CastChild( IDC_SERVERLISTURL, wxTextCtrl )->SetValue(thePrefs::GetEd2kServersUrl());
+        //CastChild( IDC_SERVERLISTURL, wxTextCtrl )->SetValue(thePrefs::GetEd2kServersUrl());
 
 	// Insert two columns, currently without a header
 	wxListCtrl* ED2KInfoList = CastChild( ID_ED2KINFO, wxListCtrl );
@@ -81,14 +84,14 @@ CServerWnd::CServerWnd(wxWindow* pParent /*=NULL*/, int splitter_pos)
 
 CServerWnd::~CServerWnd()
 {
-	thePrefs::SetEd2kServersUrl(CastChild( IDC_SERVERLISTURL, wxTextCtrl )->GetValue());
+        //thePrefs::SetEd2kServersUrl(CastChild( IDC_SERVERLISTURL, wxTextCtrl )->GetValue());
 	thePrefs::SetKadNodesUrl(CastChild( IDC_NODESLISTURL, wxTextCtrl )->GetValue());
 }
 
 
 void CServerWnd::UpdateServerMetFromURL(const wxString& strURL)
 {
-	thePrefs::SetEd2kServersUrl(strURL);
+        //thePrefs::SetEd2kServersUrl(strURL);
 	theApp->serverlist->UpdateServerMetFromURL(strURL);
 }
 
@@ -96,31 +99,33 @@ void CServerWnd::UpdateServerMetFromURL(const wxString& strURL)
 void CServerWnd::OnBnClickedAddserver(wxCommandEvent& WXUNUSED(evt))
 {
 	wxString servername = CastChild( IDC_SERVERNAME, wxTextCtrl )->GetValue();
-	wxString serveraddr = CastChild( IDC_IPADDRESS, wxTextCtrl )->GetValue();
-	long port = StrToULong( CastChild( IDC_SPORT, wxTextCtrl )->GetValue() );
+        //wxString serveraddr = CastChild( IDC_IPADDRESS, wxTextCtrl )->GetValue();
+        //long port = StrToULong( CastChild( IDC_SPORT, wxTextCtrl )->GetValue() );
+        wxString serveraddr = CastChild ( IDC_SDEST, wxTextCtrl )->GetValue();
 
 	if ( serveraddr.IsEmpty() ) {
 		AddLogLineC(_("Server not added: No IP or hostname specified."));
 		return;
 	}
 
-	if ( port <= 0 || port > 65535 ) {
+        /*if ( port <= 0 || port > 65535 ) {
 		AddLogLineC(_("Server not added: Invalid server-port specified."));
 		return;
-	}
+        }*/
 
-	CServer* toadd = new CServer( port, serveraddr );
+        CServer* toadd = new CServer ( CI2PAddress::fromString ( serveraddr ) );
 	toadd->SetListName( servername.IsEmpty() ? serveraddr : servername );
 
 	if ( theApp->AddServer( toadd, true ) ) {
 		CastChild( IDC_SERVERNAME, wxTextCtrl )->Clear();
-		CastChild( IDC_IPADDRESS, wxTextCtrl )->Clear();
-		CastChild( IDC_SPORT, wxTextCtrl )->Clear();
+                //CastChild( IDC_IPADDRESS, wxTextCtrl )->Clear();
+                //CastChild( IDC_SPORT, wxTextCtrl )->Clear();
+                CastChild ( IDC_SDEST, wxTextCtrl )->Clear();
 	} else {
-		CServer* update = theApp->serverlist->GetServerByAddress(toadd->GetAddress(), toadd->GetPort());
+                CServer* update = theApp->serverlist->GetServerByAddress(toadd->GetAddress());
 		// See note on CServerList::AddServer
-		if (update == NULL && toadd->GetIP() != 0) {
-			update = theApp->serverlist->GetServerByIPTCP(toadd->GetIP(), toadd->GetPort());
+                if (update == NULL && toadd->GetDest().isValid()) {
+                        update = theApp->serverlist->GetServerByDest(toadd->GetDest());
 		}
 
 		if ( update ) {
@@ -146,6 +151,12 @@ void CServerWnd::OnBnClickedResetLog(wxCommandEvent& WXUNUSED(evt))
 	theApp->GetLog(true); // Reset it.
 }
 
+#ifdef INTERNAL_ROUTER
+void CServerWnd::OnBnClickedUpdateRouterStatus ( wxCommandEvent& evt )
+{
+        theApp->UpdateRouterStatus();
+}
+#endif
 
 void CServerWnd::OnBnClickedResetServerLog(wxCommandEvent& WXUNUSED(evt))
 {
@@ -153,8 +164,10 @@ void CServerWnd::OnBnClickedResetServerLog(wxCommandEvent& WXUNUSED(evt))
 }
 
 
+//TODO #warning no ED2K server with I2P for now
 void CServerWnd::UpdateED2KInfo()
 {
+#if 0
 	wxListCtrl* ED2KInfoList = CastChild( ID_ED2KINFO, wxListCtrl );
 
 	ED2KInfoList->DeleteAllItems();
@@ -191,6 +204,7 @@ void CServerWnd::UpdateED2KInfo()
 	// Fit the width of the columns
 	ED2KInfoList->SetColumnWidth(0, -1);
 	ED2KInfoList->SetColumnWidth(1, -1);
+#endif
 }
 
 void CServerWnd::UpdateKadInfo()
@@ -204,7 +218,7 @@ void CServerWnd::UpdateKadInfo()
 	KadInfoList->InsertItem(next_row, _("Kademlia Status:"));
 
 	if (theApp->IsKadRunning()) {
-		KadInfoList->SetItem(next_row++, 1, (theApp->IsKadRunningInLanMode() ? _("Running in LAN mode") : _("Running")));
+                KadInfoList->SetItem ( next_row++, 1, _ ( "Running" ) );
 
 		// Connection data
 		KadInfoList->InsertItem(next_row, _("Kademlia client ID:"));
@@ -213,9 +227,10 @@ void CServerWnd::UpdateKadInfo()
 		KadInfoList->SetItem(next_row++, 1, theApp->IsConnectedKad() ? _("Connected"): _("Disconnected"));
 		if (theApp->IsConnectedKad()) {
 			KadInfoList->InsertItem(next_row, _("Connection State:"));
-			KadInfoList->SetItem(next_row++, 1, theApp->IsFirewalledKad() ?
+                        KadInfoList->SetItem(next_row++, 1, /*theApp->IsFirewalledKad() ?
 				wxString(CFormat(_("Firewalled - open TCP port %d in your router or firewall")) % thePrefs::GetPort())
-				: wxString(_("OK")));
+                                             : */wxString(_("OK")));
+#ifdef _no_firewall_with_i2p_
 			KadInfoList->InsertItem(next_row, _("UDP Connection State:"));
 			bool UDPFirewalled = theApp->IsFirewalledKadUDP();
 			KadInfoList->SetItem(next_row++, 1, UDPFirewalled ?
@@ -249,6 +264,7 @@ void CServerWnd::UpdateKadInfo()
 			KadInfoList->InsertItem(next_row, _("IP address:"));
 			KadInfoList->SetItem(next_row++, 1, Uint32toStringIP(theApp->GetKadIPAdress()));
 
+#endif
 			// Index info
 			KadInfoList->InsertItem(next_row, _("Indexed sources:"));
 			KadInfoList->SetItem(next_row++, 1, CFormat(wxT("%d")) % theApp->GetKadIndexedSources());

@@ -44,6 +44,7 @@ there client on the eMule forum..
 #include <protocol/kad/Constants.h>
 #include <time.h>
 #include <vector>
+#include "i2p/CI2PAddress.h"
 
 ////////////////////////////////////////
 namespace Kademlia {
@@ -51,24 +52,27 @@ namespace Kademlia {
 
 class CPrefs
 {
-public:
+private:
 	CPrefs();
+        void init(wxString& filename);
+public:
 	~CPrefs();
 
+        static  CPrefs * getInstance() ;
 	void	SetKadID(const CUInt128 &id) throw()		{ m_clientID = id; }
 	const CUInt128&	GetKadID() const throw()		{ return m_clientID; }
 
 	void	SetClientHash(const CUInt128 &id) throw()	{ m_clientHash = id; }
 	const CUInt128& GetClientHash() const throw()		{ return m_clientHash; }
 
-	uint32_t GetIPAddress() const throw()			{ return m_ip; }
-	void	 SetIPAddress(uint32_t val) throw();
+        CI2PAddress	GetIPAddress() const throw()		{return m_ip;}
+        void	SetIPAddress ( const CI2PAddress & val ) throw();
 
-	bool	GetRecheckIP() const throw()			{ return (m_recheckip < KADEMLIAFIREWALLCHECKS); }
+        bool	GetRecheckIP() const throw()			{ return ((signed)m_recheckip < KADEMLIAFIREWALLCHECKS); }
 	void	SetRecheckIP()					{ m_recheckip = 0; SetFirewalled(); }
 	void	IncRecheckIP() throw()				{ m_recheckip++; }
 
-	bool	HasHadContact() const throw()			{ return m_lastContact ? ((time(NULL) - m_lastContact) < KADEMLIADISCONNECTDELAY) : false; }
+        bool	HasHadContact() const throw()			{ time_t t = time(NULL); return m_lastContact ? ((t - m_lastContact) < KADEMLIADISCONNECTDELAY) : false; }
 	void	SetLastContact() throw()			{ m_lastContact = time(NULL); }
 	bool	HasLostConnection() const throw()		{ return m_lastContact ? !((time(NULL) - m_lastContact) < KADEMLIADISCONNECTDELAY) : false; }
 	uint32_t GetLastContact() const throw()			{ return m_lastContact; }
@@ -111,7 +115,7 @@ public:
 	void	SetUseExternKadPort(bool val) throw()		{ m_useExternKadPort = val; }
 
 	uint16_t GetExternalKadPort() const throw()		{ return m_externKadPort; }
-	uint16_t GetInternKadPort() const throw()		{ return thePrefs::GetUDPPort(); }
+        uint16_t GetInternKadPort() const throw()		{ return 0; }
 	void	 SetExternKadPort(uint16_t port, uint32_t fromIP);
 	bool	 FindExternKadPort(bool reset = false);
 
@@ -130,8 +134,8 @@ private:
 	time_t		m_lastContact;
 	CUInt128	m_clientID;
 	CUInt128	m_clientHash;
-	uint32_t	m_ip;
-	uint32_t	m_ipLast;
+        CI2PAddress	m_ip;
+        CI2PAddress	m_ipLast;
 	uint32_t	m_recheckip;
 	uint32_t	m_firewalled;
 	uint32_t	m_kademliaUsers;
@@ -167,12 +171,12 @@ private:
 
 } // End namespace
 
-#include "Kademlia.h"
+//#include "Kademlia.h"
 
-inline bool Kademlia::CPrefs::GetUseExternKadPort() const
-{
-	return m_useExternKadPort && !Kademlia::CKademlia::IsRunningInLANMode();
-}
+//inline bool Kademlia::CPrefs::GetUseExternKadPort() const
+//{
+//	return m_useExternKadPort && !Kademlia::CKademlia::IsRunningInLANMode();
+//}
 
 #endif //__PREFS_H__
 // File_checked_for_headers

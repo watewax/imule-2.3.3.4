@@ -125,12 +125,20 @@ public:
 	// Disconnects Kad network
 	void StopKad();
 
+        // I2P: Start network(s)
+        void StartNetwork();
+
+        // I2P: Stop network(s)
+        void StopNetwork();
+
+        // I2P: Restart Network if it is started
+        void RestartNetworkIfStarted();
 
 	/* ED2K */
 
 	// Connects to ED2K. If ip and port are not 0, connect
 	// to the specific port. Otherwise, connect to any.
-	void ConnectED2K(uint32 ip, uint16 port);
+        void ConnectED2K(CI2PAddress serverdest);
 
 	// Disconnects from ED2K
 	void DisconnectED2K();
@@ -139,13 +147,11 @@ public:
 	/* Servers */
 
 	// Adds a server
-	void AddServer(uint32 ip,
-		       uint16 port);
+        void AddServer(CI2PAddress dest);
 
 	// Remove specific server
 	// Returns: Error message or empty string for no error
-	void RemoveServer(uint32 ip,
-			  uint16 port);
+        void RemoveServer(CI2PAddress dest);
 
 	// Returns ED2K server list
 	void GetServerList();

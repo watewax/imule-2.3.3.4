@@ -33,6 +33,8 @@
 #include "Preferences.h"	// Needed for CPreferences
 #include "amule.h"		// Needed for theApp
 #include "ServerConnect.h"	// Needed for CServerConnect
+#include "common/Format.h"
+#include "updownclient.h"
 
 //-----------------------------------------------------------------------------
 // CListenSocket
@@ -43,78 +45,115 @@
 // CClientTCPSocket to handle (accept) the connection.
 //
 
-CListenSocket::CListenSocket(amuleIPV4Address &addr, const CProxyData *ProxyData)
+CListenSocket::CListenSocket(const wxString & key)
 :
-// wxSOCKET_NOWAIT    - means non-blocking i/o
-// wxSOCKET_REUSEADDR - means we can reuse the socket immediately (wx-2.5.3)
-CSocketServerProxy(addr, MULE_SOCKET_NOWAIT|MULE_SOCKET_REUSEADDR, ProxyData)
+// wxSOCKET_NOWAIT      - means : trigger a WOULDBLOCK error if i/o sent/received less bytes than asked
+// wxSOCKET_REUSEADDR - means we can reuse the socket imediately (wx-2.5.3)
+        wxI2PSocketServer(key, wxSOCKET_NOWAIT | wxSOCKET_REUSEADDR )
 {
 	// 0.42e - vars not used by us
-	m_pending = false;
+        bListening = false;
 	shutdown = false;
 	m_OpenSocketsInterval = 0;
+        m_nPendingConnections = 0;
 	totalconnectionchecks = 0;
 	averageconnections = 0.0;
-	memset(m_ConnectionStates, 0, 3 * sizeof(m_ConnectionStates[0]));
-	// Set the listen socket event handler -- The handler is written in amule.cpp
-	if (IsOk()) {
-#ifndef ASIO_SOCKETS
-		SetEventHandler(*theApp, ID_LISTENSOCKET_EVENT);
-		SetNotify(wxSOCKET_CONNECTION_FLAG);
-#endif
-		Notify(true);
-
-		AddLogLineNS(_("ListenSocket: Ok."));
-	} else {
-		AddLogLineCS(_("ERROR: Could not listen to TCP port.") );
-	}
 }
 
 
 CListenSocket::~CListenSocket()
 {
 	shutdown = true;
-	Discard();
-	Close();
 
 #ifdef __DEBUG__
 	// No new sockets should have been opened by now
-	for (SocketSet::iterator it = socket_list.begin(); it != socket_list.end(); ++it) {
-		wxASSERT((*it)->IsDestroying());
+        for (SocketSet::iterator it = socket_list.begin(); it != socket_list.end(); ++it) {
+                wxASSERT((*it)->OnDestroy());
 	}
 #endif
 
+        AddDebugLogLineN(logListenSocket, CFormat(wxT("Deleted Listen Socket")) );
+}
+
+bool CListenSocket::Destroy()
+{
+        AddDebugLogLineN(logListenSocket, CFormat(wxT("Destroy called on CListenSocket")) );
+        shutdown = true ;
 	KillAllSockets();
+        return wxI2PSocketServer::Destroy() ;
 }
 
 
-void CListenSocket::OnAccept()
+bool CListenSocket::StartListening()
 {
-	m_pending = theApp->IsRunning();	// just do nothing if we are shutting down
+        AddDebugLogLineN(logListenSocket, CFormat(wxT("StartListening")) );
+        // 0.42e
+        bListening = true;
+
+        Notify(true);
+        return true;
+}
+
+void CListenSocket::ReStartListening()
+{
+        AddDebugLogLineN(logListenSocket, CFormat(wxT("ReStartListening")) );
+        // 0.42e
+        bListening = true;
+        Notify(true);
+        if (m_nPendingConnections) {
+                m_nPendingConnections--;
+                OnAccept(0);
+        }
+}
+
+void CListenSocket::StopListening()
+{
+        AddDebugLogLineN(logListenSocket, CFormat(wxT("StopListening")) );
+        // 0.42e
+        bListening = false;
+        Notify(false);
+        theStats::AddMaxConnectionLimitReached();
+}
+
+void CListenSocket::OnAccept(int nErrorCode)
+{
+        AddDebugLogLineN(logListenSocket, CFormat(wxT("OnAccept(%d)")) % nErrorCode );
+        // 0.42e
+        if (!nErrorCode) {
+                m_nPendingConnections++;
+                if (m_nPendingConnections < 1) {
+                        wxFAIL;
+                        m_nPendingConnections = 1;
+                }
+                if (TooManySockets(true) && !theApp->serverconnect->IsConnecting()) {
+                        StopListening();
+                        return;
+                } else if (bListening == false) {
 	// If the client is still at maxconnections,
 	// this will allow it to go above it ...
 	// But if you don't, you will get a lowID on all servers.
-	while (m_pending && (theApp->serverconnect->IsConnecting() || !TooManySockets())) {
-		if (!SocketAvailable()) {
-			m_pending = false;
-		} else {
+                        ReStartListening();
+                }
+                // Deal with the pending connections, there might be more than one, due to
+                // the StopListening() call above.
+                while (m_nPendingConnections) {
+                        m_nPendingConnections--;
 			// Create a new socket to deal with the connection
 			CClientTCPSocket* newclient = new CClientTCPSocket();
 			// Accept the connection and give it to the newly created socket
 			if (!AcceptWith(*newclient, false)) {
 				newclient->Safe_Delete();
-				m_pending = false;
 			} else {
+                                wxASSERT(theApp->IsRunning());
 				if (!newclient->InitNetworkData()) {
 					// IP or port were not returned correctly
 					// from the accepted address, or filtered.
+                                        AddDebugLogLineN(logListenSocket, CFormat(wxT("%x : Rejected connection from %x")) % (long) newclient % newclient->GetPeer().hashCode());
 					newclient->Safe_Delete();
+                                } else
+                                        AddDebugLogLineN(logListenSocket, CFormat(wxT("%x : Accepted connection from %x")) % (long) newclient % newclient->GetPeer().hashCode());
 				}
 			}
-		}
-	}
-	if (m_pending) {
-		theStats::AddMaxConnectionLimitReached();
 	}
 }
 
@@ -127,25 +166,26 @@ void CListenSocket::Process()
 {
 	// 042e + Kry changes for Destroy
 	m_OpenSocketsInterval = 0;
-	SocketSet::iterator it = socket_list.begin();
-	while ( it != socket_list.end() ) {
-		CClientTCPSocket* cur_socket = *it++;
-		if (!cur_socket->IsDestroying()) {
+        for (CClientTCPSocket* cur_socket: socket_list) {
+                if (!cur_socket->OnDestroy()) {
+                        if (cur_socket->ForDeletion()) {
+                                cur_socket->Destroy();
+                        } else {
 			cur_socket->CheckTimeOut();
 		}
 	}
+        }
 
-	if (m_pending) {
-		OnAccept();
+        if ((GetOpenSockets()+5 < thePrefs::GetMaxConnections() || theApp->serverconnect->IsConnecting()) && !bListening) {
+                ReStartListening();
 	}
 }
 
 void CListenSocket::RecalculateStats()
 {
 	// 0.42e
-	memset(m_ConnectionStates, 0, 3 * sizeof(m_ConnectionStates[0]));
-	for (SocketSet::iterator it = socket_list.begin(); it != socket_list.end(); ) {
-		CClientTCPSocket* cur_socket = *it++;
+        memset(m_ConnectionStates,0,6);
+        for (CClientTCPSocket* cur_socket: socket_list) {
 		switch (cur_socket->GetConState()) {
 			case ES_DISCONNECTED:
 				m_ConnectionStates[0]++;
@@ -179,10 +219,9 @@ void CListenSocket::KillAllSockets()
 	// 0.42e reviewed - they use delete, but our safer is Destroy...
 	// But I bet it would be better to call Safe_Delete on the socket.
 	// Update: no... Safe_Delete MARKS for deletion. We need to delete it.
-	for (SocketSet::iterator it = socket_list.begin(); it != socket_list.end(); ) {
-		CClientTCPSocket* cur_socket = *it++;
+        for (CClientTCPSocket* cur_socket: socket_list) {
 		if (cur_socket->GetClient()) {
-			cur_socket->Safe_Delete_Client();
+                        cur_socket->GetClient()->Safe_Delete();
 		} else {
 			cur_socket->Safe_Delete();
 			cur_socket->Destroy();
@@ -203,7 +242,7 @@ bool CListenSocket::TooManySockets(bool bIgnoreInterval)
 bool CListenSocket::IsValidSocket(CClientTCPSocket* totest)
 {
 	// 0.42e
-	return socket_list.find(totest) != socket_list.end();
+        return socket_list.count(totest);
 }
 
 

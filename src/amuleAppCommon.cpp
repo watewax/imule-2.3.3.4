@@ -45,12 +45,13 @@
 #include "Logger.h"
 #include "MagnetURI.h"			// Needed for CMagnetURI
 #include "Preferences.h"
-#include "ScopedPtr.h"
+//#include "ScopedPtr.h"
 #include "MuleVersion.h"		// Needed for GetMuleVersion()
 
 #ifndef CLIENT_GUI
 #include "DownloadQueue.h"
 #endif
+#include <memory>
 
 CamuleAppCommon::CamuleAppCommon()
 {
@@ -58,17 +59,17 @@ CamuleAppCommon::CamuleAppCommon()
 	ec_config = false;
 	m_geometryEnabled = false;
 	if (IsRemoteGui()) {
-		m_appName		= wxT("aMuleGUI");
+		m_appName		= wxT("iMuleGUI");
 		m_configFile	= wxT("remote.conf");
 		m_logFile		= wxT("remotelogfile");
 	} else {
-		m_configFile	= wxT("amule.conf");
+		m_configFile	= wxT("imule.conf");
 		m_logFile		= wxT("logfile");
 
 		if (IsDaemon()) {
-			m_appName	= wxT("aMuleD");
+			m_appName	= wxT("iMuleD");
 		} else {
-			m_appName	= wxT("aMule");
+			m_appName	= wxT("iMule");
 		}
 	}
 }
@@ -173,17 +174,11 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 		if (use_hostname) {
 			strURL << thePrefs::GetYourHostname();
 		} else {
-			uint32 clientID = theApp->GetID();
-			strURL = CFormat(wxT("%s%u.%u.%u.%u"))
-				% strURL
-				% (clientID & 0xff)
-				% ((clientID >> 8) & 0xff)
-				% ((clientID >> 16) & 0xff)
-				% ((clientID >> 24) & 0xff);
+			strURL << theApp->GetTcpDest().toString();
 		}
 
-		strURL << wxT(":") <<
-			thePrefs::GetPort();
+		//strURL << wxT(":") <<
+		//	thePrefs::GetPort();
 
 		if (add_cryptoptions) {
 			uint8 uSupportsCryptLayer = thePrefs::IsClientCryptLayerSupported() ? 1 : 0;
@@ -209,7 +204,7 @@ wxString CamuleAppCommon::CreateED2kLink(const CAbstractFile *f, bool add_source
 
 bool CamuleAppCommon::InitCommon(int argc, wxChar ** argv)
 {
-	theApp->SetAppName(wxT("aMule"));
+	theApp->SetAppName(wxT("iMule"));
 	FullMuleVersion = GetFullMuleVersion();
 	OSDescription = wxGetOsDescription();
 	OSType = OSDescription.BeforeFirst( wxT(' ') );
@@ -488,9 +483,9 @@ bool CamuleAppCommon::CheckPassedLink(const wxString &in, wxString &out, int cat
 	}
 
 	try {
-		CScopedPtr<CED2KLink> uri(CED2KLink::CreateLinkFromUrl(link));
-		out = uri.get()->GetLink();
-		if (cat && uri.get()->GetKind() == CED2KLink::kFile) {
+		std::unique_ptr<CED2KLink> uri(CED2KLink::CreateLinkFromUrl(link));
+		out = uri->GetLink();
+		if (cat && uri->GetKind() == CED2KLink::kFile) {
 			out += CFormat(wxT(":%d")) % cat;
 		}
 		return true;
@@ -520,7 +515,7 @@ bool CamuleAppCommon::CheckMuleDirectory(const wxString& desc, const CPath& dire
 	} else if (directory.DirExists()) {
 		// Strings are not translated here because translation isn't up yet.
 		msg = CFormat(wxT("Permissions on the %s directory too strict!\n")
-			wxT("aMule cannot proceed. To fix this, you must set read/write/exec\n")
+			wxT("iMule cannot proceed. To fix this, you must set read/write/exec\n")
 			wxT("permissions for the folder '%s'"))
 				% desc % directory;
 	} else if (CPath::MakeDir(directory)) {

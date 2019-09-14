@@ -30,8 +30,8 @@
 #include "../../../amuleIPV4Address.h"
 
 #include <wx/intl.h>
+#include <i2p/CI2PAddress.h>
 
-using std::auto_ptr;
 
 DEFINE_LOCAL_EVENT_TYPE(wxEVT_EC_CONNECTION)
 
@@ -139,14 +139,14 @@ bool CRemoteConnect::ConnectToCore(const wxString &host, int port,
 		// Otherwise we continue in OnConnect.
 		CECLoginPacket login_req(m_client, m_version, m_canZLIB, m_canUTF8numbers, m_canNotify);
 
-		std::auto_ptr<const CECPacket> getSalt(SendRecvPacket(&login_req));
+                std::unique_ptr<const CECPacket> getSalt(SendRecvPacket(&login_req));
 		m_ec_state = EC_REQ_SENT;
 
 		ProcessAuthPacket(getSalt.get());
 
 		CECAuthPacket passwdPacket(m_connectionPassword);
 
-		std::auto_ptr<const CECPacket> reply(SendRecvPacket(&passwdPacket));
+                std::unique_ptr<const CECPacket> reply(SendRecvPacket(&passwdPacket));
 		m_ec_state = EC_PASSWD_SENT;
 
 		return ProcessAuthPacket(reply.get());
@@ -263,7 +263,7 @@ bool CRemoteConnect::ProcessAuthPacket(const CECPacket *reply) {
 			m_ec_state = EC_OK;
 			result = true;
 			if (reply->GetTagByName(EC_TAG_SERVER_VERSION)) {
-				m_server_reply = _("Succeeded! Connection established to aMule ") +
+				m_server_reply = _("Succeeded! Connection established to iMule ") +
 					reply->GetTagByName(EC_TAG_SERVER_VERSION)->GetStringData();
 			} else {
 				m_server_reply = _("Succeeded! Connection established.");
@@ -299,10 +299,29 @@ void CRemoteConnect::StopKad() {
 	SendPacket(&req);
 }
 
-void CRemoteConnect::ConnectED2K(uint32 ip, uint16 port) {
+void CRemoteConnect::StartNetwork()
+{
+        CECPacket req(EC_OP_START_NETWORK);
+        SendPacket(&req);
+}
+
+void CRemoteConnect::StopNetwork()
+{
+        CECPacket req(EC_OP_STOP_NETWORK);
+        SendPacket(&req);
+}
+
+void CRemoteConnect::RestartNetworkIfStarted()
+{
+        CECPacket req(EC_OP_RESTART_NETWORK_IF_STARTED);
+        SendPacket(&req);
+}
+
+void CRemoteConnect::ConnectED2K(CI2PAddress dest)
+{
 	CECPacket req(EC_OP_SERVER_CONNECT);
-	if (ip && port) {
-		req.AddTag(CECTag(EC_TAG_SERVER, EC_IPv4_t(ip, port)));
+        if (dest.isValid()) {
+                req.AddTag(CECTag(EC_TAG_SERVER, dest));
 	}
 	SendPacket(&req);
 }
@@ -312,10 +331,11 @@ void CRemoteConnect::DisconnectED2K() {
 	SendPacket(&req);
 }
 
-void CRemoteConnect::RemoveServer(uint32 ip, uint16 port) {
+void CRemoteConnect::RemoveServer(CI2PAddress dest)
+{
 	CECPacket req(EC_OP_SERVER_REMOVE);
-	if (ip && port) {
-		req.AddTag(CECTag(EC_TAG_SERVER, EC_IPv4_t(ip, port)));
+        if (dest.isValid()) {
+                req.AddTag(CECTag(EC_TAG_SERVER, dest));
 	}
 	SendPacket(&req);
 }

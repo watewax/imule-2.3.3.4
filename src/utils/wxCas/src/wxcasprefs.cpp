@@ -48,7 +48,7 @@ WxCasPrefs::WxCasPrefs ( wxWindow * parent ) : wxDialog ( parent, -1,
 
 	// OS Path
 	m_osPathSBox =
-	    new wxStaticBox ( this, -1, _( "Directory containing amulesig.dat file" ) );
+                new wxStaticBox ( this, -1, _( "Directory containing imulesig.dat file" ) );
 	m_osPathSBoxSizer = new wxStaticBoxSizer ( m_osPathSBox, wxHORIZONTAL );
 
 	m_osPathTextCtrl = new wxTextCtrl ( this, -1, wxEmptyString );
@@ -68,7 +68,7 @@ WxCasPrefs::WxCasPrefs ( wxWindow * parent ) : wxDialog ( parent, -1,
 	m_osPathTextCtrl->SetValue ( str );
 	m_osPathTextCtrl->
 	SetToolTip ( _
-	             ( "Enter here the directory where your amulesig.dat file is" ) );
+	             ( "Enter here the directory where your imulesig.dat file is" ) );
 
 	m_osPathSBoxSizer->Add ( m_osPathTextCtrl, 1, wxALL | wxALIGN_CENTER, 5 );
 	m_osPathSBoxSizer->Add ( m_osPathBrowseButton, 0, wxALL | wxALIGN_CENTER, 5 );

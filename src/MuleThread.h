@@ -25,8 +25,15 @@
 #ifndef MULETHREAD_H
 #define MULETHREAD_H
 
-#include <wx/thread.h>
+#include "config.h"
 
+#ifdef IMULE_USE_THREADS
+
+#include <wx/thread.h>
+#define wiThread wxThread
+#define wiMutex  wxMutex
+#define wiCondition wxCondition
+#define wiThreadError wxTheadError
 
 class CMuleThread : public wxThread
 {
@@ -69,5 +76,93 @@ private:
 	//! Is set if Stop is called.
 	bool	m_stop;
 };
+
+/**
+ * Automatically unlocks a mutex on construction and locks it on destruction.
+ *
+ * This class is the complement of wxMutexLocker.  It is intended to be used
+ * when a mutex, which is locked for a period of time, needs to be
+ * temporarily unlocked for a bit.  For example:
+ *
+ *      wxMutexLocker lock(mutex);
+ *
+ *      // ... do stuff that requires that the mutex is locked ...
+ *
+ *      {
+ *              CMutexUnlocker unlocker(mutex);
+ *              // ... do stuff that requires that the mutex is unlocked ...
+ *      }
+ *
+ *      // ... do more stuff that requires that the mutex is locked ...
+ *
+ */
+class CMutexUnlocker
+{
+public:
+        // unlock the mutex in the ctor
+        CMutexUnlocker(wxMutex& mutex)
+        : m_isOk(false), m_mutex(mutex)
+        { m_isOk = ( m_mutex.Unlock() == wxMUTEX_NO_ERROR ); }
+        
+        // returns true if mutex was successfully unlocked in ctor
+        bool IsOk() const
+        { return m_isOk; }
+        
+        // lock the mutex in dtor
+        ~CMutexUnlocker()
+        { if ( IsOk() ) m_mutex.Lock(); }
+        
+private:
+        // no assignment operator nor copy ctor
+        CMutexUnlocker(const CMutexUnlocker&);
+        CMutexUnlocker& operator=(const CMutexUnlocker&);
+        
+        bool     m_isOk;
+        wxMutex& m_mutex;
+};
+
+
+#else //IMULE_USE_THREADS
+
+#define wiMUTEX_RECURSIVE
+#define wiThreadError int
+#define wiTHREAD_NO_ERROR 0
+#define wiTHREAD_NO_RESOURCE 1
+#define wiTHREAD_RUNNING 2
+#define wiTHREAD_NOT_RUNNING 3
+#define wiTHREAD_KILLED 4
+#define wiTHREAD_MISC_ERROR 6
+
+struct wiThread
+{
+        static bool IsMain() { return true; }
+};
+
+struct CMuleThread : wiThread {};
+
+struct wiMutex
+{
+        void Lock() const {}
+        void Unlock() const {}
+};
+
+struct wiMutexLocker
+{
+        wiMutexLocker(const wiMutex &) {}
+};
+
+struct CMutexUnlocker
+{
+        CMutexUnlocker(const wiMutex&){}
+};
+
+struct wiCondition
+{
+        wiCondition(const wiMutex &) {}
+        void Broadcast() const {}
+        void Wait() const {}
+};
+
+#endif //IMULE_USE_THREADS
 
 #endif

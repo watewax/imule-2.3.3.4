@@ -31,6 +31,7 @@
 #include "MD4Hash.h"
 #include "ClientRef.h"		// Needed for CClientRef
 
+#include "i2p/CI2PAddress.h"
 class CFile;
 class CFileDataIO;
 
@@ -44,7 +45,7 @@ public:
 	~CFriend() {};
 
 	CFriend(CClientRef client);
-	CFriend( const CMD4Hash& userhash, uint32 tm_dwLastSeen, uint32 tm_dwLastUsedIP, uint32 tm_nLastUsedPort, uint32 tm_dwLastChatted, const wxString& tm_strName);
+        CFriend( const CMD4Hash& userhash, uint32_t tm_dwLastSeen, const CI2PAddress & tm_nLastUsedTCPDest, uint32_t tm_dwLastChatted, const wxString& tm_strName);
 	CFriend(uint32 ecid) : CECID(ecid)	{ Init(); }
 
 	void	SetUserHash(const CMD4Hash& userhash) { m_UserHash = userhash;}
@@ -60,8 +61,7 @@ public:
 	bool	HasFriendSlot();
 
 	const wxString& GetName() const	{ return m_strName; }
-	uint16 GetPort() const			{ return m_nLastUsedPort; }
-	uint32 GetIP() const			{ return m_dwLastUsedIP; }
+        const CI2PAddress GetTCPDest() const { return m_nLastUsedTCPDest; }
 
 	void	LoadFromFile(CFileDataIO* file);
 	void	WriteToFile(CFileDataIO* file);
@@ -72,8 +72,7 @@ private:
 	CClientRef	m_LinkedClient;
 
 	CMD4Hash	m_UserHash;
-	uint32		m_dwLastUsedIP;
-	uint16		m_nLastUsedPort;
+        CI2PAddress m_nLastUsedTCPDest;
 	wxString	m_strName;
 
 	// write-only info, never used (kept in order not to break the save file)

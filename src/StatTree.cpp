@@ -80,7 +80,7 @@ CStatTreeItemBase* CStatTreeItemBase::AddChild(
 	uint32_t id,
 	bool skipOneLevel)
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 
 	if (skipOneLevel) {
 		child->m_parent = m_parent;
@@ -104,7 +104,7 @@ CStatTreeItemBase* CStatTreeItemBase::AddChild(
 
 bool CStatTreeItemBase::HasVisibleChildren()
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 
 	for (std::list<CStatTreeItemBase*>::const_iterator it = m_children.begin();
 	     it != m_children.end(); ++it) {
@@ -118,7 +118,7 @@ bool CStatTreeItemBase::HasVisibleChildren()
 #ifndef CLIENT_GUI
 bool CStatTreeItemBase::HasChildWithId(uint32_t id)
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 
 	for (std::list<CStatTreeItemBase*>::const_iterator it = m_children.begin();
 	     it != m_children.end(); ++it) {
@@ -131,7 +131,7 @@ bool CStatTreeItemBase::HasChildWithId(uint32_t id)
 
 CStatTreeItemBase* CStatTreeItemBase::GetChildById(uint32_t id)
 {
-	wxMutexLocker lock(m_lock);
+        wiMutexLocker lock(m_lock);
 
 	for (std::list<CStatTreeItemBase*>::const_iterator it = m_children.begin();
 	     it != m_children.end(); ++it) {
@@ -188,7 +188,7 @@ wxString CStatTreeItemBase::GetDisplayString() const
 CECTag *CStatTreeItemBase::CreateECTag(uint32_t max_children)
 {
 	if (IsVisible()) {
-		wxMutexLocker lock(m_lock);
+                wiMutexLocker lock(m_lock);
 		CECTag *tag = new CECTag(EC_TAG_STATTREE_NODE, m_label);
 		tag->AddTag(CECTag(EC_TAG_STATTREE_NODEID, m_uniqueid));
 		AddECValues(tag);

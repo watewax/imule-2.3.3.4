@@ -55,8 +55,8 @@ public:
 
 // There is no need to create mutex/mutex locker classes using ithread.h
 // because wx already has them.
-#define CUPnPMutex wxMutex
-#define CUPnPMutexLocker wxMutexLocker
+#define CUPnPMutex wiMutex
+#define CUPnPMutexLocker wiMutexLocker
 
 
 #endif // UPNPCOMPATIBILITY_H

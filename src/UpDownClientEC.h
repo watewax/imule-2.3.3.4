@@ -81,16 +81,31 @@ public:
 	const wxString&		GetClientFilename() const				{ return m_clientFilename; }
 	const wxString&		GetClientModString() const				{ return m_strModVersion; }
 	const wxString&		GetClientOSInfo() const					{ return m_sClientOSInfo; }
+        wxString	GetClientFullInfo() { return CFormat( wxT("Client %s on Dest: %s using %s %s %s" ) )
+               % ( m_Username.IsEmpty() ? wxString (_("Unknown")) : m_Username )
+               % GetTCPDest().humanReadable()
+               % m_clientSoftString
+               % m_clientVerString
+               % m_strModVersion ; }
+        wxString	GetClientShortInfo() { return CFormat( wxT("'%s' (%s %s %s)") )
+               % ( m_Username.IsEmpty() ? wxString(_("Unknown")) : m_Username )
+               % m_clientSoftString
+               % m_clientVerString
+               % m_strModVersion; }
 	uint8				GetClientSoft() const					{ return m_clientSoft; }
 	const wxString&		GetClientVerString() const				{ return m_fullClientVerString; }
 	uint64				GetDownloadedTotal() const;
 	uint8				GetDownloadState() const				{ return m_nDownloadState; }
 	CFriend*			GetFriend() const						{ return m_Friend; }
 	bool				GetFriendSlot() const					{ return m_bFriendSlot; }
-	wxString			GetFullIP() const						{ return Uint32toStringIP(m_dwUserIP); }
-	uint16				GetKadPort() const						{ return m_nKadPort; }
+	//wxString			GetFullIP() const						{ return Uint32toStringIP(m_dwUserIP); }
+	//uint16				GetKadPort() const						{ return m_nKadPort; }
 	float				GetKBpsDown() const						{ return m_kBpsDown; }
-	uint32				GetIP() const							{ return m_dwUserIP; }
+        float				GetAvgKBpsDown() const 				{ return m_avgkBpsDown; }
+        float				GetAvgKBpsUp() const 				{ return m_avgkBpsUp; }
+        const CI2PAddress &             GetUDPDest() const                                              { return m_nUDPDest; }
+        const CI2PAddress &		GetTCPDest() const				{ return m_nTCPDest; }
+        wxString                        GetFullIP() const                                               { return m_nTCPDest.toString(); }
 	uint16				GetLastDownloadingPart() const			{ return m_lastDownloadingPart; }
 	uint16				GetNextRequestedPart() const			{ return m_nextRequestedPart; }
 	uint8				GetObfuscationStatus() const			{ return m_obfuscationStatus; }
@@ -100,7 +115,7 @@ public:
 	CPartFile*			GetRequestFile() const					{ return m_reqfile; }
 	uint32				GetScore() const						{ return m_score; }
 	double				GetScoreRatio() const;
-	uint32				GetServerIP() const						{ return m_dwServerIP; }
+        const CI2PAddress &		GetServerIP() const						{ return m_dwServerIP; }
 	const wxString		GetServerName() const					{ return m_ServerName; }
 	uint16				GetServerPort() const					{ return m_nServerPort; }
 	const wxString&		GetSoftStr() const						{ return m_clientSoftString; }
@@ -146,9 +161,11 @@ private:
 	uint8		m_nDownloadState;
 	CFriend*	m_Friend;
 	bool		m_bFriendSlot;
-	uint16		m_nKadPort;
+        CI2PAddress	m_nUDPDest;
 	float		m_kBpsDown;
-	uint32		m_dwUserIP;
+        float		m_avgkBpsDown;
+        float		m_avgkBpsUp;
+        CI2PAddress	m_nTCPDest;
 	uint16		m_lastDownloadingPart;
 	uint16		m_nextRequestedPart;
 	uint8		m_obfuscationStatus;
@@ -157,7 +174,7 @@ private:
 	uint16		m_nRemoteQueueRank;
 	CPartFile*	m_reqfile;
 	uint32		m_score;
-	uint32		m_dwServerIP;
+        CI2PAddress	m_dwServerIP;
 	wxString	m_ServerName;
 	uint16		m_nServerPort;
 	wxString	m_clientSoftString;
@@ -171,7 +188,7 @@ private:
 	uint8		m_nUploadState;
 	BitVector	m_upPartStatus;
 	CMD4Hash	m_UserHash;
-	uint32		m_nUserIDHybrid;
+        CI2PAddress	m_nUserIDHybrid;
 	wxString	m_Username;
 	uint16		m_nUserPort;
 	uint32		m_nClientVersion;

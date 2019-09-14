@@ -76,7 +76,7 @@ void CChatWnd::StartSession(CFriend* friend_client, bool setfocus)
 		if (setfocus) {
 			theApp->amuledlg->SetActiveDialog(CamuleDlg::DT_CHAT_WND, this);
 		}
-		chatselector->StartSession(GUI_ID(friend_client->GetIP(), friend_client->GetPort()), friend_client->GetName(), true);
+                chatselector->StartSession(friend_client->GetTCPDest(), friend_client->GetName(), true);
 	}
 
 	// Check to enable the window controls if needed
@@ -180,10 +180,10 @@ void CChatWnd::OnAllPagesClosed(wxNotebookEvent& WXUNUSED(evt))
 void CChatWnd::UpdateFriend(CFriend* toupdate)
 {
 	if (toupdate->GetLinkedClient().IsLinked()) {
-		chatselector->RefreshFriend(GUI_ID(toupdate->GetIP(), toupdate->GetPort()), toupdate->GetName());
+                chatselector->RefreshFriend(GUI_ID(toupdate->GetTCPDest(),0), toupdate->GetName());
 	} else {
 		// drop Chat session
-		chatselector->EndSession(GUI_ID(toupdate->GetIP(), toupdate->GetPort()));
+                chatselector->EndSession(GUI_ID(toupdate->GetTCPDest(),0));
 	}
 	friendlistctrl->UpdateFriend(toupdate);
 }
@@ -191,12 +191,12 @@ void CChatWnd::UpdateFriend(CFriend* toupdate)
 
 void CChatWnd::RemoveFriend(CFriend* todel)
 {
-	chatselector->EndSession(GUI_ID(todel->GetIP(), todel->GetPort()));
+        chatselector->EndSession(GUI_ID(todel->GetTCPDest(),0));
 	friendlistctrl->RemoveFriend(todel);
 }
 
 
-void CChatWnd::ProcessMessage(uint64 sender, const wxString& message)
+void CChatWnd::ProcessMessage(const CI2PAddress & sender, const wxString& message)
 {
 	if ( !theApp->amuledlg->IsDialogVisible(CamuleDlg::DT_CHAT_WND) ) {
 		theApp->amuledlg->SetMessageBlink(true);
@@ -214,7 +214,7 @@ void CChatWnd::ConnectionResult(bool success, const wxString& message, uint64 id
 }
 
 
-void CChatWnd::SendMessage(const wxString& message, const wxString& client_name, uint64 to_id)
+void CChatWnd::SendMessage(const wxString& message, const wxString& client_name, const CI2PAddress & to_id)
 {
 
 	if (chatselector->SendMessage( message, client_name, to_id )) {

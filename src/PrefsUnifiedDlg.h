@@ -120,7 +120,7 @@ protected:
 	void OnToolTipDelayChange(wxSpinEvent& event);
 	void OnScrollBarChange( wxScrollEvent& event );
 	void OnRateLimitChanged( wxSpinEvent& event );
-	void OnTCPClientPortChange(wxSpinEvent& event);
+        void OnTCPClientDestChange(wxCommandEvent& event);
 	void OnUserEventSelected(wxListEvent& event);
 	void OnLanguageChoice(wxCommandEvent &event);
 	void CreateEventPanels(const int idx, const wxString& vars, wxWindow* parent);

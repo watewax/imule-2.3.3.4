@@ -136,7 +136,7 @@ void DecodeClientsMet(const CFileDataIO& file)
 	uint32_t count = file.ReadUInt32();
 	cout << "Count  : " << count << '\n';
 	for (uint32_t i = 0; i < count; i++) {
-		cout << wxString::Format(wxT("#%u\tKey          : "), i) << file.ReadHash();
+		cout << wxString::Format(wxT("#%" PRIu32 "\tKey          : "), i) << file.ReadHash();
 		uint32_t uploaded = file.ReadUInt32();
 		uint32_t downloaded = file.ReadUInt32();
 		cout << "\n\tUploaded     : " << uploaded;
@@ -197,7 +197,7 @@ void DecodeKnownMet(const CFileDataIO& file)
 	uint32_t records = file.ReadUInt32();
 	cout << "Records : " << records << '\n';
 	for (uint32_t i = 0; i < records; i++) {
-		PrintDateFromFile(file, wxString::Format(wxT("#%u\t"), i));
+		PrintDateFromFile(file, wxString::Format(wxT("#%" PRIu32 "\t"), i));
 		PrintHashsetFromFile(file, wxT("\t"));
 		uint32_t tagCount = file.ReadUInt32();
 		cout << "\tTagCount    : " << tagCount << '\n';

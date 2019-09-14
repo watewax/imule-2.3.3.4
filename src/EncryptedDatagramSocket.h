@@ -28,19 +28,24 @@
 
 #include "Proxy.h"
 #include "Types.h"
+#include <i2p/wxI2PDatagramSocket.h>
 
-class CEncryptedDatagramSocket : public CDatagramSocketProxy
+#include <memory>
+
+class CI2PAddress ;
+
+class CEncryptedDatagramSocket : public wxI2PDatagramSocket
 {
 public:
-	CEncryptedDatagramSocket(amuleIPV4Address &address, muleSocketFlags flags = MULE_SOCKET_NONE, const CProxyData *proxyData = NULL);
+        CEncryptedDatagramSocket( wxString address, wxSocketFlags flags = wxSOCKET_NONE);
 	virtual ~CEncryptedDatagramSocket();
 
 // TODO: Make protected once the UDP socket is again its own class.
-	static int DecryptReceivedClient(uint8_t *bufIn, int bufLen, uint8_t **bufOut, uint32_t ip, uint32_t *receiverVerifyKey, uint32_t *senderVerifyKey);
-	static int EncryptSendClient(uint8_t **buf, int bufLen, const uint8_t *clientHashOrKadID, bool kad, uint32_t receiverVerifyKey, uint32_t senderVerifyKey);
+        static int DecryptReceivedClient(uint8_t *bufIn, int bufLen, uint8_t **bufOut, const CI2PAddress &dest, uint32_t *receiverVerifyKey, uint32_t *senderVerifyKey);
+        static int EncryptSendClient(std::unique_ptr<uint8_t[]> & buf, int bufLen, const uint8_t *clientHashOrKadID, bool kad, uint32_t receiverVerifyKey, uint32_t senderVerifyKey);
 
-	static int DecryptReceivedServer(uint8_t* pbyBufIn, int nBufLen, uint8_t** ppbyBufOut, uint32_t dwBaseKey, uint32_t dbgIP);
-	static int EncryptSendServer(uint8_t** ppbyBuf, int nBufLen, uint32_t dwBaseKey);
+        static int DecryptReceivedServer(uint8_t* pbyBufIn, int nBufLen, uint8_t** ppbyBufOut, uint32_t dwBaseKey, const CI2PAddress &dbgIP);
+        static int EncryptSendServer(std::unique_ptr<uint8_t[]> & ppbyBuf, int nBufLen, uint32_t dwBaseKey);
 
 };
 

@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title>aMule control panel</title>
+<title>iMule control panel</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <?php
 	if ( $_SESSION["auto_refresh"] > 0 ) {
@@ -173,14 +173,12 @@ function formCommandSubmit(command)
                         <th colspan="2">Bootstrap from node</th>
                       </tr>
                       <tr> 
-                        <td align="right">IP :</td><td align="left"><input name="ip3" type="text" id="ip32" size="3" maxlength="3"> 
-                          &nbsp; <input name="ip2" type="text" id="ip23" size="3" maxlength="3"> 
-                          &nbsp; <input name="ip1" type="text" id="ip13" size="3" maxlength="3"> 
-                          &nbsp; <input name="ip0" type="text" id="ip03" size="3" maxlength="3"></td>
+                        <td align="right">destination :</td>
+			<td align="left"><input name="bootstrapdest" type="text" size="20" maxlength="516"></td>
                       </tr>
                       <tr> 
-                        <td align="right">Port :</td><td align="left"><input name="port" type="text" id="port3" size="4" maxlength="5"> 
-                          &nbsp; <input type="submit" name="Submit" value="Connect"></td>
+                        <td align="right"></td>
+			<td align="left"><input type="submit" name="Submit" value="Connect"></td>
                       </tr>
                     </table></td>
                 </tr>

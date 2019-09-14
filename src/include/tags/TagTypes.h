@@ -27,6 +27,7 @@
 #define COMMONTAGTYPES_H
 
 enum Tag_Types {
+        TAGTYPE_INVALID     = 0x00,
 	TAGTYPE_HASH16		= 0x01,
 	TAGTYPE_STRING		= 0x02,
 	TAGTYPE_UINT32		= 0x03,
@@ -37,7 +38,6 @@ enum Tag_Types {
 	TAGTYPE_UINT16		= 0x08,
 	TAGTYPE_UINT8		= 0x09,
 	TAGTYPE_BSOB		= 0x0A,
-	TAGTYPE_UINT64		= 0x0B,
 
 	// Compressed string types
 	TAGTYPE_STR1		= 0x11,
@@ -71,9 +71,13 @@ enum Tag_Types {
 	TAGTYPE_STR21,	// accepted by eMule 0.42f (02-Mai-2004) in receiving code
 			// only because of a flaw, those tags are handled correctly,
 			// but should not be handled at all
-	TAGTYPE_STR22	// accepted by eMule 0.42f (02-Mai-2004) in receiving code
+        TAGTYPE_STR22,	// accepted by eMule 0.42f (02-Mai-2004) in receiving code
 			// only because of a flaw, those tags are handled correctly,
 			// but should not be handled at all
+        TAGTYPE_ADDRESS         = 0x27,
+        TAGTYPE_UINT64UINT64    = 0x28,
+        TAGTYPE_UINT64          = 0x29,
 };
+wxString tagtypeStr ( Tag_Types );
 
 #endif // COMMONTAGTYPES_H

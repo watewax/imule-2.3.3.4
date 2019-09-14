@@ -42,9 +42,9 @@ there client on the eMule forum..
 #define __KAD_KADEMLIA_H__
 
 #include <map>
-#include "../utils/UInt128.h"
-#include "../routing/Maps.h"
-#include "../net/KademliaUDPListener.h"
+#include "kademlia/utils/UInt128.h"
+#include "kademlia/routing/Maps.h"
+#include "kademlia/net/KademliaUDPListener.h"
 #include <common/Macros.h>
 
 
@@ -64,38 +64,27 @@ extern const CUInt128 s_nullUInt128;
 class CKademlia
 {
 public:
-	static void Start()		{ Start(new CPrefs); }
+        static void Start();
 	static void Start(CPrefs *prefs);
 	static void Stop();
 
-	static CPrefs *			GetPrefs() throw()		{ if (instance == NULL || instance->m_prefs == NULL) return NULL; else return instance->m_prefs; }
-	static CRoutingZone *		GetRoutingZone()		{ wxCHECK(instance && instance->m_routingZone, NULL); return instance->m_routingZone; }
-	static CKademliaUDPListener *	GetUDPListener()		{ wxCHECK(instance && instance->m_udpListener, NULL); return instance->m_udpListener; }
-	static CIndexed *		GetIndexed()			{ wxCHECK(instance && instance->m_indexed, NULL); return instance->m_indexed; }
-	static bool			IsRunning() throw()		{ return m_running; }
-	static bool			IsConnected() throw()		{ return instance && instance->m_prefs ? instance->m_prefs->HasHadContact() : false; }
-	static bool			IsFirewalled()
-		{ return instance && instance->m_prefs ? instance->m_prefs->GetFirewalled() && !IsRunningInLANMode() : true; }
-	static void			RecheckFirewalled();
-	static uint32_t			GetKademliaUsers(bool newMethod = false)
-		{ return instance && instance->m_prefs ? (newMethod ? CalculateKadUsersNew() : instance->m_prefs->GetKademliaUsers()) : 0; }
-	static uint32_t			GetKademliaFiles() throw()	{ return instance && instance->m_prefs ? instance->m_prefs->GetKademliaFiles() : 0; }
-	static uint32_t			GetTotalStoreKey() throw()	{ return instance && instance->m_prefs ? instance->m_prefs->GetTotalStoreKey() : 0; }
-	static uint32_t			GetTotalStoreSrc() throw()	{ return instance && instance->m_prefs ? instance->m_prefs->GetTotalStoreSrc() : 0; }
-	static uint32_t			GetTotalStoreNotes() throw()	{ return instance && instance->m_prefs ? instance->m_prefs->GetTotalStoreNotes() : 0; }
-	static uint32_t			GetTotalFile() throw()		{ return instance && instance->m_prefs ? instance->m_prefs->GetTotalFile() : 0; }
-	static bool			GetPublish() throw()		{ return instance && instance->m_prefs ? instance->m_prefs->GetPublish() : false; }
-	static uint32_t			GetIPAddress() throw()		{ return instance && instance->m_prefs ? instance->m_prefs->GetIPAddress() : 0; }
-	static const CUInt128&		GetKadID() throw()		{ return instance && instance->m_prefs ? instance->m_prefs->GetKadID() : s_nullUInt128; }
-
-	static void Bootstrap(uint32_t ip, uint16_t port)
-	{
-		time_t now = time(NULL);
-		if (instance && instance->m_udpListener && !IsConnected() && now - m_bootstrap > 10) {
-			m_bootstrap = now;
-			instance->m_udpListener->Bootstrap(ip, port);
-		}
-	}
+        static CPrefs               *GetPrefs();
+        static CRoutingZone         *GetRoutingZone();
+        static CKademliaUDPListener *GetUDPListener();
+        static CIndexed             *GetIndexed();
+        static bool                 IsRunning() {return m_running;}
+        static bool                 IsConnected();
+        static bool                 IsFirewalled() { return false; }
+        static uint32_t             GetKademliaUsers();
+        static uint32_t             GetKademliaFiles();
+        static uint32_t             GetTotalStoreKey();
+        static uint32_t             GetTotalStoreSrc();
+        static uint32_t             GetTotalStoreNotes();
+        static uint32_t             GetTotalFile();
+        static bool                 GetPublish();
+        static CI2PAddress          GetIPAddress();
+        static void                 Bootstrap(const CI2PAddress & dest);
+        static void                 ProcessPacket(const uint8_t* data, uint32_t lenData, const CI2PAddress & dest, bool validReceiverKey, const CKadUDPKey& senderKey);
 
 	static void ProcessPacket(const uint8_t* data, uint32_t lenData, uint32_t ip, uint16_t port, bool validReceiverKey, const CKadUDPKey& senderKey);
 
@@ -103,7 +92,7 @@ public:
 	static void RemoveEvent(CRoutingZone *zone)			{ m_events.erase(zone); }
 	static void Process();
 	static void StatsAddClosestDistance(const CUInt128& distance);
-//	static bool FindNodeIDByIP(CKadClientSearcher& requester, uint32_t ip, uint16_t tcpPort, uint16_t udpPort);
+        static bool FindNodeIDByIP(CKadClientSearcher& requester, uint32_t tcphash, const CI2PAddress & udpdest);
 	static bool FindIPByNodeID(CKadClientSearcher& requester, const uint8_t *nodeID);
 	static void CancelClientSearch(CKadClientSearcher& fromRequester);
 	static bool IsRunningInLANMode();
@@ -112,6 +101,7 @@ public:
 
 private:
 	CKademlia() {}
+        ~CKademlia();
 
 	static uint32_t	CalculateKadUsersNew();
 

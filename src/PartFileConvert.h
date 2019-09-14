@@ -33,7 +33,8 @@
 
 #include "Constants.h"
 #include "Types.h"
-#include <common/Path.h>
+#include "common/Path.h"
+#include <wx/event.h>
 
 struct ConvertJob;
 
@@ -53,9 +54,9 @@ struct ConvertInfo {
 
 #ifdef PARTFILECONVERT_H
 
-#include <wx/thread.h>
+#include "common/coroutine.h"
 
-class CPartFileConvert : private wxThread
+class CPartFileConvert : public wxEvtHandler
 {
 public:
 	static int	ScanFolderToAdd(const CPath& folder, bool deletesource = false);
@@ -68,15 +69,18 @@ public:
 	static void	ReaddAllJobs();
 
 private:
-	CPartFileConvert() : wxThread(wxTHREAD_DETACHED) {}
-
 	static ConvStatus	performConvertToeMule(const CPath& file);
-	virtual ExitCode	Entry();
+        void             Run(wxIdleEvent &);
 
-	static wxMutex			s_mutex;
-	static wxThread*		s_convertPfThread;
 	static std::list<ConvertJob*>	s_jobs;
 	static ConvertJob*		s_pfconverting;
+        static CPartFileConvert *       s_instance;
+        
+        struct RunCtx {
+                int imported;
+                ConvStatus convertResult;
+                cr_context(RunCtx);
+        } run;        
 };
 
 #endif

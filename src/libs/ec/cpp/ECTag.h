@@ -51,6 +51,7 @@ using Kademlia::CUInt128;
 #include "ECTagTypes.h"	// Needed for TagTypes
 
 
+class CI2PAddress;
 class CECSocket;
 class CValueMap;
 
@@ -100,26 +101,27 @@ class EC_IPv4_t {
 
 class CECTag {
 	public:
-		CECTag(ec_tagname_t name, unsigned int length, const void *data);
-		// tag for custom data: just init object, alloc buffer and return pointer
-		CECTag(ec_tagname_t name, unsigned int length, void **dataptr);
-		// Routines for special data types.
-		CECTag(ec_tagname_t name, bool data);
-		CECTag(ec_tagname_t name, uint8_t data);
-		CECTag(ec_tagname_t name, uint16_t data);
-		CECTag(ec_tagname_t name, uint32_t data);
-		CECTag(ec_tagname_t name, uint64_t data);
-		CECTag(ec_tagname_t name, double data);
-		CECTag(ec_tagname_t name, const std::string& data);
-		CECTag(ec_tagname_t name, const EC_IPv4_t& data);
-		CECTag(ec_tagname_t name, const CMD4Hash& data);
-		CECTag(ec_tagname_t name, const CUInt128& data);
+        CECTag(ECTagNames name, unsigned int length, const void *data);
+	// tag for custom data: just init object, alloc buffer and return pointer
+        CECTag(ECTagNames name, unsigned int length, void **dataptr);
+	// Routines for special data types.
+	CECTag(ECTagNames name, bool data);
+	CECTag(ECTagNames name, uint8_t data);
+	CECTag(ECTagNames name, uint16_t data);
+	CECTag(ECTagNames name, uint32_t data);
+	CECTag(ECTagNames name, uint64_t data);
+	CECTag(ECTagNames name, double data);
+	CECTag(ECTagNames name, const std::string& data);
+	CECTag(ECTagNames name, const EC_IPv4_t& data);
+	CECTag(ECTagNames name, const CMD4Hash& data);
+	CECTag(ec_tagname_t name, const CUInt128& data);
 		#ifdef USE_WX_EXTENSIONS
-		CECTag(ec_tagname_t name, const wxString& data);
-		CECTag(ec_tagname_t name, const wxChar* data);
+        CECTag(ECTagNames name, const wxString& data);
+        CECTag(ECTagNames name, const wxChar* data);
 		#endif
-		CECTag(ec_tagname_t name, const char* data) { ConstructStringTag(name, data); }
+        CECTag(ECTagNames name, const char* data) { ConstructStringTag(name, data); }
 		CECTag();
+        CECTag(ECTagNames name, const CI2PAddress& data);
 		CECTag(const CECTag& tag);
 		~CECTag(void);
 
@@ -127,18 +129,19 @@ class CECTag {
 		bool		operator==(const CECTag& tag) const;
 		bool		operator!=(const CECTag& tag) const	{ return !(*this == tag); }
 		bool		AddTag(const CECTag& tag, CValueMap* valuemap = NULL);
-		void		AddTag(ec_tagname_t name, uint64_t data, CValueMap* valuemap = NULL);
-		void		AddTag(ec_tagname_t name, const CMD4Hash& data, CValueMap* valuemap);
-		void		AddTag(ec_tagname_t name, const CUInt128& data, CValueMap* valuemap);
+		void		AddTag(ECTagNames name, uint64_t data, CValueMap* valuemap = NULL);
+		void            AddTag(ECTagNames name, const CMD4Hash& data, CValueMap* valuemap);
+		void            AddTag(ECTagNames name, const CI2PAddress& data, CValueMap* valuemap);
+		void		AddTag(ECTagNames name, const CUInt128& data, CValueMap* valuemap);
 		#ifdef USE_WX_EXTENSIONS
-		void		AddTag(ec_tagname_t name, const wxString& data, CValueMap* valuemap = NULL);
+        void		AddTag(ECTagNames name, const wxString& data, CValueMap* valuemap = NULL);
 		#endif
 
 		const CECTag*	GetFirstTagSafe() const { return m_tagList.empty() ? &s_theNullTag : & *m_tagList.begin(); }
 
-		const CECTag*	GetTagByName(ec_tagname_t name) const;
-		CECTag*			GetTagByName(ec_tagname_t name);
-		const CECTag*	GetTagByNameSafe(ec_tagname_t name) const;
+        const CECTag*	GetTagByName(ECTagNames name) const;
+        CECTag*			GetTagByName(ECTagNames name);
+        const CECTag*	GetTagByNameSafe(ECTagNames name) const;
 
 		size_t			GetTagCount() const { return m_tagList.size(); }
 		bool			HasChildTags() const { return !m_tagList.empty(); }
@@ -146,9 +149,9 @@ class CECTag {
 			EC_ASSERT(m_dataType == EC_TAGTYPE_CUSTOM);
 			return m_tagData;
 		}
-		uint16_t		GetTagDataLen() const { return m_dataLen; }
+        uint16_t		GetTagDataLen() const { return (uint16_t) m_dataLen; }
 		uint32_t		GetTagLen() const;
-		ec_tagname_t		GetTagName() const { return m_tagName; }
+        ECTagNames	GetTagName() const { return m_tagName; }
 
 		// Retrieving special data types
 		uint64_t		GetInt() const;
@@ -164,45 +167,47 @@ class CECTag {
 
 		EC_IPv4_t	GetIPv4Data() const;
 		CMD4Hash	GetMD4Data() const;
+		CI2PAddress     GetAddressData() const;
 		CUInt128	GetInt128Data() const;
-
 		void		DebugPrint(int level, bool print_empty) const;
 		void		swap(CECTag & t);
 
 		// If tag exists, return its value and store it in target (if target != NULL)
 		// Else return safe value and don't touch target
 		// Allows for one function for old and new style.
-		bool		AssignIfExist(ec_tagname_t tagname, bool *target) const;
-		uint8_t		AssignIfExist(ec_tagname_t tagname, uint8_t *target) const;
-		uint16_t	AssignIfExist(ec_tagname_t tagname, uint16_t *target) const;
-		uint32_t	AssignIfExist(ec_tagname_t tagname, uint32_t *target) const;
-		uint64_t	AssignIfExist(ec_tagname_t tagname, uint64_t *target) const;
-		time_t		AssignIfExist(ec_tagname_t tagname, time_t *target) const;
-		double		AssignIfExist(ec_tagname_t tagname, double *target) const;
-		float		AssignIfExist(ec_tagname_t tagname, float *target) const;
-		CMD4Hash	AssignIfExist(ec_tagname_t tagname, CMD4Hash *target) const;
-		CUInt128	AssignIfExist(ec_tagname_t tagname, CUInt128 *target) const;
-		std::string	AssignIfExist(ec_tagname_t tagname, std::string *target) const;
+        bool		AssignIfExist(ECTagNames tagname, bool *target) const;
+        uint8_t		AssignIfExist(ECTagNames tagname, uint8_t *target) const;
+        uint16_t	AssignIfExist(ECTagNames tagname, uint16_t *target) const;
+        uint32_t	AssignIfExist(ECTagNames tagname, uint32_t *target) const;
+        uint64_t	AssignIfExist(ECTagNames tagname, uint64_t *target) const;
+        time_t		AssignIfExist(ECTagNames tagname, time_t *target) const;
+        double		AssignIfExist(ECTagNames tagname, double *target) const;
+        float		AssignIfExist(ECTagNames tagname, float *target) const;
+        CMD4Hash	AssignIfExist(ECTagNames tagname, CMD4Hash *target) const;
+        std::string	AssignIfExist(ECTagNames tagname, std::string *target) const;
+	UInt128	AssignIfExist(ECTagNames tagname, CUInt128 *target) const;
 		#ifdef USE_WX_EXTENSIONS
-		wxString	AssignIfExist(ec_tagname_t tagname, wxString *target) const;
+        wxString	AssignIfExist(ECTagNames tagname, wxString *target) const;
 		#endif
+        CI2PAddress	AssignIfExist(ECTagNames tagname, CI2PAddress *target) const;
 
 		// If tag exists, return true and store it in target
 		// Else return false and don't touch target
-		bool		AssignIfExist(ec_tagname_t tagname, bool &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, uint8_t &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, uint16_t &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, uint32_t &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, uint64_t &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, time_t &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, double &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, float &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, CMD4Hash &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, CUInt128 &target) const;
-		bool		AssignIfExist(ec_tagname_t tagname, std::string &target) const;
+        bool		AssignIfExist(ECTagNames tagname, bool &target) const;
+        bool		AssignIfExist(ECTagNames tagname, uint8_t &target) const;
+        bool		AssignIfExist(ECTagNames tagname, uint16_t &target) const;
+        bool		AssignIfExist(ECTagNames tagname, uint32_t &target) const;
+        bool		AssignIfExist(ECTagNames tagname, uint64_t &target) const;
+        bool		AssignIfExist(ECTagNames tagname, time_t &target) const;
+        bool		AssignIfExist(ECTagNames tagname, double &target) const;
+        bool		AssignIfExist(ECTagNames tagname, float &target) const;
+        bool		AssignIfExist(ECTagNames tagname, CMD4Hash &target) const;
+        bool		AssignIfExist(ECTagNames tagname, std::string &target) const;
+	bool		AssignIfExist(ECTagNames tagname, CUInt128 &target) const;
 		#ifdef USE_WX_EXTENSIONS
 		bool		AssignIfExist(ec_tagname_t tagname, wxString &target) const;
 		#endif
+        bool		AssignIfExist(ECTagNames tagname, CI2PAddress &target) const;
 
 	protected:
 
@@ -217,7 +222,8 @@ class CECTag {
 		// To init. the automatic int data
 		void InitInt(uint64_t data);
 
-		ec_tagname_t	m_tagName;
+		//ec_tagname_t	m_tagName; //changed in imule
+        	ECTagNames	m_tagName;
 		ec_tagtype_t	m_dataType;
 		ec_taglen_t		m_dataLen;
 		char *			m_tagData;
@@ -229,7 +235,7 @@ class CECTag {
 		static const CECTag s_theNullTag;
 
 		// To be used by the string constructors.
-		void ConstructStringTag(ec_tagname_t name, const std::string& data);
+        	void ConstructStringTag(ECTagNames name, const std::string& data);
 
 	public:
 		// Iteration through child tags
@@ -247,7 +253,7 @@ class CECTag {
  */
 class CECEmptyTag : public CECTag {
 	public:
-		CECEmptyTag(ec_tagname_t name = 0) : CECTag(name, 0, (const void *) NULL) {}
+        CECEmptyTag(ECTagNames name = EC_TAG_STRING) : CECTag(name, 0, (const void *) NULL) {}
 };
 
 /**
@@ -260,7 +266,7 @@ class CECEmptyTag : public CECTag {
  */
 class CECIntTag : public CECTag {
 	public:
-		CECIntTag(ec_tagname_t name, uint64 data) : CECTag(name, data) {}
+        CECIntTag(ECTagNames name, uint64 data) : CECTag(name, data) {}
 };
 
 #endif /* ECTAG_H */

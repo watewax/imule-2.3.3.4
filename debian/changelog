@@ -1,442 +1,179 @@
-amule (2.3.2+git-20190521) stable; urgency=low
-
-  * git-rev: 6080da6 + 1
-  * changed build-deps for compatibility with Ubuntu Disco
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Thu, 21 May 2019 12:49:18 +0200
-
-amule (2.3.2+git-20190519) stable; urgency=low
-
-  * git-rev: f8520e7 + 1
-  * added papirus skin
-  * corrected stamp-file name of plasmamule
-  * removed useless amule.post[inst|rm]
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Sun, 19 May 2019 14:49:18 +0200
- 
-amule (2.3.2+git-20190423) stable; urgency=low
-
-  * git-rev: 20afd75
-  * d/amule-cas.README.Debian: switched spelling of cas to avoid word repeat
-  * d/amule-common.docs: removed docs/changelog to avoid double install
-  * d/amule-i18n-uk.install: added locale, package was empty
-  * d/amule-plasmamule.lintian-overrides: desktop-entry is now known
-  * d/amule-xas.install: use multiarch format
-  * d/amule-xas.lintian-overrides: use multiarch format
-  * d/clean:
-    + switched to use reflect new dbgsym-packages
-    + removed stage1 und stage2 stamps
-  * d/compat: switched to dh 10
-  * d/control:
-    + adjusted build-deps for stable
-    + changed description of amule-package to satisfy lintian
-    + changed description of amule-theme-default-package to satisfy lintian
-    + changed description of amuleweb-package to satisfy lintian
-    + changed description of amule-remote-gui-package to satisfy lintian
-    + changed description of amule-daemon-package to satisfy lintian
-    + changed description of amule-alc-package to satisfy lintian
-    + changed description of amule-alcc-package to satisfy lintian
-    + removed *-dbg as they are not needed for dbgsym-packages
-  * d/rules:
-    + switched to build dbgsym-packages
-    + avoid installing the changelog twice in amule-common-package
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Tue, 23 Apr 2019 21:31:11 +0200
-
-amule (2.3.1+svn-10712) testing; urgency=low
-
-  * Added Chinese (Traditional) manpages
-
- -- Dévai Tamás (gonosztopi) <gonosztopi@amule.org>  Thu, 29 Dec 2011 21:20:09 +0000
-
-amule (2.3.1+svn-10696) testing; urgency=low
-
-  * Fixed amule-plasmamule.install for buildd-env
-  * Set Build-Dep to libreadline-dev
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Tue, 15 Dec 2011 01:31:11 +0100
-
-amule (2.3.1) testing; urgency=low
-
-  * New Upstream Release
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Fri, 11 Nov 2011 11:11:11 +0100
-
-amule (2.3.0~rc2+svn-10603) testing; urgency=low
-
-  * Removed amule-ed2k.docs
-  * Switched to debhelper 8
-  * Resorted all files alphabetically
-  * Switched to 3.0 (quilt) source-format
-  * Updated build-deps to dh-8 and wx 2.8.12 minimum
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Thu, 01 Sep 2011 15:34:28 +0200
-
-amule (2.3.0~rc2+svn-10600) testing; urgency=low
-
-  * New upstream release candidate
-  * Removed amule-i18n-ro package
-  * Synced manpages to upstream
-
- -- Dévai Tamás (gonosztopi) <gonosztopi@amule.org>  Sun, 14 Aug 2011 20:56:11 +0000
-
-amule (2.2.6+svn-10406) testing; urgency=low
-
-  * Bumped Standards Version to 3.9.1
-  * Explicitly refer to source format 1.0
-  * debian/control
-    + Corrected spelling-error in description of amule-common
-    + Removed ${shlibs:Depends} in debian/control from:
-      - amule-common
-      - amule-dbg
-      - amule-ed2k-dbg
-      - amule-cas-dbg
-      - amule-wxcas-dbg
-      - amuleweb-dbg
-      - amule-remote-gui-dbg
-      - amule-daemon-dbg
-      - amule-alc-dbg
-      - amule-alcc-dbg
-      - amule-cmd-dbg
-      - amule-utils
-    + Removed ${perl:Depends} in debian/control from amule-ed2k
-    + Explicitly mark amule-utils and amule-utils-gui as meta-package
-    + Added autoconf to Build-Deps
-    + Added Homepage field
-  * Added amule-i18n-ro package
-  * Added amule-plasmamule and amule-plasmamule-dbg packages
-  * debian/rules
-    + Added dh_installmime call for amule-plasmamule
-  * Readded
-    + amule-i18n-ast
-    + amule-i18n-cs
-    + amule-i18n-el
-    + amule-i18n-he
-    + amule-i18n-ja
-    + amule-i18n-sq
-    + amule-i18n-uk
-    + amule.lintian-overrides
-    + amule-skin-mac-gray
-    + amule-skin-priscilla
-    + amule-xas.lintian-overrides
-  * Removed amule.README.Debian
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Wed, 15 Dec 2010 06:25:28 +0100
-
-amule (2.2.6+svn-9854) testing; urgency=low
-
-  * Changed Naming Convention to represent the revision
-  * debian/control
-    - Versioned Build-Dep on libwxgtk2.8-dev to use minimum 2.8.8
-    - Bumped Standardsversion to 3.8.3
-    - Moved i18n-packages to Section localisation
-    - Set right Conflicts/Replaces for
-      + amule-wxcas
-      + amule-alc
-      + amule-remote-gui
-      + amule-ed2k
-      + amulecmd
-      + Added ${misc:Depends} to packages deps
-      + Bumped versioned build-dep of debhelper to >= 7
-      + Moved -dbg packages to section debug
-  * debian/amule-common.install
-    - Changed old aMule-CVS dir for docs to amule
-  * debian/rules
-    - Changed --with-ccache to --enable-ccache
-    - Re-enabled install of xas
-    - Removed the if's to install lintian overrides, use dh_lintian instead
-    - Added DEB_BUILD_OPTIONS_PARALLEL=3 for parallel building
-  * debian/clean
-    - removed compile
-  * Removed amule-ed2k.preinst
-  * Added Package
-    - amule-i18n-ast
-    - amule-i18n-cs
-    - amule-i18n-el
-    - amule-i18n-he
-    - amule-i18n-ja
-    - amule-i18n-sq
-    - amule-i18n-uk
-    - amule-skin-mac-gray
-    - amule-skin-priscilla
-  * Moved amule.override to amule.lintian-overrides
-  * Moved amule-xas.override to amule-xas.lintian-overrides
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Thu, 05 Nov 2009 11:51:28 +0200
-
-amule (2.2.6) testing; urgency=low
-
-  * New Upstream Release
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Thu, 17 Sep 2009 12:34:32 +0100
-
-amule (2.2.5) testing; urgency=low
-
-  * New Upstream Release
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Sun, 17 May 2009 11:51:31 +0200
-
-amule (2.2.4) testing; urgency=low
-
-  * New Upstream Release
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Fri, 10 Apr 2009 13:27:01 +0100
-
-amule (2.2.3) testing; urgency=low
-
-  * New Upstream release
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Sun, 28 Dec 2008  16:00:00 +0100
-
-amule (2.2.2+SVN20080930) testing; urgency=low
-
-  * debian/rules
-    + clean target now uses dh_autoclean
-    + clean target now uses dh_prep
-    + Removed stamp-files from clean target
-    + Moved the stripping of -dbg packages to separate define
-    + Removed dh_clean from build target
-    + Removed dh_installdirs from clean target
-    + Use dh_auto_install
-    + Added xas to normal-packages
-    + Use dh_auto-build
-    + Use dh_auto_configure and remove the now unneeded params and vars
-    + Removed dh_clean and dh_installdirs from install target
-    + Removed the unnueeded pkg var
-    + Made the commands use $@
-    + Put language-packages into one generic target
-    + Removed the trap for clean
-    + Removed the setting of gcc-vars, dpkg-buildpackage does this by itself
-    + Moved all -stage1 and -stage2 targets into generic ones
-    + Let the mapping targets use $@
-    + Added check for existing .ovveride file before installing it
-    + Moved package amule-theme-default from general to webserver
-  * debian/compat
-    Use debhelper 7 features
-  * debian/control
-    + Adjusted description of amule-theme-default
-    + Changed Maintainer to satisfy lintian
-    + Added Replaces for older amule-utils for amule-ed2k
-    + Added Replaces for older amule-utils for amule-alcc
-    + Added Replaces for older amule-utils for amule-cas
-    + Added Replaces for older amule-utils for amule-amulecmd
-    + Added Replaces for older amule-utils-gui for amule-wxcas
-    + Added Replaces for older amule-utils-gui for amule-alc
-    + Added Replaces for older amule-utils-gui for amule-remotegui
-  * Added debian/clean
-  * Removed maintainer warning from override files
-  * Deleted now empty file
-    + amule-alcc-dbg.override
-    + amule-alcc.override
-    + amule-alc-dbg.override
-    + amule-alc.override
-    + amule-cas-dbg.override
-    + amule-cas.override
-    + amule-cmd-dbg.override
-    + amule-cmd.override
-    + amule-common.override
-    + amule-daemon-dbg.override
-    + amule-daemon.override
-    + amule-dbg.override
-    + amule-ed2k-dbg.override
-    + amule-ed2k.override
-    + amule-i18n-ar.override
-    + amule-i18n-bg.override
-    + amule-i18n-ca.override
-    + amule-i18n-da.override
-    + amule-i18n-de.override
-    + amule-i18n-en-gb.override
-    + amule-i18n-es.override
-    + amule-i18n-et-ee.override
-    + amule-i18n-eu.override
-    + amule-i18n-fi.override
-    + amule-i18n-fr.override
-    + amule-i18n-gl.override
-    + amule-i18n-hr.override
-    + amule-i18n-hu.override
-    + amule-i18n-it-ch.override
-    + amule-i18n-it.override
-    + amule-i18n-ko-kr.override
-    + amule-i18n-lt.override
-    + amule-i18n-nl.override
-    + amule-i18n-nn.override
-    + amule-i18n-pl.override
-    + amule-i18n-pt-br.override
-    + amule-i18n-pt-pt.override
-    + amule-i18n-ru.override
-    + amule-i18n-sl.override
-    + amule-i18n-sv.override
-    + amule-i18n-tr.override
-    + amule-i18n-zh-cn.override
-    + amule-i18n-zh-tw.override
-    + amule-remote-gui-dbg.override
-    + amule-remote-gui.override
-    + amule-skin-gnome.override
-    + amule-skin-kde4.override
-    + amule-skin-tango.override
-    + amule-skin-xfce.override
-    + amule-theme-default.override
-    + amule-utils-gui.override
-    + amule-utils.override
-    + amuleweb-dbg.override
-    + amuleweb.override
-    + amule-wxcas-dbg.override
-    + amule-wxcas.override
-  * Removed ovveride dir from
-    + amule-alcc-dbg.dirs
-    + amule-alcc.dirs
-    + amule-alc-dbg.dirs
-    + amule-alc.dirs
-    + amule-cas-dbg.dirs
-    + amule-cas.dirs
-    + amule-cmd-dbg.dirs
-    + amule-cmd.dirs
-    + amule-common.dirs
-    + amule-daemon-dbg.dirs
-    + amule-daemon.dirs
-    + amule-dbg.dirs
-    + amule-ed2k-dbg.dirs
-    + amule-ed2k.dirs
-    + amule-i18n-ar.dirs
-    + amule-i18n-bg.dirs
-    + amule-i18n-ca.dirs
-    + amule-i18n-da.dirs
-    + amule-i18n-de.dirs
-    + amule-i18n-en-gb.dirs
-    + amule-i18n-es.dirs
-    + amule-i18n-et-ee.dirs
-    + amule-i18n-eu.dirs
-    + amule-i18n-fi.dirs
-    + amule-i18n-fr.dirs
-    + amule-i18n-gl.dirs
-    + amule-i18n-hr.dirs
-    + amule-i18n-hu.dirs
-    + amule-i18n-it-ch.dirs
-    + amule-i18n-it.dirs
-    + amule-i18n-ko-kr.dirs
-    + amule-i18n-lt.dirs
-    + amule-i18n-nl.dirs
-    + amule-i18n-nn.dirs
-    + amule-i18n-pl.dirs
-    + amule-i18n-pt-br.dirs
-    + amule-i18n-pt-pt.dirs
-    + amule-i18n-ru.dirs
-    + amule-i18n-sl.dirs
-    + amule-i18n-sv.dirs
-    + amule-i18n-tr.dirs
-    + amule-i18n-zh-cn.dirs
-    + amule-i18n-zh-tw.dirs
-    + amule-remote-gui-dbg.dirs
-    + amule-remote-gui.dirs
-    + amule-skin-gnome.dirs
-    + amule-skin-kde4.dirs
-    + amule-skin-tango.dirs
-    + amule-skin-xfce.dirs
-    + amule-theme-default.dirs
-    + amuleweb-dbg.dirs
-    + amuleweb.dirs
-    + amule-wxcas-dbg.dirs
-    + amule-wxcas.dirs
-  * Removed Package amule-theme-php-default
-  * Removed Package amule-theme-chicane
-
- -- Werner Mahr (Vollstrecker) <amule@vollstreckernet.de>  Tue, 30 Sep 2008  11:46:01 +0100
-
-amule (2.2.2+SVN20080812) testing; urgency=low
-
-  * Corrected Copyright file
-
- -- Vollstrecker <amule@vollstreckernet.de>  Tue, 12 Aug 2008  14:41:01 +0100
-
-amule (2.2.2) testing; urgency=low
-
-  * New Upstream Release
-
- -- Vollstrecker <amule@vollstreckernet.de>  Fri, 08 Aug 2008 16:21:02 +0100
-
-amule (2.2.1+CVS20080802) testing; urgency=low
-
-  * debian/control
-     Moved -dbg packages to section extra
-     Let -dbg packages depend on their binary ones
-     Corrected Spelling of Gnome -> GNOME
-  * debian/rules
-     Add target to call autogen.sh when svn checkout is used
-  * Adjusted menu-section for wxcas
-  * Adjusted menu-section for amule-remote-gui
-  * Adjusted menu-section for alc
-  * Adjusted menu-section for amule
-  * Fixed amule-common: empty-directory usr/share/pixmaps/
-  * Fixed amule-common: empty-directory usr/share/doc/aMule-CVS/
-  * Fixed amule-cas: empty-directory usr/share/pixmap/
-  * Fixed amule-alc-dbg: empty-directory usr/share/applications/
-  * Fixed amule-xas: empty-directory usr/share/doc/xchat-common/scripts-perl/
-
- -- Vollstrecker <amule@vollstreckernet.de>  Sat, 02 Aug 2008  18:15:01 +0200
-
-amule (2.2.1+SVN20080717) testing; urgency=low
-
-  * debian/control
-      Adjusted Build-Deps to use libupnp-dev >> 1.6.6
-      Bumped Standards-Version to 3.8.0.1
-
- -- Vollstrecker <amule@vollstreckernet.de>  Sun, 17 Jun 2008  15:29:01 +0200
-
-amule (2.1.3+SVN20080614) testing; urgency=low
-
-  * Renamed Packages to SVN instead of CVS
-
- -- Vollstrecker <amule@vollstreckernet.de>  Sat, 14 Jun 2008  15:51:02 +0100
-
-amule (2.2.1) testing; urgency=low
-
-  * New Upstream Stable Release
-
- -- Vollstrecker <amule@vollstreckernet.de>  Fri, 12 Jun 2008  19:32:02 +0100
-
-amule (2.1.3+CVS20080609) testing; urgency=low
-
-  * Added dh_clean to clean-target
-  * Made separate build of xas package possible
-  * Removed --enable-systray from configure options
-  * Removed --enable-utf8-systray from configure options
-  * Removed --disable-embedded-crypto from configure options
-
- -- Vollstrecker <amule@vollstreckernet.de>  Mon, 09 Jun 2008  15:29:01 +0200
-
-amule (2.1.3+CVS20080121) testing; urgency=low
-
-  * Added binutils-dev to Build-Deps
-
- -- Vollstrecker <amule@vollstreckernet.de>  Sun, 20 Jan 2008  15:34:01 +0100
-
-amule (2.1.3+CVS20080106) testing; urgency=low
-
-  * debian/control
-      Removed amule-skin-ubuntu
-  * debian/rules
-      Moved i18n-pkgs out of general-pkgs to separate targets
-      Adjusted clean target
-      Removed utils and utils-gui from general-pkgs
-      Adjusted README.Debian-Packages acordingly
-      Enabled use of --with-language= option for configure
-
- -- Vollstrecker <amule@vollstreckernet.de>  Sat, 05 Jan 2008  19:25:01 +0100
-
-amule (2.1.3+CVS20071220) testing; urgency=low
-
-  * amule.menu: Removed old Startupflag
-
- -- Vollstrecker <amule@vollstreckernet.de>  Wed, 19 Dec 2007  18:31:01 +0100
-
-amule (2.1.3+CVS20070922) testing; urgency=low
-
-  * removed amule-i18n-en_us package
-  * removed amule-i18n-es_mx package
-  * added amule-i18n-lt package
-  * added amule-i18n-nn package
-
- -- Vollstrecker <amule@vollstreckernet.de>  Fri, 21 Sep 2007  16:57:01 +0100
+imule (2.3.3.3-1) trusty; urgency=low
+
+  * bugfix: add friend window caused an error message
+  * bugfix: systray icon and minimization was strangely behaving
+  * bugfix: unattended peer kad messages were causing errors
+  * memory leaks chased with valgrind (some remain though)
+  * compilation: configure should fail on missing flex or bison
+  * compilation: missing Makefiles in configure.ac
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 11 Jun 2016 11:50:43 +0000
+
+imule (2.3.3.2-1) trusty; urgency=low
+
+  * bugfix: "add friend" window ok
+  * bugfix: system tray icon and minimize interactions
+  * bugfix: sefgault when opening the systray icon while imule was not connected
+  * configure should now fail with a message when flex or bison are missing
+  * some typos
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 01 May 2016 16:00:46 +0000
+
+imule (2.3.3.1-1) trusty; urgency=medium
+
+  * enhancement: simultanous Kad searches are now possible.
+  * enhancement: default options, download first and last chunk first <-- on, save sources for rare files <-- on
+  * bugfix: Extended parameters (search window) were misread by clients and the searches returned nothing
+  * bugfix: adding IPFilterScanner.cpp to BUILT_SOURCES so that it gets compiled by make
+  * bugfix: Wowa's iaMule fixes applied. See http://www.imule.i2p/trac/ticket/42
+  * bugfix: shared files directory filter was inversed when sending shared files list
+  * bugfix: sending shared files list with non-ascii characters
+  * verbosity: removed message about empty shared directory
+  * code: redondant tags removed from PartFiles saves
+  * code: replacing some event tables (wx2.8 style) with newer event handling (using Bind)
+  * code: replace wxObjectRef by std::shared_ptr in Kademlia::CContact
+  * code: simplication in kad search
+
+ -- MKVore <mkvore@mail.i2p>  Wed, 27 Apr 2016 11:49:53 +0000
+
+imule (2.3.3.0-1) trusty; urgency=medium
+
+  * bugfix: Notebooks causing segfaults when last tab was closed by clicking the icon (CMuleNotebook now based on wxAuiNotebook)
+  * bugfix: sent shared files lists were not readable
+  * implementation change: using wxWidgets 3.0
+  * implementation change: no thread anymore (replaced by coroutines)
+  * implementation change: C++11 required
+  * implementation change: no more CTimer because wxTimer now works even in console applications
+  * implementation change: CScopedPtr, CScopedArray and auto_ptr replaced by unique_ptr (c++11 standard library)
+
+ -- MKVore <mkvore@mail.i2p>  Wed, 20 Apr 2016 10:03:37 +0000
+
+imule (2.3.2.5-1) trusty; urgency=medium
+
+  * cleaning CMuleListCtrl code w.r.t. wxGTK 3.0
+  * enable imulecmd console client for headless server
+  * possible bugfix in SecIdent version 2 (Nachtblitz mail 2014-05-23)
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 05 Mar 2016 22:02:24 +0000
+
+imule (2.3.2.4-1) trusty; urgency=low
+
+  * compiles with wxWidget 3.0
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 27 Feb 2016 13:27:37 +0000
+
+imule (2.3.2.3) UNRELEASED; urgency=low
+
+  * bugfix: Kad now works with non latin characters
+
+ -- MKVore <mkvore@mail.i2p>  Fri, 03 May 2013 11:05:55 +0200
+
+imule (2.3.2.2) precise; urgency=low
+
+  * bugfix: compatibility with i2p routeur v.0.9.4
+  * gui: removed annoying message in imulegui
+
+ -- MKVore <mkvore@mail.i2p>  Tue, 15 Jan 2013 18:29:05 +0100
+
+imule (2.3.2.1) precise; urgency=low
+
+  * bugfix: was not trying to reconnect on error
+  * settings: disable protocol obfuscation by default
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 14 Oct 2012 16:24:08 +0200
+
+imule (2.3.2.0) quantal; urgency=low
+
+  * bugfix: compatibility with v1 clients while uploading
+  * enhancement: rates averaged over session in client detail dialogs
+  * enhancement: number of authorized solts based on max upload rate instead
+      of instantaneous rate
+  * ui: icon and description fixed for windows
+  * ui: 4-digit versions displayed and used to check newer version
+      availability
+
+ -- MKVore <mkvore@mail.i2p>  Mon, 02 Jul 2012 10:14:49 +0200
+
+imule (2.3.1.7) quantal; urgency=low
+
+  * enhancement: kad publishing and searching are more robust
+  * bugfix: incoming download requests are not rejected for bad reasons
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 24 Jun 2012 17:20:55 +0200
+
+imule (2.3.1.6) quantal; urgency=low
+
+  * enhancement: improve publication and search reliability (kad search
+      rewritten from scratch)
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 24 Jun 2012 10:50:13 +0200
+
+imule (2.3.1.5) quantal; urgency=low
+
+  * stability (still aiming at): added gawk, bison and binutils-dev to debian/
+      control
+
+ -- MKVore <mkvore@mail.i2p>  Tue, 19 Jun 2012 08:32:13 +0200
+
+imule (2.3.1.4) quantal; urgency=low
+
+  * stability: tuning compilation flags for debian/ubuntu releases
+  * bugfix: exception catched when reading corrupted statistics.dat file
+
+ -- MKVore <mkvore@mail.i2p>  Mon, 18 Jun 2012 15:41:57 +0200
+
+imule (2.3.1.3) quantal; urgency=low
+
+  *  with imuled and imulegui (separate Daemon and GUI)
+  * reduced ban
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 16 Jun 2012 17:00:02 +0200
+
+imule (2.3.1.2) quantal; urgency=low
+  * advertising for files is faster: 30 files per minute
+  * bugfix (hopefully) : do not ban clients to download from
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 09 Jun 2012 11:43:20 +0200
+
+imule (2.3.1) quantal; urgency=low
+
+  * aligned with aMule 2.3.1
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 03 Jun 2012 22:24:46 +0200
+
+imule (2.0.1) oneiric; urgency=low
+
+  * allow publishing files and keywords more often
+  * bug fixed: could cause a client to publish nothing at all
+
+ -- MKVore <mkvore@mail.i2p>  Mon, 13 Feb 2012 20:24:43 +0100
+
+imule (2.0.0) oneiric; urgency=low
+
+  * utf8 filename handling should be better
+  *  kad takes less bandwidth with other v2 clients
+  *  new option: the number of tunnels can be chosen
+  *  should be considered as a alpha test version 
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 11 Feb 2012 18:53:57 +0100
+
+imule (1.4.7.1) oneiric; urgency=low
+
+  * removed a bug that caused imule to crash when a bad type Kad contact was received
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 22 Jan 2012 18:52:48 +0100
+
+imule (1.4.7) oneiric; urgency=low
+
+  * 
+
+ -- MKVore <mkvore@mail.i2p>  Sun, 15 Jan 2012 15:17:46 +0100
+
+imule (1.4.6-1) unstable; urgency=low
+
+  * Initial release
+
+ -- MKVore <mkvore@mail.i2p>  Sat, 14 Jan 2012 12:20:51 +0100
 
 amule (2.1.3+CVS20070910) testing; urgency=low
 
@@ -618,7 +355,7 @@ amule (2.1.1+CVS20060513-2) testing; urgency=low
   * Moved amule.xpm back to amule-common
   * Fixed typo in description of amule-dbg
   * Removed Version from dep to amule-i18n
-    Thanks to jere for reporting all three
+    Thanks to jere for reposting all three
 
  -- Vollstrecker <amule@vollstreckernet.de>  Sat, 13 May 2006  15:44:40 +0100
 
@@ -677,7 +414,7 @@ amule (2.1.1+CVS20060505-2) testing; urgency=low
   * Renamed package amuled to amule-daemon to be compatible to the official deb
     thanks to Jacobo221 for the hint.
   * Split off all languages to separate pkg's. Thanks to Uwe for initial work.
-  * Cleaned up TODO-Debian
+  * Cleaned up TODO-Debian 
   * Moved complete to dh_install
   * Removed usr/share and usr/share/pixmaps from debian/amule.dirs
   * Moved /usr/share/doc/amule/TODO and /usr/share/doc/amule/TODO to amule-common
@@ -978,7 +715,7 @@ amule (2.0.0rc7+CVS20041031) unstable; urgency=low
 amule (2.0.0rc7+CVS20041030) unstable; urgency=low
 
   * Changed Versionerror for yesterdays Version in Changelog
-  * Added Recommends for amule-utils, amule-cas, amule-wxcas and
+  * Added Recommends for amule-utils, amule-cas, amule-wxcas and 
     amule-xas to amule
 
  -- Vollstrecker <amule@vollstreckernet.de>  Tue,  2 Nov 2004 13:20:45 +0100
@@ -1030,7 +767,7 @@ amule (2.0.0rc7+CVS20041023-1) unstable; urgency=low
 
 amule (2.0.0rc7-1) unstable; urgency=low
 
-  * Initial Release. Based on the work of Julien Delange
+  * Initial Release. Based on the work of Julien Delange 
     <julien@gunnm.org>
 
  -- Vollstrecker <amule@vollstreckernet.de>  Fri,  8 Oct 2004 18:46:26 +0200

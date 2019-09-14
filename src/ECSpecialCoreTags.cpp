@@ -23,6 +23,7 @@
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
 //
 
+#include <vector>
 
 #include <ec/cpp/ECTag.h>		// Needed for CECTag
 #include <ec/cpp/ECSpecialTags.h>	// Needed for special EC tag creator classes
@@ -46,7 +47,7 @@
 
 // used for webserver, amulecmd
 CEC_Server_Tag::CEC_Server_Tag(const CServer *server, EC_DETAIL_LEVEL detail_level) :
-	CECTag(EC_TAG_SERVER, EC_IPv4_t(server->GetIP(), server->GetPort()))
+        CECTag(EC_TAG_SERVER, server->GetDest())
 {
 	wxString tmpStr;
 	uint32 tmpInt;
@@ -109,8 +110,7 @@ CEC_Server_Tag::CEC_Server_Tag(const CServer *server, CValueMap *valuemap) :
 	AddTag(EC_TAG_SERVER_NAME, server->GetListName(), valuemap);
 	AddTag(EC_TAG_SERVER_DESC, server->GetDescription(), valuemap);
 	AddTag(EC_TAG_SERVER_VERSION, server->GetVersion(), valuemap);
-	AddTag(EC_TAG_SERVER_IP, server->GetIP(), valuemap);
-	AddTag(EC_TAG_SERVER_PORT, server->GetPort(), valuemap);
+        AddTag(EC_TAG_SERVER_IP, server->GetDest(), valuemap);
 	AddTag(EC_TAG_SERVER_PING, server->GetPing(), valuemap);
 	AddTag(EC_TAG_SERVER_PRIO, server->GetPreferences(), valuemap);
 	AddTag(EC_TAG_SERVER_FAILED, server->GetFailedCount(), valuemap);
@@ -122,16 +122,20 @@ CEC_Server_Tag::CEC_Server_Tag(const CServer *server, CValueMap *valuemap) :
 
 
 CEC_ConnState_Tag::CEC_ConnState_Tag(EC_DETAIL_LEVEL detail_level) : CECTag(EC_TAG_CONNSTATE,
-	(uint8)(
-			(theApp->IsConnectedED2K() ? 0x01 : 0x00)
+                        (uint8_t)(
+                                (theApp->IsConnectedED2K() ? 			0x01 : 0)
 			|
-			(theApp->serverconnect->IsConnecting() ? 0x02 : 0x00)
+                                (theApp->serverconnect->IsConnecting() ? 	0x02 : 0)
 			|
-			(theApp->IsConnectedKad() ? 0x04 : 0x00)
+                                (theApp->IsConnectedKad() ? 			0x04 : 0)
 			|
-			(Kademlia::CKademlia::IsFirewalled() ? 0x08 : 0x00)
+                                (Kademlia::CKademlia::IsFirewalled() ? 		0x08 : 0)
 			|
-			(Kademlia::CKademlia::IsRunning() ? 0x10 : 0x00)
+                                (Kademlia::CKademlia::IsRunning() ? 		0x10 : 0)
+                                |
+                                (theApp->NetworkStarting() ? 			0x20 : 0)
+                                |
+                                (theApp->NetworkStarted() ? 			0x40 : 0)
 		))
 {
 	if (theApp->IsConnectedED2K()) {
@@ -148,11 +152,10 @@ CEC_ConnState_Tag::CEC_ConnState_Tag(EC_DETAIL_LEVEL detail_level) : CECTag(EC_T
 		AddTag(CECTag(EC_TAG_ED2K_ID, 0xffffffff));
 	}
 
-	AddTag(CECTag(EC_TAG_CLIENT_ID, theApp->GetID()));
-
-	if (Kademlia::CKademlia::IsRunning()) {
-		AddTag(CECTag(EC_TAG_KAD_ID, Kademlia::CKademlia::GetKadID()));
-	}
+        if (theApp->NetworkStarted()) {
+                AddTag(CECTag(EC_TAG_CLIENT_UDPDEST, theApp->GetUdpDest()));
+                AddTag(CECTag(EC_TAG_CLIENT_TCPDEST, theApp->GetTcpDest()));
+        }
 }
 
 CEC_PartFile_Tag::CEC_PartFile_Tag(const CPartFile *file, EC_DETAIL_LEVEL detail_level, CValueMap *valuemap)
@@ -182,7 +185,6 @@ CEC_SharedFile_Tag(file, detail_level, valuemap, EC_TAG_PARTFILE)
 	AddTag(EC_TAG_PARTFILE_LAST_RECV, file->GetLastChangeDatetime(), valuemap);
 	AddTag(EC_TAG_PARTFILE_DOWNLOAD_ACTIVE, file->GetDlActiveTime(), valuemap);
 	AddTag(EC_TAG_PARTFILE_AVAILABLE_PARTS, file->GetAvailablePartCount(), valuemap);
-	AddTag(EC_TAG_PARTFILE_HASHED_PART_COUNT, file->GetHashingProgress(), valuemap);
 
 	AddTag(EC_TAG_PARTFILE_LOST_CORRUPTION, file->GetLostDueToCorruption(), valuemap);
 	AddTag(EC_TAG_PARTFILE_GAINED_COMPRESSION, file->GetGainDueToCompression(), valuemap);
@@ -219,7 +221,7 @@ CEC_SharedFile_Tag(file, detail_level, valuemap, EC_TAG_PARTFILE)
 }
 
 CEC_SharedFile_Tag::CEC_SharedFile_Tag(const CKnownFile *file, EC_DETAIL_LEVEL detail_level,
-									   CValueMap *valuemap, ec_tagname_t name)
+                                       CValueMap *valuemap, ECTagNames name)
 : CECTag(name, file->ECID())
 {
 	AddTag(EC_TAG_KNOWNFILE_REQ_COUNT, file->statistic.GetRequests(), valuemap);
@@ -238,6 +240,7 @@ CEC_SharedFile_Tag::CEC_SharedFile_Tag(const CKnownFile *file, EC_DETAIL_LEVEL d
 	AddTag(EC_TAG_KNOWNFILE_COMPLETE_SOURCES_LOW, file->m_nCompleteSourcesCountLo, valuemap);
 	AddTag(EC_TAG_KNOWNFILE_COMPLETE_SOURCES_HIGH, file->m_nCompleteSourcesCountHi, valuemap);
 	AddTag(EC_TAG_KNOWNFILE_COMPLETE_SOURCES, file->m_nCompleteSourcesCount, valuemap);
+        AddTag(EC_TAG_KNOWNFILE_SOURCES, file->m_nSourcesCount, valuemap);
 
 	AddTag(EC_TAG_KNOWNFILE_ON_QUEUE, file->GetQueuedCount(), valuemap);
 
@@ -271,18 +274,19 @@ CEC_UpDownClient_Tag::CEC_UpDownClient_Tag(const CUpDownClient* client, EC_DETAI
 	AddTag(CECTag(EC_TAG_CLIENT_SCORE, client->GetScore()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_SOFTWARE, client->GetClientSoft()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_SOFT_VER_STR, client->GetSoftVerStr()), valuemap);
-	AddTag(CECTag(EC_TAG_CLIENT_USER_IP, client->GetIP()), valuemap);
+        AddTag(CECTag(EC_TAG_CLIENT_USER_IP, client->GetTCPDest()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_USER_PORT, client->GetUserPort()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_FROM, (uint64)client->GetSourceFrom()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_SERVER_IP, client->GetServerIP()), valuemap);
-	AddTag(CECTag(EC_TAG_CLIENT_SERVER_PORT, client->GetServerPort()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_SERVER_NAME, client->GetServerName()), valuemap);
 
 	// Transfers to Client
 	AddTag(CECTag(EC_TAG_CLIENT_UP_SPEED, client->GetUploadDatarate()), valuemap);
 	if (client->GetDownloadState() == DS_DOWNLOADING || valuemap) {
 		AddTag(CECTag(EC_TAG_CLIENT_DOWN_SPEED, (double)(client->GetKBpsDown())), valuemap);
+                AddTag(CECTag(EC_TAG_CLIENT_AVG_DOWN_SPEED, (double)(client->GetAvgKBpsDown())), valuemap);
 	}
+	AddTag(CECTag(EC_TAG_CLIENT_AVG_UP_SPEED, (double)(client->GetAvgKBpsUp())), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_UPLOAD_SESSION, client->GetSessionUp()), valuemap);
 	AddTag(CECTag(EC_TAG_PARTFILE_SIZE_XFER, client->GetTransferredDown()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_UPLOAD_TOTAL, client->GetUploadedTotal()), valuemap);
@@ -301,7 +305,7 @@ CEC_UpDownClient_Tag::CEC_UpDownClient_Tag(const CUpDownClient* client, EC_DETAI
 	AddTag(CECTag(EC_TAG_CLIENT_REMOTE_QUEUE_RANK, client->IsRemoteQueueFull() ? (uint16)0xffff : client->GetRemoteQueueRank()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_OLD_REMOTE_QUEUE_RANK, client->GetOldRemoteQueueRank()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_OBFUSCATION_STATUS, client->GetObfuscationStatus()), valuemap);
-	AddTag(CECTag(EC_TAG_CLIENT_KAD_PORT, client->GetKadPort()), valuemap);
+        AddTag(CECTag(EC_TAG_CLIENT_KAD_PORT, client->GetUDPDest()), valuemap);
 	AddTag(CECTag(EC_TAG_CLIENT_FRIEND_SLOT, client->GetFriendSlot()), valuemap);
 
 	if (detail_level == EC_DETAIL_UPDATE) {
@@ -375,8 +379,7 @@ CEC_Friend_Tag::CEC_Friend_Tag(const CFriend* Friend, CValueMap* valuemap) : CEC
 {
 	AddTag(EC_TAG_FRIEND_NAME,	Friend->GetName(), valuemap);
 	AddTag(EC_TAG_FRIEND_HASH,	Friend->GetUserHash(), valuemap);
-	AddTag(EC_TAG_FRIEND_IP,	Friend->GetIP(), valuemap);
-	AddTag(EC_TAG_FRIEND_PORT,	Friend->GetPort(), valuemap);
+        AddTag(EC_TAG_FRIEND_IP,	Friend->GetTCPDest(), valuemap);
 	const CClientRef& linkedClient = Friend->GetLinkedClient();
 	AddTag(EC_TAG_FRIEND_CLIENT, linkedClient.IsLinked() ? linkedClient.ECID() : 0, valuemap);
 }

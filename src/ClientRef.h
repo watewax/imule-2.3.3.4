@@ -38,6 +38,7 @@
 #include <set>
 #include "Types.h"
 
+class CI2PAddress;
 class CUpDownClient;
 class CKnownFile;
 class CPartFile;
@@ -119,6 +120,8 @@ public:
 	uint16				GetAvailablePartCount() const;
 	const wxString&		GetClientFilename() const;
 	const wxString&		GetClientModString() const;
+        wxString        GetClientFullInfo() const;
+        wxString        GetClientShortInfo() const;
 	const wxString&		GetClientOSInfo() const;
 	uint8				GetClientSoft() const;
 	const wxString&		GetClientVerString() const;
@@ -127,9 +130,12 @@ public:
 	CFriend*			GetFriend() const;
 	bool				GetFriendSlot() const;
 	wxString			GetFullIP() const;
-	uint16				GetKadPort() const;
+        const CI2PAddress &		GetKadPort() const;
 	float				GetKBpsDown() const;
-	uint32				GetIP() const;
+	float				GetAvgKBpsDown() const;
+	float				GetAvgKBpsUp() const;
+        const CI2PAddress &		GetTCPDest() const;
+        const CI2PAddress &             GetUDPDest() const;
 	uint16				GetLastDownloadingPart() const;
 	uint16				GetNextRequestedPart() const;
 	uint8				GetObfuscationStatus() const;
@@ -139,16 +145,14 @@ public:
 	CPartFile*			GetRequestFile() const;
 	uint32				GetScore() const;
 	double				GetScoreRatio() const;
-	uint32				GetServerIP() const;
+        const CI2PAddress &		GetServerIP() const;
 	const wxString		GetServerName() const;
-	uint16				GetServerPort() const;
 	const wxString&		GetSoftStr() const;
 	const wxString&		GetSoftVerStr() const;
 	int					GetSourceFrom() const;	// ESourceFrom
 	wxString			GetSecureIdentTextStatus() const;
 	uint64				GetTransferredDown() const;
 	uint64				GetTransferredUp() const;
-	uint16				GetUDPPort() const;
 	uint32				GetUploadDatarate() const;
 	uint64				GetUploadedTotal() const;
 	const CKnownFile*	GetUploadFile() const;

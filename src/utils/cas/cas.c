@@ -87,7 +87,7 @@ static struct option long_options[] = {
 
 void usage(char *myname)
 {
-	printf	("   ___    _ _   ___    c aMule statistics\n"
+	printf	("   ___    _ _   ___    c iMule statistics\n"
 			" /'___) /'_` )/',__)   by Pedro de Oliveira\n"
 			"( (___ ( (_| |\\__, \\   <falso@rdk.homeip.net>\n"
 			"`\\____)`\\__,_)(____/   Version %s\n\n"
@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
 
 	/* get amulesig path */
 
-	path = get_amule_path("amulesig.dat", 1, config_path);
+	path = get_amule_path("imulesig.dat", 1, config_path);
 
 	if (path == NULL) {
 		perror("Unable to get aMule settings path\n");
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 
 	/* open the file and if not exists exit with an error */
 	if ((amulesig = fopen(path, "r")) == NULL) {
-		fprintf(stderr, "Unable to open file %s\nCheck if you have amule online signature enabled.\n", path);
+		fprintf(stderr, "Unable to open file %s\nCheck if you have imule online signature enabled.\n", path);
 		exit(2);
 	}
 	/* i believe this shouldnt be here.
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 	fseek (amulesig , 0 , SEEK_END);
 	lSize = ftell (amulesig);
 	if (0 == lSize) {
-		perror("aMule signature file is 0 Byte, exiting.\n");
+		perror("iMule signature file is 0 Byte, exiting.\n");
 		exit(2);
 	}
 	rewind (amulesig);
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 	for (i=1;i<17;i++) {
 		stats[i] = strtok (NULL,"\n");
 		if (NULL == stats[i]) {
-			perror("Too few fields in aMule signature file, exiting.\n");
+			perror("Too few fields in iMule signature file, exiting.\n");
 			exit(2);
 		}
 	}
@@ -281,15 +281,15 @@ int main(int argc, char *argv[])
 
 	// if amule uptime is 0, then its not running...
 	if (strncmp(stats[16],"0",1) == 0 ) {
-		perror("aMule is not running\n");
+		perror("iMule is not running\n");
 		exit(3);
 	}
 
 
 	if (strncmp(stats[0],"2",1) == 0)
-		CreateLine(lines, 0 ,"aMule %s is connecting\n", stats[13]);
+		CreateLine(lines, 0 ,"iMule %s is connecting\n", stats[13]);
 	else
-		CreateLine(lines, 0, "aMule %s has been running for %s\n",
+		CreateLine(lines, 0, "iMule %s has been running for %s\n",
 				stats[13], timeconv(stats[16]));
 
 

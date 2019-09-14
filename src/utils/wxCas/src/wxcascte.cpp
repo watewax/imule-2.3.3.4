@@ -47,9 +47,9 @@
 #include "wxcascte.h"
 
 const wxString
-WxCasCte::AMULESIG_FILENAME ( wxT( "amulesig.dat" ) );
+WxCasCte::AMULESIG_FILENAME ( wxT( "imulesig.dat" ) );
 const wxString
-WxCasCte::AMULESIG_IMG_NAME ( wxT( "aMule-online-sign" ) );
+WxCasCte::AMULESIG_IMG_NAME ( wxT( "iMule-online-sign" ) );
 
 // Refresh rate limits
 const wxUint32
@@ -115,7 +115,7 @@ WxCasCte::DEFAULT_FTP_UPDATE_RATE = 10;
 const wxString
 WxCasCte::DEFAULT_FTP_URL( wxT( "ftp.myftp.cx" ) );
 const wxString
-WxCasCte::DEFAULT_FTP_PATH( wxT( "/pub/myamuledir" ) );
+WxCasCte::DEFAULT_FTP_PATH( wxT( "/pub/myimuledir" ) );
 const wxString
 WxCasCte::DEFAULT_FTP_USER( wxT( "anonymous" ) );
 const wxString
@@ -135,10 +135,10 @@ wxString GetDefaultAmulesigPath()
 		CFRelease(urlRef) ;
 		#if wxCHECK_VERSION(2, 9, 0)
 			strDir = wxCFStringRef(cfString).AsString(wxLocale::GetSystemEncoding())
-			+ wxFileName::GetPathSeparator() + wxT("aMule");
+                         + wxFileName::GetPathSeparator() + wxT("iMule");
 		#else
 			strDir = wxMacCFStringHolder(cfString).AsString(wxLocale::GetSystemEncoding())
-			+ wxFileName::GetPathSeparator() + wxT("aMule");
+                         + wxFileName::GetPathSeparator() + wxT("iMule");
 		#endif
 	}
 
@@ -152,7 +152,7 @@ wxString GetDefaultAmulesigPath()
 		if (!SHGetPathFromIDList(pidl, wxStringBuffer(strDir, MAX_PATH))) {
 			strDir = wxEmptyString;
 		} else {
-			strDir = strDir + wxFileName::GetPathSeparator() + wxT("aMule");
+                        strDir = strDir + wxFileName::GetPathSeparator() + wxT("iMule");
 		}
 	}
 
@@ -167,7 +167,7 @@ wxString GetDefaultAmulesigPath()
 
 #else
 
-	strDir = wxFileName::GetHomeDir() + wxFileName::GetPathSeparator() + wxT(".aMule");
+        strDir = wxFileName::GetHomeDir() + wxFileName::GetPathSeparator() + wxT(".iMule");
 
 #endif
 

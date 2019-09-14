@@ -33,6 +33,14 @@
 #include "MemFile.h"			// Needed for CMemFile
 #include "OtherStructs.h"		// Needed for Header_Struct
 #include "ArchSpecific.h"		// Needed for ENDIAN_*
+#include "i2p/wxI2PDatagramSocket.h"	// Needed for wxI2PDatagramSocket::MaxDatagramSize()
+
+
+const uint32_t & CPacket::UDPPacketMaxDataSize()
+{
+        static const uint32_t l = wxI2PDatagramSocket::MaxDatagramSize() - sizeof(UDP_Header_Struct) ;
+        return l ;
+}
 
 // Copy constructor
 CPacket::CPacket(CPacket &p)
@@ -126,9 +134,9 @@ CPacket::CPacket(int8 in_opcode, uint32 in_size, uint8 protocol, bool bFromPF)
 	memset(head, 0, sizeof head);
 	tempbuffer	= NULL;
 	if (in_size) {
-		completebuffer = new byte[in_size + sizeof(Header_Struct) + 4 /*Why this 4?*/];
+                completebuffer = new byte[in_size + sizeof(Header_Struct)/*+ 4*/ /*Why this 4?*/];
 		pBuffer = completebuffer + sizeof(Header_Struct);
-		memset(completebuffer, 0, in_size + sizeof(Header_Struct) + 4 /*Why this 4?*/);
+                memset(completebuffer, 0, in_size + sizeof(Header_Struct)/* + 4*/ /*Why this 4?*/);
 	} else {
 		completebuffer = NULL;
 		pBuffer = NULL;
@@ -192,7 +200,7 @@ byte* CPacket::GetPacket() {
 			delete [] tempbuffer;
 			tempbuffer = NULL;
 		}
-		tempbuffer = new byte[size + sizeof(Header_Struct) + 4 /* why this 4?*/];
+                tempbuffer = new byte[size+sizeof(Header_Struct)/* + 4*/ /* why this 4?*/];
 		memcpy(tempbuffer    , GetHeader(), sizeof(Header_Struct));
 		memcpy(tempbuffer + sizeof(Header_Struct), pBuffer    , size);
 		return tempbuffer;
@@ -212,7 +220,7 @@ byte* CPacket::DetachPacket() {
 			delete[] tempbuffer;
 			tempbuffer = NULL;
 		}
-		tempbuffer = new byte[size+sizeof(Header_Struct)+4 /* Why this 4?*/];
+                tempbuffer = new byte[size+sizeof(Header_Struct)/*+4*/ /* Why this 4?*/];
 		memcpy(tempbuffer,GetHeader(),sizeof(Header_Struct));
 		memcpy(tempbuffer+sizeof(Header_Struct),pBuffer,size);
 		byte* result = tempbuffer;

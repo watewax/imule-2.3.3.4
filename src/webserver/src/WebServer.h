@@ -153,8 +153,8 @@ class ServerEntry {
 class UploadFile : public CECID {
 	public:
 		wxString  sUserName;
-		uint32 nTransferredUp;
-		uint32 nTransferredDown;
+        uint64 nTransferredUp;
+        uint64 nTransferredDown;
 		uint32 nSpeed;
 		uint32 nUploadFile;		// ECID of shared file uploading to client
 
@@ -278,8 +278,7 @@ class UpdatableItemsContainer : public ItemsContainer<T> {
 		 * Process answer of update request, create list of new items for
 		 * full request later. Also remove items that no longer exist in core
 		 */
-		void ProcessUpdate(const CECPacket *reply, CECPacket *full_req, int req_type)
-		{
+        void ProcessUpdate(const CECPacket *reply, CECPacket *full_req, ECTagNames req_type) {
 			std::set<I> core_files;
 			for (CECPacket::const_iterator it = reply->begin(); it != reply->end(); ++it) {
 				G *tag = (G *) & *it;
@@ -327,8 +326,7 @@ class UpdatableItemsContainer : public ItemsContainer<T> {
 			}
 		}
 
-		bool DoRequery(int cmd, int tag)
-		{
+        bool DoRequery(int cmd, ECTagNames tag) {
 			CECPacket req_sts(cmd, EC_DETAIL_UPDATE);
 
 			//
@@ -766,7 +764,7 @@ class CWebServerBase : public wxEvtHandler {
 		void Send_AddServer_Cmd(wxString addr, wxString port, wxString name);
 
 		void Send_Search_Cmd(wxString search, wxString extention, wxString type,
-			EC_SEARCH_TYPE search_type, uint32 avail, uint32 min_size, uint32 max_size);
+                             EC_SEARCH_TYPE search_type, uint32 avail, uint64 min_size, uint64 max_size);
 
 		bool Send_DownloadEd2k_Cmd(wxString link, uint8 cat);
 

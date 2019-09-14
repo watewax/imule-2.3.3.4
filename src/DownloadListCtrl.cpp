@@ -324,7 +324,7 @@ void CDownloadListCtrl::ShowFile( CPartFile* file, bool show )
 	}
 }
 
-void CDownloadListCtrl::ChangeCategory( int newCategory )
+void CDownloadListCtrl::ChangeCategory( uint8 newCategory )
 {
 	Freeze();
 
@@ -426,7 +426,7 @@ void CDownloadListCtrl::OnCancelFile(wxCommandEvent& WXUNUSED(event))
 
 void CDownloadListCtrl::OnSetPriority( wxCommandEvent& event )
 {
-	int priority = 0;
+        uint8 priority = 0;
 	switch ( event.GetId() ) {
 		case MP_PRIOLOW:	priority = PR_LOW;	break;
 		case MP_PRIONORMAL:	priority = PR_NORMAL;	break;
@@ -481,7 +481,7 @@ void CDownloadListCtrl::OnSetCategory( wxCommandEvent& event )
 	ItemList files = ::GetSelectedItems( this );
 
 	for ( ItemList::iterator it = files.begin(); it != files.end(); ++it ) {
-		CoreNotify_PartFile_SetCat( (*it)->GetFile(), event.GetId() - MP_ASSIGNCAT );
+                CoreNotify_PartFile_SetCat( (*it)->GetFile(), (uint8)(event.GetId() - MP_ASSIGNCAT) );
 		ShowFile((*it)->GetFile(), false);
 	}
 	wxListEvent ev;
@@ -840,7 +840,7 @@ void CDownloadListCtrl::OnDrawItem(
 	// and the border of the drawn area
 	if (highlighted) {
 		CMuleColour colour;
-		if (GetFocus()) {
+                if (HasFocus()) {
 			dc->SetBackground(m_hilightBrush);
 			colour = m_hilightBrush.GetColour();
 		} else {
@@ -860,7 +860,7 @@ void CDownloadListCtrl::OnDrawItem(
 
 	dc->SetPen(*wxTRANSPARENT_PEN);
 
-	if (!highlighted || !GetFocus() ) {
+        if (!highlighted || !HasFocus() ) {
 		// If we have category, override textforeground with what category tells us.
 		CPartFile *file = content->GetFile();
 		if ( file->GetCategory() ) {
@@ -976,8 +976,7 @@ void CDownloadListCtrl::DrawFileItem( wxDC* dc, int nColumn, const wxRect& rect,
 
 				wxMemoryDC cdcStatus;
 
-				if (item->dwUpdated < dwTicks || file->GetHashingProgress() > 0
-						|| !item->status || iWidth != item->status->GetWidth()) {
+                        if ( item->dwUpdated < dwTicks || !item->status || iWidth != item->status->GetWidth() ) {
 					if ( item->status == NULL) {
 						item->status = new wxBitmap(iWidth, iHeight);
 					} else if ( item->status->GetWidth() != iWidth ) {
@@ -1008,13 +1007,11 @@ void CDownloadListCtrl::DrawFileItem( wxDC* dc, int nColumn, const wxRect& rect,
 				dc->Blit( rect.GetX(), rect.GetY() + 1, iWidth, iHeight, &cdcStatus, 0, 0);
 
 				if (thePrefs::ShowPercent()) {
-					// Percentage of completing or hashing
-					uint16	hashingProgress = file->GetHashingProgress();
-					double	percent = hashingProgress == 0 ? file->GetPercentCompleted()
-										: 100.0 * hashingProgress * PARTSIZE / file->GetFileSize();
-					if (percent > 100.0) {
-						percent = 100.0;
-					}
+		                        // Percentage of completing
+		                        // We strip anything below the first decimal point,
+		                        // to avoid Format doing roundings
+		                        float percent = floor( file->GetPercentCompleted() * 10.0f ) / 10.0f;
+
 					wxString buffer = CFormat(wxT("%.1f%%")) % percent;
 					int middlex = (2*rect.GetX() + rect.GetWidth()) >> 1;
 					int middley = (2*rect.GetY() + rect.GetHeight()) >> 1;
@@ -1023,9 +1020,7 @@ void CDownloadListCtrl::DrawFileItem( wxDC* dc, int nColumn, const wxRect& rect,
 
 					dc->GetTextExtent(buffer, &textwidth, &textheight);
 					wxColour AktColor = dc->GetTextForeground();
-					// Ordinary progress bar: white percentage
-					// Hashing progressbar (green/yellow): black percentage
-					if (thePrefs::ShowProgBar() && hashingProgress == 0) {
+                                if (thePrefs::ShowProgBar()) {
 						dc->SetTextForeground(*wxWHITE);
 					} else {
 						dc->SetTextForeground(*wxBLACK);
@@ -1118,7 +1113,7 @@ wxString CDownloadListCtrl::GetTTSText(unsigned item) const
 }
 
 
-int CDownloadListCtrl::SortProc(wxUIntPtr param1, wxUIntPtr param2, long sortData)
+int CDownloadListCtrl::SortProc(wxIntPtr param1, wxIntPtr param2, wxIntPtr sortData)
 {
 	FileCtrlItem_Struct* item1 = reinterpret_cast<FileCtrlItem_Struct*>(param1);
 	FileCtrlItem_Struct* item2 = reinterpret_cast<FileCtrlItem_Struct*>(param2);
@@ -1300,19 +1295,8 @@ void CDownloadListCtrl::DrawFileStatusBar(
 		s_ChunkBar.Fill( bFlat ? crFlatProgress : crProgress );
 		s_ChunkBar.Draw(dc, rect.x, rect.y, bFlat);
 		return;
-	} else if (file->GetHashingProgress() > 0) {
-		uint64 left = file->GetHashingProgress() * PARTSIZE;
-		if (left < file->GetFileSize() - 1) {
-			// Fill the amount not yet hashed with yellow
-			s_ChunkBar.FillRange(left + 1, file->GetFileSize() - 1, bFlat ? crFlatPending : crPending);
-		} else {
-			left = file->GetFileSize() - 1;
 		}
-	    // Fill the amount already hashed with green
-	    s_ChunkBar.FillRange(0, left, bFlat ? crFlatProgress : crProgress);
-		s_ChunkBar.Draw(dc, rect.x, rect.y, bFlat);
-		return;
-	}
+
 	// Part availability ( of missing parts )
 	const CGapList& gaplist = file->GetGapList();
 	CGapList::const_iterator it = gaplist.begin();
@@ -1429,7 +1413,7 @@ void CDownloadListCtrl::PreviewFile(CPartFile* file)
 			_("File preview"), wxOK, this);
 		// Since newer versions for some reason mplayer does not automatically
 		// select video output device and needs a parameter, go figure...
-		command = wxT("xterm -T \"aMule Preview\" -iconic -e mplayer ") QUOTE wxT("$file") QUOTE;
+		command = wxT("xterm -T \"iMule Preview\" -iconic -e mplayer ") QUOTE wxT("$file") QUOTE;
 	} else {
 		command = thePrefs::GetVideoPlayer();
 	}

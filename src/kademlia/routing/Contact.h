@@ -39,8 +39,16 @@ there client on the eMule forum..
 #ifndef __CONTACT_H__
 #define __CONTACT_H__
 
-#include "../kademlia/Kademlia.h"
+#include <set>
+
+#include "../utils/UInt128.h"
+#include "../kademlia/Prefs.h"
 #include "../utils/KadUDPKey.h"
+#include "../../SafeFile.h"
+#include "i2p/CI2PAddress.h"
+#include "wx/object.h"
+#include "MuleThread.h"
+#include <memory>
 
 ////////////////////////////////////////
 namespace Kademlia {
@@ -49,78 +57,125 @@ namespace Kademlia {
 class CContact
 {
 public:
-	~CContact();
-	CContact(const CUInt128 &clientID,
-		uint32_t ip, uint16_t udpPort, uint16_t tcpPort, uint8_t version,
-		const CKadUDPKey& kadKey, bool ipVerified,
-		const CUInt128 &target = CKademlia::GetPrefs()->GetKadID());
+                struct BadTypeException : CInvalidPacket { BadTypeException(uint8_t i) : CInvalidPacket(wxT("CContact::BadTypeException : ") + CFormat(wxT("type=%u")) % i) {}};
+                struct BadVersionException : CInvalidPacket { BadVersionException(uint8_t i) : CInvalidPacket(wxT("CContact::BadVersionException : ") + CFormat(wxT("version=%u")) % i) {}};
+                struct ContactWithNullClientID : CInvalidPacket { ContactWithNullClientID(uint32_t ip) : CInvalidPacket(wxT("CContact::ContactWithNullClientID : ") + CFormat(wxT("dest=%x")) % ip) {}};
 
-	CContact(const CContact& k1);
+                CContact();
 
-	const CUInt128& GetClientID() const throw()		{ return m_clientID; }
-	void SetClientID(const CUInt128& clientID) throw()	{ m_clientID = clientID; m_distance = CKademlia::GetPrefs()->GetKadID() ^ clientID; }
+                static CContact Self();
 
-	const wxString GetClientIDString() const		{ return m_clientID.ToHexString(); }
+                ~CContact() {}
 
-	const CUInt128& GetDistance() const throw()		{ return m_distance; }
-	const wxString GetDistanceString() const		{ return m_distance.ToBinaryString(); }
+                #ifndef CLIENT_GUI
+                CContact ( CFileDataIO & file, bool withkadversion, uint32_t fileversion );
 
-	uint32_t GetIPAddress() const throw()			{ return m_ip; }
-	void	 SetIPAddress(uint32_t ip) throw()		{ if (m_ip != ip) { SetIPVerified(false); m_ip = ip; } }
+                CContact ( const CUInt128 &clientID, const CI2PAddress & udpDest, const CI2PAddress & tcpDest, uint8_t version,
+                           const CKadUDPKey& kadKey, bool destVerified,
+                           const CUInt128 &target /*= CKademlia::GetPrefs()->GetKadID()*/);
 
-	uint16_t GetTCPPort() const throw()			{ return m_tcpPort; }
-	void	 SetTCPPort(uint16_t port) throw()		{ m_tcpPort = port; }
+                void SetClientID(const CUInt128& clientID) throw();
+                #endif
+                const CUInt128& GetClientID() const throw()		{ return GetData()->m_clientID; }
+                const wxString  GetClientIDString() const		{ return GetData()->m_clientID.ToHexString(); }
 
-	uint16_t GetUDPPort() const throw()			{ return m_udpPort; }
-	void	 SetUDPPort(uint16_t port) throw()		{ m_udpPort = port; }
+                const CUInt128& GetDistance() const throw()		{ return GetData()->m_distance; }
+                const wxString GetDistanceString() const		{ return GetData()->m_distance.ToBinaryString(); }
 
-	uint8_t	 GetType() const throw()			{ return m_type; }
+                CI2PAddress 	GetIPAddress() const throw()		{ return GetData()->m_udpDest; }
+                void	 	SetIPAddress(const CI2PAddress&  udpdest) throw()		{ if (GetData()->m_udpDest != udpdest) { SetIPVerified(false); GetData()->m_udpDest = udpdest; } }
 
+                CI2PAddress     GetTCPDest() const			{ return GetData()->m_tcpDest;}
+                void            SetTCPDest(const CI2PAddress& dest)	{ GetData()->m_tcpDest = dest;}
+                
+                CI2PAddress     GetUDPDest() const			{ return GetData()->m_udpDest;}
+                void            SetUDPDest ( const CI2PAddress & dest )	{ GetData()->m_udpDest = dest;}
+                
+                uint8_t         GetType() const throw()			{ return GetData()->m_type;}
+                
+                #ifndef CLIENT_GUI
 	void	 UpdateType() throw();
 	void	 CheckingType() throw();
+                #endif
 
-	bool	 InUse() const throw()				{ return m_inUse > 0; }
-	void	 IncUse() throw()				{ m_inUse++; }
-	void	 DecUse()					{ if (m_inUse) m_inUse--; else { wxFAIL; } }
+                time_t          GetCreatedTime() const throw()         { return GetData()->m_created;     }
 
-	time_t	 GetCreatedTime() const throw()			{ return m_created; }
+                void            SetExpireTime ( time_t value ) throw()	{GetData()->m_expires = value;}
+                time_t          GetExpireTime() const throw()         	{ return GetData()->m_expires;     }
 
-	void	 SetExpireTime(time_t value) throw()		{ m_expires = value; };
-	time_t	 GetExpireTime() const throw()			{ return m_expires; }
+                time_t          GetLastTypeSet() const throw()         { return GetData()->m_lastTypeSet; }
 
-	time_t	 GetLastTypeSet() const throw()			{ return m_lastTypeSet; }
+                time_t          GetLastSeen() const         { return GetData()->m_lastTypeUpdate; }
 
-	time_t	 GetLastSeen() const throw();
+                uint8_t  GetVersion() const throw()         { return GetData()->m_version; }
+                void     SetVersion(uint8_t value) throw()      { GetData()->m_version = value; }
 
-	uint8_t	 GetVersion() const throw()			{ return m_version; }
-	void	 SetVersion(uint8_t value) throw()		{ m_version = value; }
+                const CKadUDPKey& GetUDPKey() const throw()     { return GetData()->m_udpKey; }
+                void     SetUDPKey(const CKadUDPKey& key) throw()   { GetData()->m_udpKey = key; }
 
-	const CKadUDPKey& GetUDPKey() const throw()		{ return m_udpKey; }
-	void	 SetUDPKey(const CKadUDPKey& key) throw()	{ m_udpKey = key; }
+                bool     IsIPVerified() const throw()           { return GetData()->m_ipVerified; }
+                void     SetIPVerified(bool ipVerified) throw()     { GetData()->m_ipVerified = ipVerified; }
 
-	bool	 IsIPVerified() const throw()			{ return m_ipVerified; }
-	void	 SetIPVerified(bool ipVerified) throw()		{ m_ipVerified = ipVerified; }
+                bool    GetReceivedHelloPacket() const throw()      { return GetData()->m_receivedHelloPacket; }
+                void    SetReceivedHelloPacket() throw()        { GetData()->m_receivedHelloPacket = true; }
 
-	bool	GetReceivedHelloPacket() const throw()		{ return m_receivedHelloPacket; }
-	void	SetReceivedHelloPacket() throw()		{ m_receivedHelloPacket = true; }
+                bool            IsInvalid() const ;
+                bool            IsValid() const {return !IsInvalid();}
+                
+                void            WriteToFile( CFileDataIO & file ) const;
+                void            WriteToKad1Contact( CFileDataIO & file ) const;
+                void            WriteToKad2Contact( CFileDataIO & file ) const;
+                
+                #ifndef CLIENT_GUI
+                void            AddedToKadNodes();
+                void            RemovedFromKadNodes();
+                #endif
+                bool            InKadNodes() const                           {return GetData()->m_inKadNodes;}
+                
+                wiMutex &       GetDataMutex()                               {return GetData()->m_mutex;}
+                const wxString  GetInfoString( void ) const;
+                
+                bool     	CheckIfKad2() throw()              { return GetData()->m_checkKad2 ? GetData()->m_checkKad2 = false, true : false; }
+                
+                static const std::set<CContact> GetKadContacts() {
+                        return s_kadContacts ;
+                }
+                bool operator< (const CContact& ) const;
+                bool operator==(const CContact& ) const;
 
 private:
+                void            initContact(); // Common initialization goes here
+                
+                class Data
+                {
+                public:
+                        bool        m_inKadNodes;               // flag indicating if contact is to be counted in statistics
 	CUInt128	m_clientID;
 	CUInt128	m_distance;
-	uint32_t	m_ip;
-	uint16_t	m_tcpPort;
-	uint16_t	m_udpPort;
-	uint8_t		m_type;
+                        CI2PAddress	m_tcpDest;
+                        CI2PAddress	m_udpDest;
+                        
+                        uint8_t		m_type; /* set to 3 in initContact,
+                        set to 2, 1 or 0 in updateType according to time since contact creation
+                        (called by SetAlive, when receiving a response from contact)
+                        incremented in checkingType */
 	time_t		m_lastTypeSet;
+                        time_t		m_lastTypeUpdate;
 	time_t		m_expires;
 	time_t		m_created;
-	uint32_t	m_inUse;
+	//uint32_t	m_inUse;
 	uint8_t		m_version;
+                        bool        	m_checkKad2;
 	bool		m_ipVerified;
 	bool		m_receivedHelloPacket;
 	CKadUDPKey	m_udpKey;
+                        wiMutex     	m_mutex;
 };
 
+                static std::set<CContact>    s_kadContacts ;
+                std::shared_ptr<Data> m_data;
+                std::shared_ptr<Data> GetData() const   { return m_data; }
+        };
 } // End namespace
 
 #endif // __CONTACT_H__

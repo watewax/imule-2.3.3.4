@@ -86,7 +86,7 @@ CServerListCtrl::CServerListCtrl( wxWindow *parent, wxWindowID winid, const wxPo
 
 	InsertColumn( COLUMN_SERVER_NAME,	_("Server Name"),	wxLIST_FORMAT_LEFT, 150, wxT("N") );
 	InsertColumn( COLUMN_SERVER_ADDR,	_("Address"),		wxLIST_FORMAT_LEFT, 140, wxT("A") );
-	InsertColumn( COLUMN_SERVER_PORT,	_("Port"),		wxLIST_FORMAT_LEFT,  25, wxT("P") );
+        //InsertColumn( COLUMN_SERVER_PORT,	_("Port"),		wxLIST_FORMAT_LEFT,  25, wxT("P") );
 	InsertColumn( COLUMN_SERVER_DESC,	_("Description"),	wxLIST_FORMAT_LEFT, 150, wxT("D") );
 	InsertColumn( COLUMN_SERVER_PING,	_("Ping"),		wxLIST_FORMAT_LEFT,  25, wxT("p") );
 	InsertColumn( COLUMN_SERVER_USERS,	_("Users"),		wxLIST_FORMAT_LEFT,  40, wxT("U") );
@@ -202,13 +202,16 @@ void CServerListCtrl::RefreshServer( CServer* server )
 	serverName << server->GetListName();
 	SetItem(itemnr, COLUMN_SERVER_NAME, serverName);
 	SetItem(itemnr, COLUMN_SERVER_ADDR, server->GetAddress());
+        /*I2P:
 	if (server->GetAuxPortsList().IsEmpty()) {
 		SetItem( itemnr, COLUMN_SERVER_PORT,
-			CFormat(wxT("%u")) % server->GetPort());
+                         wxString::Format(wxT("%u"), server->GetPort()));
 	} else {
 		SetItem( itemnr, COLUMN_SERVER_PORT,
-			CFormat(wxT("%u (%s)")) % server->GetPort() % server->GetAuxPortsList());
+                         wxString::Format(wxT("%u ("),
+                                          server->GetPort()) + server->GetAuxPortsList() + wxT(")") );
 	}
+	*/
 	SetItem( itemnr, COLUMN_SERVER_DESC, server->GetDescription() );
 
 	if ( server->GetPing() ) {
@@ -508,7 +511,7 @@ void CServerListCtrl::OnGetED2kURL( wxCommandEvent& WXUNUSED(event) )
 	while ( pos != -1 ) {
 		CServer* server = reinterpret_cast<CServer*>(GetItemData(pos));
 
-		URL += CFormat(wxT("ed2k://|server|%s|%d|/\n"))	% server->GetFullIP() % server->GetPort();
+                URL += wxT("ed2k://|server|") + server->GetDest().toString() + wxT("/\n");
 
 		pos = GetNextItem( pos, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED );
 	}
@@ -565,7 +568,7 @@ void CServerListCtrl::OnKeyPressed( wxKeyEvent& event )
 }
 
 
-int CServerListCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
+int CServerListCtrl::SortProc(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData)
 {
 	CServer* server1 = reinterpret_cast<CServer*>(item1);
 	CServer* server2 = reinterpret_cast<CServer*>(item2);
@@ -587,13 +590,13 @@ int CServerListCtrl::SortProc(wxUIntPtr item1, wxUIntPtr item2, long sortData)
 				} else if (server2->HasDynIP()) {
 					return mode * 1;
 				} else {
-					uint32 a = wxUINT32_SWAP_ALWAYS(server1->GetIP());
-					uint32 b = wxUINT32_SWAP_ALWAYS(server2->GetIP());
+                        const CI2PAddress & a = server1->GetDest();
+                        const CI2PAddress & b = server2->GetDest();
 					return mode * CmpAny(a, b);
 				}
 			}
 		// Sort by port
-		case COLUMN_SERVER_PORT: return mode * CmpAny( server1->GetPort(), server2->GetPort() );
+        //I2P:case COLUMN_SERVER_PORT: return mode * CmpAny( server1->GetPort(), server2->GetPort() );
 		// Sort by description
 		case COLUMN_SERVER_DESC: return mode * server1->GetDescription().CmpNoCase( server2->GetDescription() );
 		// Sort by Ping

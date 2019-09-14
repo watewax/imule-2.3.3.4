@@ -29,6 +29,7 @@
 #include <wx/event.h>	// Needed for wxEvent
 
 #include "Types.h"	// Needed for uint8, uint16 and uint32
+#include "MuleThread.h"
 
 class CIPFilterEvent;
 
@@ -117,7 +118,7 @@ private:
 	RangeNames m_rangeNames;
 
 	//! Mutex used to ensure thread-safety of this class
-	mutable wxMutex	m_mutex;
+        mutable wiMutex	m_mutex;
 
 	// false if loading (on startup only)
 	bool m_ready;
@@ -134,4 +135,3 @@ private:
 };
 
 #endif
-// File_checked_for_headers

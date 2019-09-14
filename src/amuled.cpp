@@ -55,7 +55,7 @@
 #include "InternalEvents.h"		// Needed for wxEVT_*
 #include "ThreadTasks.h"
 #include "GuiEvents.h"			// Needed for EVT_MULE_NOTIFY
-#include "Timer.h"			// Needed for EVT_MULE_TIMER
+#include "wx/timer.h"			// Needed for EVT_TIMER
 
 #include "ClientUDPSocket.h"		// Do_not_auto_remove (forward declaration not enough)
 #include "ListenSocket.h"		// Do_not_auto_remove (forward declaration not enough)
@@ -77,6 +77,7 @@
 #endif
 
 
+DEFINE_EVENT_TYPE(ID_CORE_TIMER_EVENT);         // in amule-gui.cpp
 BEGIN_EVENT_TABLE(CamuleDaemonApp, wxAppConsole)
 
 #ifndef ASIO_SOCKETS
@@ -85,19 +86,19 @@ BEGIN_EVENT_TABLE(CamuleDaemonApp, wxAppConsole)
 	//
 
 	// Listen Socket
-	EVT_SOCKET(ID_LISTENSOCKET_EVENT, CamuleDaemonApp::ListenSocketHandler)
+	//EVT_SOCKET(ID_LISTENSOCKET_EVENT, CamuleDaemonApp::ListenSocketHandler)
 
 	// UDP Socket (servers)
-	EVT_SOCKET(ID_SERVERUDPSOCKET_EVENT, CamuleDaemonApp::UDPSocketHandler)
+	//EVT_SOCKET(ID_SERVERUDPSOCKET_EVENT, CamuleDaemonApp::UDPSocketHandler)
 	// UDP Socket (clients)
-	EVT_SOCKET(ID_CLIENTUDPSOCKET_EVENT, CamuleDaemonApp::UDPSocketHandler)
+	//EVT_SOCKET(ID_CLIENTUDPSOCKET_EVENT, CamuleDaemonApp::UDPSocketHandler)
 #endif
 
 	// Socket timer (TCP)
-	EVT_MULE_TIMER(ID_SERVER_RETRY_TIMER_EVENT, CamuleDaemonApp::OnTCPTimer)
+        EVT_TIMER(ID_SERVER_RETRY_TIMER_EVENT, CamuleDaemonApp::OnTCPTimer)
 
 	// Core timer
-	EVT_MULE_TIMER(ID_CORE_TIMER_EVENT, CamuleDaemonApp::OnCoreTimer)
+        //EVT_TIMER(ID_CORE_TIMER_EVENT, CamuleDaemonApp::OnCoreTimer)
 
 	EVT_MULE_NOTIFY(CamuleDaemonApp::OnNotifyEvent)
 
@@ -124,7 +125,8 @@ END_EVENT_TABLE()
 
 IMPLEMENT_APP(CamuleDaemonApp)
 
-#ifdef AMULED28_SOCKETS
+#ifdef imule_apptrait_hack
+//#ifdef AMULED28_SOCKETS
 /*
  * Socket handling in wxBase
  *
@@ -380,7 +382,8 @@ wxAppTraits *CamuleDaemonApp::CreateTraits()
 	return new CDaemonAppTraits(m_table);
 }
 
-#else	// AMULED28_SOCKETS
+//#else	// AMULED28_SOCKETS
+#endif // imule_apptrait_hack
 
 #ifdef AMULED_APPTRAITS
 
@@ -397,9 +400,9 @@ wxAppTraits *CamuleDaemonApp::CreateTraits()
 	return new CDaemonAppTraits();
 }
 
-#endif	// AMULED_APPTRAITS
+//#endif	// AMULED_APPTRAITS
 
-#endif	// !AMULED28_SOCKETS
+//#endif	// !AMULED28_SOCKETS
 
 #if defined(__WXMAC__) && !wxCHECK_VERSION(2, 9, 0)
 #include <wx/stdpaths.h> // Do_not_auto_remove (guess)
@@ -411,7 +414,7 @@ wxStandardPathsBase& CDaemonAppTraits::GetStandardPaths()
 #endif
 
 
-#ifdef AMULED28_EVENTLOOP
+/*#ifdef AMULED28_EVENTLOOP
 
 CamuleDaemonApp::CamuleDaemonApp()
 :
@@ -425,7 +428,7 @@ m_Exit(false)
 }
 
 #endif	// AMULED28_EVENTLOOP
-
+*/
 
 #ifdef AMULED_APPTRAITS
 
@@ -588,13 +591,13 @@ static BOOL CtrlHandler(DWORD fdwCtrlType)
 
 int CamuleDaemonApp::OnRun()
 {
-	if (!thePrefs::AcceptExternalConnections()) {
+/*	if (!thePrefs::AcceptExternalConnections()) {
 		AddLogLineCS(_("ERROR: aMule daemon cannot be used when external connections are disabled. To enable External Connections, use either a normal aMule, start amuled with the option --ec-config or set the key \"AcceptExternalConnections\" to 1 in the file ~/.aMule/amule.conf"));
 		return 0;
 	} else if (thePrefs::ECPassword().IsEmpty()) {
 		AddLogLineCS(_("ERROR: A valid password is required to use external connections, and aMule daemon cannot be used without external connections. To run aMule deamon, you must set the \"ECPassword\" field in the file ~/.aMule/amule.conf with an appropriate value. Execute amuled with the flag --ec-config to set the password. More information can be found at http://wiki.amule.org"));
 		return 0;
-	}
+	}*/
 
 #ifdef __WINDOWS__
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE) CtrlHandler, TRUE);
@@ -640,7 +643,8 @@ int CamuleDaemonApp::OnRun()
 	return 0;
 
 #else
-	return wxApp::OnRun();
+	//return wxApp::OnRun();
+	return AMULE_APP_BASE::OnRun();
 #endif
 }
 
@@ -649,11 +653,32 @@ bool CamuleDaemonApp::OnInit()
 	if ( !CamuleApp::OnInit() ) {
 		return false;
 	}
-	AddLogLineNS(_("amuled: OnInit - starting timer"));
-	core_timer = new CTimer(this,ID_CORE_TIMER_EVENT);
-	core_timer->Start(CORE_TIMER_PERIOD);
+	//AddLogLineNS(_("amuled: OnInit - starting timer"));
+	//core_timer = new CTimer(this,ID_CORE_TIMER_EVENT);
+	//core_timer->Start(CORE_TIMER_PERIOD);
+
+        if (!thePrefs::AcceptExternalConnections()) {
+                AddLogLineCS(_("ERROR: iMule daemon cannot be used when external connections are disabled. "
+                               "To enable External Connections, use either a normal iMule, start imuled with the option --ec-config "
+                               "or set the key \"AcceptExternalConnections\" to 1 in the file ~/.iMule/imule.conf"));
+                return false;
+
+        } else if (thePrefs::ECPassword().IsEmpty()) {
+                AddLogLineCS(_("ERROR: A valid password is required to use external connections, "
+                               "and iMule daemon cannot be used without external connections. "
+                               "To run iMule deamon, you must set the \"ECPassword\" field in the file ~/.iMule/imule.conf "
+                               "with an appropriate value. Execute imuled with the flag --ec-config to set the password. "
+                               "More information can be found at http://wiki.amule.org"));
+                return false;
+        }
+
 	glob_prefs->GetCategory(0)->title = GetCatTitle(thePrefs::GetAllcatFilter());
 	glob_prefs->GetCategory(0)->path = thePrefs::GetIncomingDir();
+
+        AddLogLineNS(_("amuled: OnInit - starting timer"));
+        core_timer = new wxTimer(this,ID_CORE_TIMER_EVENT);
+        Bind(wxEVT_TIMER, &CamuleDaemonApp::OnCoreTimer, this, ID_CORE_TIMER_EVENT);
+        core_timer->Start(CORE_TIMER_PERIOD);
 
 	return true;
 }
@@ -664,7 +689,7 @@ int CamuleDaemonApp::InitGui(bool ,wxString &)
 	if ( !enable_daemon_fork ) {
 		return 0;
 	}
-	AddLogLineNS(_("amuled: forking to background - see you"));
+	AddLogLineNS(_("imuled: forking to background - see you"));
 	theLogger.SetEnabledStdoutLog(false);
 	//
 	// fork to background and detach from controlling tty
@@ -742,20 +767,20 @@ bool CamuleDaemonApp::Initialize(int& argc_, wxChar **argv_)
 
 int CamuleDaemonApp::OnExit()
 {
-#ifdef AMULED28_SOCKETS
+//#ifdef AMULED28_SOCKETS
 	/*
 	 * Stop all socket threads before entering
 	 * shutdown sequence.
 	 */
-	delete listensocket;
-	listensocket = 0;
-	if (clientudp) {
-		delete clientudp;
-		clientudp = NULL;
-	}
-#endif
+	//delete listensocket;
+	//listensocket = 0;
+	//if (clientudp) {
+	//	delete clientudp;
+	//	clientudp = NULL;
+	//}
+//#endif
 
-	ShutDown();
+	//ShutDown();
 
 #ifdef AMULED_APPTRAITS
 	DEBUG_ONLY( int ret = ) sigaction(SIGCHLD, &m_oldSignalChildAction, NULL);

@@ -31,8 +31,11 @@
 #define SERVERCONNECT_H
 
 
-#include "amuleIPV4Address.h"	// Needed for amuleIPV4Address
-#include "Timer.h"		// Needed for CTimer
+#include <i2p/CI2PAddress.h>	// Needed for amuleIPV4Address
+
+#include "NetworkFunctions.h"
+
+#include <wx/timer.h>
 
 #include <map>			// Needed for std::map
 
@@ -57,7 +60,7 @@ typedef std::map<uint32, CServerSocket*> ServerSocketMap;
 
 class CServerConnect {
 public:
-	CServerConnect(CServerList* in_serverlist, amuleIPV4Address &address);
+        CServerConnect(CServerList* in_serverlist, const wxString & dest);
 	~CServerConnect();
 
 	void	ConnectionFailed(CServerSocket* sender);
@@ -85,12 +88,12 @@ public:
 	uint32	clientid;
 	bool	IsLowID()	{ return ::IsLowID(clientid); }
 	void	SetClientID(uint32 newid);
-	bool	IsLocalServer(uint32 dwIP, uint16 nPort);
+        bool	IsLocalServer(const CI2PAddress & nDest);
 	void	TryAnotherConnectionrequest();
 	bool	IsSingleConnect()	{ return singleconnecting; }
 	void	KeepConnectionAlive();
 
-	bool AwaitingTestFromIP(uint32 ip);
+        bool AwaitingTestFromDest(const CI2PAddress & dest);
 	bool IsConnectedObfuscated() const;
 
 	/**
@@ -102,7 +105,7 @@ public:
 	 * Note that 'socket' may or may not refer to an valid object,
 	 * and should be checked before being used.
 	 */
-	void OnServerHostnameResolved(void* socket, uint32 ip);
+        void OnServerHostnameResolved(void* socket, const CI2PAddress & dest);
 private:
 	bool	connecting;
 	bool	singleconnecting;
@@ -117,7 +120,7 @@ private:
 	// list of currently opened sockets
 	typedef	std::list<CServerSocket*>	SocketsList;
 	SocketsList	m_lstOpenSockets;
-	CTimer	m_idRetryTimer;
+        wxTimer	m_idRetryTimer;
 
 	ServerSocketMap connectionattemps;
 };

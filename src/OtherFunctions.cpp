@@ -42,6 +42,7 @@
 #include <common/Path.h>
 #include "Logger.h"
 #include "BitVector.h"		// Needed for BitVector
+#include "CFile.h"
 
 #include "OtherFunctions.h"	// Interface declarations
 
@@ -51,6 +52,7 @@
 	#include <cerrno>
 #else
 	#include <wx/utils.h>
+#include "libs/common/Path.h"
 #endif
 
 
@@ -61,9 +63,9 @@ wxString CastItoXBytes( uint64 count )
 {
 
 	if (count < 1024)
-		return CFormat(wxT("%u ")) % count + wxPLURAL("byte", "bytes", count) ;
+                return CFormat(wxT("%" PRIu64 " ")) % count + wxPLURAL("byte", "bytes", count) ;
 	else if (count < 1048576)
-		return CFormat(wxT("%u ")) % (count >> 10) + _("kB") ;
+                return CFormat(wxT("%" PRIu64 " ")) % (count >> 10) + _("kB") ;
 	else if (count < 1073741824)
 		return CFormat(wxT("%.2f ")) % ((float)(uint32)count/1048576) + _("MB") ;
 	else if (count < 1099511627776LL)
@@ -77,7 +79,7 @@ wxString CastItoIShort(uint64 count)
 {
 
 	if (count < 1000)
-		return CFormat(wxT("%u")) % count;
+                return CFormat(wxT("%" PRIu64 "")) % count;
 	else if (count < 1000000)
 		return CFormat(wxT("%.0f")) % ((float)(uint32)count/1000) + _("k") ;
 	else if (count < 1000000000)
@@ -92,7 +94,7 @@ wxString CastItoIShort(uint64 count)
 wxString CastItoSpeed(uint32 bytes)
 {
 	if (bytes < 1024)
-		return CFormat(wxT("%u ")) % bytes + wxPLURAL("byte/sec", "bytes/sec", bytes);
+                return CFormat(wxT("%" PRIu32 " ")) % bytes + wxPLURAL("byte/sec", "bytes/sec", bytes);
 	else if (bytes < 1048576)
 		return CFormat(wxT("%.2f ")) % (bytes / 1024.0) + _("kB/s");
 	else
@@ -105,19 +107,19 @@ wxString CastSecondsToHM(uint32 count, uint16 msecs)
 {
 	if (count < 60) {
 		if (!msecs) {
-			return CFormat(wxT("%02u %s")) % count % _("secs");
+                        return CFormat(wxT("%02" PRIu32 " %s")) % count % _("secs");
 		} else {
 			return CFormat(wxT("%.3f %s"))
 				% (count + ((float)msecs/1000)) % _("secs");
 		}
 	} else if (count < 3600) {
-		return CFormat(wxT("%u:%02u %s"))
+                return CFormat(wxT("%" PRIu32 ":%02" PRIu32 " %s"))
 			% (count/60) % (count % 60) % _("mins");
 	} else if (count < 86400) {
-		return CFormat(wxT("%u:%02u %s"))
+                return CFormat(wxT("%" PRIu32 ":%02" PRIu32 " %s"))
 			% (count/3600) % ((count % 3600)/60) % _("hours");
 	} else {
-		return CFormat(wxT("%u %s %02u:%02u %s"))
+                return CFormat(wxT("%" PRIu32 " %s %02" PRIu32 ":%02" PRIu32 " %s"))
 			% (count/86400) % _("Days")
 			% ((count % 86400)/3600) % ((count % 3600)/60) % _("hours");
 	}

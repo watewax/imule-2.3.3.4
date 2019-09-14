@@ -29,6 +29,7 @@
 
 #include "SharedFileList.h" // CKnownFileMap
 
+#include "MuleThread.h"
 
 class CKnownFile;
 class CPath;
@@ -55,7 +56,7 @@ public:
 	uint16 accepted;
 
 private:
-	wxMutex	list_mut;
+        wiMutex	list_mut;
 
 	bool	Append(CKnownFile*, bool afterHashing = false);
 

@@ -32,7 +32,7 @@
 
 #include <queue>
 
-#include <wx/thread.h>		/* For wxMutex, wxMutexLocker	*/
+#include "MuleThread.h"
 #include <wx/string.h>		/* For wxString			*/
 
 typedef unsigned int t_sm_state;
@@ -58,9 +58,9 @@ private:
 	void flush_queue();
 
 	t_sm_state		m_state;
-	wxMutex			m_stateMutex;
+        wiMutex			m_stateMutex;
 	std::queue <t_sm_event>	m_queue;
-	wxMutex			m_queueMutex;
+        wiMutex			m_queueMutex;
 	const wxString		m_name;
 	const unsigned int	m_maxStates;
 	unsigned int		m_clockCounter;

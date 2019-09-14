@@ -37,7 +37,7 @@
 #include "DownloadQueue.h"		// Needed for CDownloadQueue
 #include "KnownFileList.h"		// Needed for CKnownFileList
 
-CSearchFile::CSearchFile(const CMemFile& data, bool optUTF8, wxUIntPtr searchID, uint32_t serverIP, uint16_t serverPort, const wxString& directory, bool kademlia)
+CSearchFile::CSearchFile(const CMemFile& data, wxUIntPtr searchID, const CI2PAddress & serverDest, const wxString& directory, bool kademlia)
 	: m_parent(NULL),
 	  m_showChildren(false),
 	  m_searchID(searchID),
@@ -46,52 +46,28 @@ CSearchFile::CSearchFile(const CMemFile& data, bool optUTF8, wxUIntPtr searchID,
 	  m_kademlia(kademlia),
 	  m_downloadStatus(NEW),
 	  m_directory(directory),
-	  m_clientServerIP(serverIP),
-	  m_clientServerPort(serverPort),
+          m_clientServerDest(serverDest),
 	  m_kadPublishInfo(0)
 {
 	m_abyFileHash = data.ReadHash();
 	SetDownloadStatus();
-	m_clientID = data.ReadUInt32();
-	m_clientPort = data.ReadUInt16();
 
-	if (!m_clientID || !m_clientPort || !IsGoodIP(m_clientID, thePrefs::FilterLanIPs())) {
-		m_clientID = 0;
-		m_clientPort = 0;
+        if (directory.empty()) // if this is not an OP_ASKSHAREDFILESDIRANS (shared file response)
+                m_clientDest  = data.ReadAddress();
+        else
+                data.ReadUInt32();
+
+        if ( !m_clientDest.isValid() ) {
+                m_clientDest = CI2PAddress::null;
 	}
 
-	uint32 tagcount = data.ReadUInt32();
-	for (unsigned int i = 0; i < tagcount; ++i) {
-		CTag tag(data, optUTF8);
-		switch (tag.GetNameID()) {
-			case FT_FILENAME:
-				SetFileName(CPath(tag.GetStr()));
-				break;
-			case FT_FILESIZE:
-				SetFileSize(tag.GetInt());
-				break;
-			case FT_FILESIZE_HI:
-				SetFileSize((((uint64)tag.GetInt()) << 32) + GetFileSize());
-				break;
-			case FT_FILERATING:
-				m_iUserRating = (tag.GetInt() & 0xF) / 3;
-				break;
-			case FT_SOURCES:
-				m_sourceCount = tag.GetInt();
-				break;
-			case FT_COMPLETE_SOURCES:
-				m_completeSourceCount = tag.GetInt();
-				break;
-			case FT_PERMISSIONS:
-			case FT_KADLASTPUBLISHKEY:
-			case FT_PARTFILENAME:
-				// Just ignore
-				break;
-			default:
-				AddTagUnique(tag);
-		}
-	}
-
+        m_taglist = TagList(data);
+        SetFileName (CPath(GetStrTagValue(TAG_FILENAME)));
+	SetFileSize (GetIntTagValue(TAG_FILESIZE));
+        m_iUserRating = (uint32_t)(GetIntTagValue ( TAG_FILERATING ) & 0xF) / 3;
+        m_sourceCount = (uint32_t)GetIntTagValue ( TAG_SOURCES );
+        m_completeSourceCount = (uint32_t)GetIntTagValue ( TAG_COMPLETE_SOURCES );
+        AddDebugLogLineN(logServer, CFormat(wxT("Shared file entry received : \"%s\" size=%u")) % GetFileName() %GetFileSize());
 	if (!GetFileName().IsOk()) {
 		throw CInvalidPacket(wxT("No filename in search result"));
 	}
@@ -110,10 +86,8 @@ CSearchFile::CSearchFile(const CSearchFile& other)
 	  m_downloadStatus(other.m_downloadStatus),
 	  m_directory(other.m_directory),
 	  m_clients(other.m_clients),
-	  m_clientID(other.m_clientID),
-	  m_clientPort(other.m_clientPort),
-	  m_clientServerIP(other.m_clientServerIP),
-	  m_clientServerPort(other.m_clientServerPort),
+          m_clientDest(other.m_clientDest),
+          m_clientServerDest(other.m_clientServerDest),
 	  m_kadPublishInfo(other.m_kadPublishInfo)
 {
 	for (size_t i = 0; i < other.m_children.size(); ++i) {
@@ -133,7 +107,7 @@ CSearchFile::~CSearchFile()
 void CSearchFile::AddClient(const ClientStruct& client)
 {
 	for (std::list<ClientStruct>::const_iterator it = m_clients.begin(); it != m_clients.end(); ++it) {
-		if (client.m_ip == it->m_ip && client.m_port == it->m_port) return;
+                if (client.m_dest == it->m_dest) return;
 	}
 	m_clients.push_back(client);
 }
@@ -175,10 +149,10 @@ void CSearchFile::MergeResults(const CSearchFile& other)
 	}
 
 	// copy possible available sources from new result
-	if (other.GetClientID() && other.GetClientPort()) {
+        if (other.GetClientDest().isValid()) {
 		// pre-filter sources which would be dropped by CPartFile::AddSources
-		if (CPartFile::CanAddSource(other.GetClientID(), other.GetClientPort(), other.GetClientServerIP(), other.GetClientServerPort())) {
-			CSearchFile::ClientStruct client(other.GetClientID(), other.GetClientPort(), other.GetClientServerIP(), other.GetClientServerPort());
+                if (CPartFile::CanAddSource(other.GetClientDest(), other.GetClientServerDest())) {
+                        CSearchFile::ClientStruct client(other.GetClientDest(), other.GetClientServerDest());
 			AddClient(client);
 		}
 	}
@@ -278,8 +252,8 @@ void CSearchFile::UpdateParent()
 		}
 
 		// Available sources
-		if (child->GetClientID() && child->GetClientPort()) {
-			CSearchFile::ClientStruct client(child->GetClientID(), child->GetClientPort(), child->GetClientServerIP(), child->GetClientServerPort());
+                if (child->GetClientDest().isValid()) {
+                        CSearchFile::ClientStruct client(child->GetClientDest(), child->GetClientServerDest());
 			AddClient(client);
 		}
 		for (std::list<ClientStruct>::const_iterator cit = child->m_clients.begin(); cit != child->m_clients.end(); ++cit) {
