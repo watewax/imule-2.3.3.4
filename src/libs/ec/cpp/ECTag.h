@@ -114,7 +114,7 @@ class CECTag {
 	CECTag(ECTagNames name, const std::string& data);
 	CECTag(ECTagNames name, const EC_IPv4_t& data);
 	CECTag(ECTagNames name, const CMD4Hash& data);
-	CECTag(ec_tagname_t name, const CUInt128& data);
+	CECTag(ECTagNames name, const CUInt128& data);
 		#ifdef USE_WX_EXTENSIONS
         CECTag(ECTagNames name, const wxString& data);
         CECTag(ECTagNames name, const wxChar* data);
@@ -185,7 +185,8 @@ class CECTag {
         float		AssignIfExist(ECTagNames tagname, float *target) const;
         CMD4Hash	AssignIfExist(ECTagNames tagname, CMD4Hash *target) const;
         std::string	AssignIfExist(ECTagNames tagname, std::string *target) const;
-	UInt128	AssignIfExist(ECTagNames tagname, CUInt128 *target) const;
+		CUInt128	AssignIfExist(ECTagNames tagname, CUInt128 *target) const;
+		std::string	AssignIfExist(ec_tagname_t tagname, std::string *target) const;
 		#ifdef USE_WX_EXTENSIONS
         wxString	AssignIfExist(ECTagNames tagname, wxString *target) const;
 		#endif
@@ -205,7 +206,7 @@ class CECTag {
         bool		AssignIfExist(ECTagNames tagname, std::string &target) const;
 	bool		AssignIfExist(ECTagNames tagname, CUInt128 &target) const;
 		#ifdef USE_WX_EXTENSIONS
-		bool		AssignIfExist(ec_tagname_t tagname, wxString &target) const;
+		bool		AssignIfExist(ECTagNames tagname, wxString &target) const;
 		#endif
         bool		AssignIfExist(ECTagNames tagname, CI2PAddress &target) const;
 
@@ -223,7 +224,7 @@ class CECTag {
 		void InitInt(uint64_t data);
 
 		//ec_tagname_t	m_tagName; //changed in imule
-        	ECTagNames	m_tagName;
+    	ECTagNames	m_tagName;
 		ec_tagtype_t	m_dataType;
 		ec_taglen_t		m_dataLen;
 		char *			m_tagData;

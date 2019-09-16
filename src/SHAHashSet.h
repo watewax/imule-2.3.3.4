@@ -191,13 +191,10 @@ protected:
 ///CAICHUntrustedHashs
 class CAICHUntrustedHash {
 public:
-	CAICHUntrustedHash& operator=(const CAICHUntrustedHash& k1)
-	{
-public:
-        CAICHUntrustedHash& operator=(const CAICHUntrustedHash& k1) {
-		m_adwIpsSigning = k1.m_adwIpsSigning;
-		m_Hash = k1.m_Hash ;
-		return *this;
+    CAICHUntrustedHash& operator=(const CAICHUntrustedHash& k1) {
+	m_adwIpsSigning = k1.m_adwIpsSigning;
+	m_Hash = k1.m_Hash ;
+	return *this;
 	}
 	bool AddSigningIP(uint32 dwIP);
 
@@ -208,9 +205,6 @@ public:
 /////////////////////////////////////////////////////////////////////////////////////////
 ///CAICHUntrustedHashs
 class CAICHRequestedData {
-public:
-	CAICHRequestedData()
-	{
 public:
         CAICHRequestedData() {
 		m_nPart = 0;

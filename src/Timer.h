@@ -25,6 +25,8 @@
 #ifndef TIMER_H
 #define TIMER_H
 
+#ifdef IMULE_USE_THREADS
+
 class wxEvtHandler;
 class CTimerThread;
 
@@ -89,5 +91,6 @@ typedef void (wxEvtHandler::*MuleTimerEventFunction)(CTimerEvent&);
 	(wxObjectEventFunction) (wxEventFunction) \
 	wxStaticCastEvent(MuleTimerEventFunction, &func), (wxObject*) NULL),
 
+#endif // IMULE_USE_THREADS
 #endif /* TIMER_H */
 // File_checked_for_headers

@@ -787,7 +787,6 @@ void CUpDownClient::SendBlockRequests()
 		}
                 packet = new CPacket(data, (SupportsLargeFiles() ? OP_EMULEPROT : OP_EDONKEYPROT), (bHasLongBlocks ? (uint8)OP_REQUESTPARTS : (uint8)OP_REQUESTPARTS));
                 AddDebugLogLineN(logLocalClient, wxString::Format(wxT("Local Client: %s to "),(bHasLongBlocks ? wxT("OP_REQUESTPARTS") : wxT("OP_REQUESTPARTS"))) + GetTCPDest().humanReadable() );
-                break;
         }
 
 	if (packet) {

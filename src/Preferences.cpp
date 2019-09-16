@@ -1947,9 +1947,9 @@ std::map<wxString,wxString> CPreferences::GetI2PRouterProps()
 
 
         //! Config locations
-        p[wxT("router.pingFile")]                   = wxFileName(CConfigDir::GetConfigDir(),wxT("i2prouter.ping")) .GetFullPath() ;
+        p[wxT("router.pingFile")]                   = wxFileName(thePrefs::GetConfigDir(),wxT("i2prouter.ping")) .GetFullPath() ;
 
-        p[wxT("router.configLocation")]             = wxFileName(CConfigDir::GetConfigDir(),wxT("router.config"))  .GetFullPath();
+        p[wxT("router.configLocation")]             = wxFileName(thePrefs::GetConfigDir(),wxT("router.config"))  .GetFullPath();
 
         //! bandwidth properties
         p[wxT("router.sharePercentage")]                      = wxString() << GetI2PBandwidthSharePercentage();

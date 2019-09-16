@@ -107,19 +107,19 @@ protected:
 
 class CKeyEntry : public CEntry
 {
-      protected:
-        // iMule : IP means hash of UDP destination
+protected:
+    // iMule : IP means hash of UDP destination
 	struct sPublishingIP {
 		uint32_t m_ip;
 		time_t	 m_lastPublish;
 	};
 
-      public:
+public:
 	CKeyEntry();
 	virtual ~CKeyEntry();
 
-        //         virtual CEntry* Copy() const            { return CEntry::Copy(); }
-        bool    IsKeyEntry() const throw()  { return true; }
+    //      virtual CEntry* Copy() const { return CEntry::Copy(); }
+    bool    IsKeyEntry() const throw()  { return true; }
 
 	bool	SearchTermsMatch(const SSearchTerm *searchTerm) const;
 	void	MergeIPsAndFilenames(CKeyEntry* fromEntry);

@@ -239,19 +239,19 @@ void CAbstractFile::AddTagUnique(const CTag& pTag)
 #ifndef CLIENT_GUI
 bool CAbstractFile::AddNote(Kademlia::CEntry &pEntry)
 {
-        bool added = true ;
-        CKadEntriesList::iterator it = m_kadNotes.begin();
+    bool added = true ;
+    CKadEntriesList::iterator it = m_kadNotes.begin();
 	for (; it != m_kadNotes.end(); ++it) {
-                const Kademlia::CEntry& entry = *it;
-                //if(entry->ip == pEntry->ip || !entry->sourceID.compareTo(pEntry->sourceID)) {
-                if(entry.m_udpdest == pEntry.m_udpdest || entry.m_uSourceID == pEntry.m_uSourceID) {
-                        m_kadNotes.erase(it);
-                        added = false ;
-                        break ;
+        const Kademlia::CEntry& entry = *it;
+        //if(entry->ip == pEntry->ip || !entry->sourceID.compareTo(pEntry->sourceID)) {
+        if(entry.m_udpdest == pEntry.m_udpdest || entry.m_uSourceID == pEntry.m_uSourceID) {
+		    m_kadNotes.erase(it);
+		    added = false ;
+		    break ;
 		}
 	}
 	m_kadNotes.push_front(pEntry);
-        return added;
+    return added;
 }
 #else
 bool CAbstractFile::AddNote(Kademlia::CEntry &)
@@ -314,7 +314,7 @@ void CKnownFile::Init()
 	m_lastDateChanged = 0;
 	m_bAutoUpPriority = thePrefs::GetNewAutoUp();
 	m_iUpPriority = ( m_bAutoUpPriority ) ? PR_HIGH : PR_NORMAL;
-	m_hashingProgress = 0;
+	//m_hashingProgress = 0; // not usd in imule?
 
 #ifndef CLIENT_GUI
 	m_pAICHHashSet = new CAICHHashSet(this);

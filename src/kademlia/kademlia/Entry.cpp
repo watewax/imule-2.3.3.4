@@ -53,10 +53,12 @@ CKeyEntry::GlobalPublishIPMap	CKeyEntry::s_globalPublishIPs;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////// CEntry
+#if REMOVED_IN_IMULE
 CEntry::~CEntry()
 {
 	deleteTagPtrListEntries(&m_taglist);
 }
+#endif
 
 CEntry* CEntry::Copy() const
 {

@@ -28,6 +28,7 @@
 #include <wx/log.h>
 #include <wx/event.h>
 #include <iosfwd>
+#include "MuleThread.h"
 
 
 enum DebugType

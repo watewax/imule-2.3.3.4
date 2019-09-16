@@ -1,6 +1,6 @@
 SUBDIRS =
 MAINTAINERCLEANFILES = Makefile.in
-//DIST_SUBDIRS = muleunit tests
+DIST_SUBDIRS = muleunit tests
 
 # The only targets which we care about
 TARGETS = check-recursive clean-recursive

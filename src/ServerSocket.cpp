@@ -732,7 +732,7 @@ void CServerSocket::OnHostnameResolved(const CI2PAddress & dest)
         if (dest.isValid()) {
        		if (theApp->ipfilter->IsFiltered(dest, true)) {
 			AddLogLineC(CFormat( _("Server IP %s (%s) is filtered.  Not connecting.") )
-                		% dest.humanReadable() % cur_server->GetAddress() ); );
+                		% dest.humanReadable() % cur_server->GetAddress() );
 #ifdef ASIO_SOCKETS
 			OnConnect(boost::system::errc::invalid_argument);
 #else

@@ -30,6 +30,7 @@
 #include "Types.h"		// Needed for uint16 and uint32
 #include <common/Format.h>	// Needed for CFormat
 
+#include <wx/socket.h>
 #include <i2p/CI2PAddress.h>
 
 // Network ip/host handling functions
@@ -114,7 +115,7 @@ uint32 StringHosttoUint32(const wxString &Host);
  *
  * Note: IP must be in anti-host order (BE on LE platform, LE on BE platform).
  */
-inline bool IsGoodDest( const CI2PAddress & Dest ) throw();
+inline bool IsGoodDest( const CI2PAddress & Dest ) throw()
 {
         return Dest.isValid();
 }

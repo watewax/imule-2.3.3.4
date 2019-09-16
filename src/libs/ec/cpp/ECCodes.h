@@ -384,6 +384,7 @@ enum ECTagNames {
 			EC_TAG_FILES_ALLOC_FULL_SIZE              = 0x180C,
 			EC_TAG_FILES_CHECK_FREE_SPACE             = 0x180D,
 			EC_TAG_FILES_MIN_FREE_SPACE               = 0x180E,
+			EC_TAG_FILES_CREATE_NORMAL                = 0x180F,
 		EC_TAG_PREFS_SRCDROP                      = 0x1900,
 			EC_TAG_SRCDROP_NONEEDED                   = 0x1901,
 			EC_TAG_SRCDROP_DROP_FQS                   = 0x1902,
@@ -499,6 +500,7 @@ enum EcPrefs {
 	EC_PREFS_I2PCONNECTION  = 0x00004000
 };
 
+
 wxString GetDebugNameProtocolVersion(uint16 arg);
 wxString GetDebugNameECFlags(uint32 arg);
 wxString GetDebugNameECOpCodes(uint8 arg);
@@ -507,6 +509,7 @@ wxString GetDebugNameEC_DETAIL_LEVEL(uint8 arg);
 wxString GetDebugNameEC_SEARCH_TYPE(uint8 arg);
 wxString GetDebugNameEC_STATTREE_NODE_VALUE_TYPE(uint8 arg);
 wxString GetDebugNameEcPrefs(uint32 arg);
+
 #ifdef DEBUG_EC_IMPLEMENTATION
 
 wxString GetDebugNameProtocolVersion(uint16 arg)
@@ -875,6 +878,7 @@ wxString GetDebugNameECTagNames(uint16 arg)
 		case 0x180C: return wxT("EC_TAG_FILES_ALLOC_FULL_SIZE");
 		case 0x180D: return wxT("EC_TAG_FILES_CHECK_FREE_SPACE");
 		case 0x180E: return wxT("EC_TAG_FILES_MIN_FREE_SPACE");
+		case 0x180F: return wxT("EC_TAG_FILES_CREATE_NORMAL");
 		case 0x1900: return wxT("EC_TAG_PREFS_SRCDROP");
 		case 0x1901: return wxT("EC_TAG_SRCDROP_NONEEDED");
 		case 0x1902: return wxT("EC_TAG_SRCDROP_DROP_FQS");
@@ -998,7 +1002,6 @@ wxString GetDebugNameEcPrefs(uint32 arg)
 		case 0x00000020: return wxT("EC_PREFS_ONLINESIG");
 		case 0x00000040: return wxT("EC_PREFS_SERVERS");
 		case 0x00000080: return wxT("EC_PREFS_FILES");
-		case 0x00000100: return wxT("EC_PREFS_SRCDROP");
 		case 0x00000200: return wxT("EC_PREFS_DIRECTORIES");
 		case 0x00000400: return wxT("EC_PREFS_STATISTICS");
 		case 0x00000800: return wxT("EC_PREFS_SECURITY");

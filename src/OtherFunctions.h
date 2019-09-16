@@ -387,6 +387,8 @@ CMD4Hash GetPassword(bool allowEmptyPassword = false);
 
 #if wxUSE_THREADS
 
+#if NEXTVERSION_KEPT
+
 #include <wx/thread.h>
 
 /**
@@ -433,7 +435,7 @@ private:
     wxMutex& m_mutex;
 };
 #endif /* wxUSE_THREADS */
-
+#endif // !NEXT_VERSION_KEPT
 
 #endif // OTHERFUNCTIONS_H
 // File_checked_for_headers

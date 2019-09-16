@@ -324,7 +324,7 @@ class CStatistics {
 	static void	RemoveKadNode()				{ --s_kadNodesCur; }
 	//static uint16_t GetKadNodes()			{ return s_kadNodesCur; }
 
-        static int16	GetKadNodesCur()			{ return s_kadNodesCur; } // I2P
+	static int16	GetKadNodesCur()		{ return s_kadNodesCur; } // I2P
 
 	// Other
 	static	void	CalculateRates();

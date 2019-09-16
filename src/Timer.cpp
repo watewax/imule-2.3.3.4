@@ -23,9 +23,11 @@
 //
 
 #include "Timer.h"		// Interface declaration
+
+#ifdef IMULE_USE_THREADS
+
 #include "GetTickCount.h"	// Needed for GetTickCountFullRes
 #include "MuleThread.h"		// Needed for CMuleThread
-
 
 //////////////////////// Timer Thread ////////////////////
 
@@ -160,4 +162,5 @@ wxEvent* CTimerEvent::Clone() const
 	return new CTimerEvent(GetId());
 }
 
+#endif // IMULE_USE_THREADS
 // File_checked_for_headers

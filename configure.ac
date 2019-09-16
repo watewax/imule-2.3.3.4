@@ -24,7 +24,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
 #
 
-AC_INIT([iMule],[2.3.3.4],[hungr@mail.i2p])
+AC_INIT([iMule], [2.3.3.4], [hungr@mail.i2p])
 #AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([1.14])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
@@ -180,8 +180,8 @@ AC_LANG_PUSH([C++])
 
 
 # Check for zlib
-MULE_IF_ENABLED_ANY([monolithic, amule-daemon, amulecmd, webserver, amule-gui],
-	[MULE_CHECK_ZLIB([1.1.4],, [AC_MSG_ERROR([zlib >= 1.1.4 is required for aMule])])])
+MULE_IF_ENABLED_ANY([monolithic, imule-daemon, imulecmd, webserver, imule-gui],
+	[MULE_CHECK_ZLIB([1.1.4],, [AC_MSG_ERROR([zlib >= 1.1.4 is required for iMule])])])
 
 
 # Check for libpng
@@ -301,7 +301,7 @@ MULE_CHECK_EXCEPTIONS
 
 MULE_CHECK_CXXABI
 AC_LANG_POP([C++])
-MULE_IF_ENABLED_ANY([monolithic, amule-daemon, amule-gui, amulecmd, webserver], [MULE_CHECK_BOOST([1.47])])
+MULE_IF_ENABLED_ANY([monolithic, imule-daemon, imule-gui, imulecmd, webserver], [MULE_CHECK_BOOST([1.47])])
 ])
 
 # Ok, we have all needed libs, now checking for other stuff
@@ -408,7 +408,7 @@ MULE_CHECK_EXECINFO
 
 
 # aMule plasma widget
-MULE_IF_ENABLED([plasmamule], [PLASMAMULE_CHECKS])
+# MULE_IF_ENABLED([plasmamule], [PLASMAMULE_CHECKS])
 
 
 # Check for readline library

@@ -37,7 +37,7 @@
 #include "../../../kademlia/utils/UInt128.h"
 
 
-CECTag::CECTag(ec_tagname_t tagname, const CUInt128& data)
+CECTag::CECTag(ECTagNames tagname, const CUInt128& data)
 	: m_tagName(tagname),
 	  m_dataType(EC_TAGTYPE_UINT128),
 	  m_dataLen(16)
@@ -46,7 +46,7 @@ CECTag::CECTag(ec_tagname_t tagname, const CUInt128& data)
 	data.ToByteArray(reinterpret_cast<uint8_t *>(m_tagData));
 }
 
-void CECTag::AddTag(ec_tagname_t name, const CUInt128& data, CValueMap *valuemap)
+void CECTag::AddTag(ECTagNames name, const CUInt128& data, CValueMap *valuemap)
 {
 	if (valuemap) {
 		valuemap->CreateTag(name, data, this);
@@ -71,7 +71,7 @@ CUInt128 CECTag::GetInt128Data() const
 	}
 }
 
-CUInt128 CECTag::AssignIfExist(ec_tagname_t tagname, CUInt128 *target) const
+CUInt128 CECTag::AssignIfExist(ECTagNames tagname, CUInt128 *target) const
 {
 	if (AssignIfExist(tagname, *target)) {
 		return *target;
@@ -80,7 +80,7 @@ CUInt128 CECTag::AssignIfExist(ec_tagname_t tagname, CUInt128 *target) const
 	}
 }
 
-bool CECTag::AssignIfExist(ec_tagname_t tagname, CUInt128 &target) const
+bool CECTag::AssignIfExist(ECTagNames tagname, CUInt128 &target) const
 {
 	const CECTag *tag = GetTagByName(tagname);
 	if (tag) {

@@ -90,6 +90,8 @@ CEMSocket::CEMSocket()
     m_hasSent = false;
 
 	lastFinishedStandard = 0;
+
+        DoingDestroy = false;
 }
 
 CEMSocket::~CEMSocket()
@@ -115,10 +117,19 @@ CEMSocket::~CEMSocket()
 #endif
 }
 
+bool CEMSocket::Destroy()
+{
+        if (!DoingDestroy) {
+                DoingDestroy = true;
+                return wxI2PSocketClient::Destroy();
+        }
+        return true;
+}
+
 
 void CEMSocket::ClearQueues()
 {
-        wiMutexLocker lock(m_sendLocker);
+    wiMutexLocker lock(m_sendLocker);
 
 	DeleteContents(m_control_queue);
 
@@ -173,7 +184,8 @@ void CEMSocket::OnReceive(int nErrorCode)
         // the 2 meg size was taken from another place
 
 	if(nErrorCode) {
-		if (LastError()) {
+                uint32 error = LastError();
+                if (error != wxSOCKET_WOULDBLOCK) {
 			OnError(nErrorCode);
 			return;
 		}
@@ -221,15 +233,16 @@ void CEMSocket::OnReceive(int nErrorCode)
 			readMax = downloadLimit;
 		}
 
+
+        // We attempt to read up to 2 megs at a time (minus whatever is in our internal read buffer)
 		ret = 0;
 		if (readMax) {
 			wiMutexLocker lock(m_sendLocker);
 			ret = Read(buf, readMax);
-			if (BlocksRead()) {
+                if (Error() || (ret == 0)) {
+                        if (LastError() == wxSOCKET_WOULDBLOCK) {
 				pendingOnReceive = true;
-				return;
 			}
-			if (LastError() || ret == 0) {
 				return;
 			}
 		}
@@ -561,13 +574,17 @@ SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSiz
 
 				uint32 result = CEncryptedStreamSocket::Write(sendbuffer+sent,tosend);
 
-				if (BlocksWrite()) {
-					m_bBusy = true;
-					SocketSentBytes returnVal = { true, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
-					return returnVal; // Send() blocked, onsend will be called when ready to send again
-				} else if (LastError()) {
+                if (Error()) {
+
+                    uint32 error = LastError();
+                    if (error == wxSOCKET_WOULDBLOCK) {
+						m_bBusy = true;
+						SocketSentBytes returnVal = { true, sentStandardPacketBytesThisCall, sentControlPacketBytesThisCall };
+						return returnVal; // Send() blocked, onsend will be called when ready to send again
+					} else {
 					// Send() gave an error
 					anErrorHasOccured = true;
+                    }
 				} else {
 					// we managed to send some bytes. Perform bookkeeping.
 					m_bBusy = false;
@@ -606,7 +623,7 @@ SocketSentBytes CEMSocket::Send(uint32 maxNumberOfBytesToSend, uint32 minFragSiz
 					m_bAccelerateUpload = false; // Safe until told otherwise
 				}
 
-                                Flush(); // force flushing wxI2PSocketClient
+                Flush(); // force flushing wxI2PSocketClient
 				sent = 0;
 			}
 		}

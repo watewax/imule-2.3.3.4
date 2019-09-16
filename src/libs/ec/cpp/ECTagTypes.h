@@ -38,10 +38,13 @@ enum ECTagTypes {
 	EC_TAGTYPE_DOUBLE = 7,
 	EC_TAGTYPE_IPV4 = 8,
 	EC_TAGTYPE_HASH16 = 9,
-	EC_TAGTYPE_I2PADDRESS = 10
+	EC_TAGTYPE_UINT128 = 10,
+	EC_TAGTYPE_I2PADDRESS = 11
 };
 
+
 wxString GetDebugNameECTagTypes(uint8 arg);
+
 #ifdef DEBUG_EC_IMPLEMENTATION
 
 wxString GetDebugNameECTagTypes(uint8 arg)
@@ -57,7 +60,8 @@ wxString GetDebugNameECTagTypes(uint8 arg)
 		case 7: return wxT("EC_TAGTYPE_DOUBLE");
 		case 8: return wxT("EC_TAGTYPE_IPV4");
 		case 9: return wxT("EC_TAGTYPE_HASH16");
-		case 10: return wxT("EC_TAGTYPE_I2PADDRESS");
+		case 10: return wxT("EC_TAGTYPE_UINT128");
+		case 11: return wxT("EC_TAGTYPE_I2PADDRESS");
 		default: return CFormat(wxT("unknown %d 0x%x")) % arg % arg;
 	}
 }

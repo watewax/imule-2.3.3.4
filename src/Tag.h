@@ -290,5 +290,9 @@ struct TagList : public std::list<CTag> {
         void deleteTags() ;
 };
 
+#if REMOVED_IN_IMULE
+void deleteTagPtrListEntries(TagPtrList* taglist);
+#endif
+
 #endif // TAG_H
 // File_checked_for_headers

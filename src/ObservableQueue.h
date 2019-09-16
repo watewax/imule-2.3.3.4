@@ -247,7 +247,7 @@ public:
 
 private:
 	//! Lock used to ensure the threadsafety of the class
-	mutable wxMutex m_mutex;
+	mutable wiMutex m_mutex;
 
 	typedef std::multiset<ValueType> Queue;
 	typedef typename Queue::iterator QueueIterator;

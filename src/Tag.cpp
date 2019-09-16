@@ -565,6 +565,11 @@ void TagList::deleteTags()
         clear() ;
 }
 
-
+#if REMOVED_IN_IMULE
+void deleteTagPtrListEntries(TagPtrList* taglist)
+{
+	DeleteContents(*taglist);
+}
+#endif
 
 // File_checked_for_headers

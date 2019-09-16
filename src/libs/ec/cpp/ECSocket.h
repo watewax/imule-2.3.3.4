@@ -203,7 +203,6 @@ public:
 	bool SocketError() { return InternalError() && GotError(); }
 	bool SocketRealError();
 
-        size_t GetLastCount() { return InternalLastCount(); }
 	bool WaitSocketConnect(long secs = -1, long msecs = 0) { return InternalWaitOnConnect(secs,msecs); }
 	bool WaitSocketWrite(long secs = -1, long msecs = 0) { return InternalWaitForWrite(secs,msecs); }
 	bool WaitSocketRead(long secs = -1, long msecs = 0) { return InternalWaitForRead(secs,msecs); }

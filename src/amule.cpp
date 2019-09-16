@@ -551,7 +551,7 @@ bool CamuleApp::OnInit()
 		AddLogLineNS(wxT("\n"));
 		AddLogLineNS(msg);
 	}
-/*
+#ifdef REMOVED_IN_IMULE
 	// Test if there's any new version
 	if (thePrefs::GetCheckNewVersion()) {
 		// We use the thread base because I don't want a dialog to pop up.
@@ -561,7 +561,7 @@ bool CamuleApp::OnInit()
 		version_check->Create();
 		version_check->Run();
 	}
-*/
+#endif
 	// Create main dialog, or fork to background (daemon).
 	InitGui(m_geometryEnabled, m_geometryString);
 
@@ -738,7 +738,7 @@ bool CamuleApp::InitializeNetwork ( wxString* msg )
 
 	// Create the address where we are going to listen
 	// TODO: read this from configuration file
-        amuleIPV4Address myaddr[1];
+    amuleIPV4Address myaddr[1];
 
 	// Create the External Connections Socket.
 	// Default is 4712.
@@ -749,8 +749,8 @@ bool CamuleApp::InitializeNetwork ( wxString* msg )
 	myaddr[0].Service(thePrefs::ECPort());
 	ECServerHandler = new ExternalConn(myaddr[0], msg);
 
-        // create sockets I2P
-        StartNetwork();
+    // create sockets I2P
+    StartNetwork();
 
 #ifdef ENABLE_UPNP
 	if (thePrefs::GetUPnPEnabled()) {
@@ -1821,7 +1821,7 @@ void CamuleApp::ListenSocketHandler(CI2PSocketEvent& event)
         switch ( event.GetSocketEvent() ) {
         case wxSOCKET_CONNECTION :
 	if (m_app_state == APP_STATE_RUNNING) {
-		listensocket->OnAccept();
+		listensocket->OnAccept(0);
 	} else if (m_app_state == APP_STATE_STARTING) {
 		// When starting up, connection may be made before we are able
 		// to handle them. However, if these are ignored, no futher
@@ -2025,7 +2025,7 @@ void CamuleApp::UpdateNotesDat(const wxString& url)
 {
 	wxString strTempFilename(thePrefs::GetConfigDir() + wxT("nodes.dat.download"));
 
-	CHTTPDownloadThread *downloader = new CHTTPDownloadCoroutine(url, strTempFilename, thePrefs::GetConfigDir() + wxT("nodes.dat"), HTTP_NodesDat, true, false);
+	CHTTPDownloadCoroutine *downloader = new CHTTPDownloadCoroutine(url, strTempFilename, thePrefs::GetConfigDir() + wxT("nodes.dat"), HTTP_NodesDat, true, false);
 	downloader->Create();
         downloader->Start();
 }
@@ -2146,7 +2146,7 @@ void CamuleApp::FetchIfNewVersionIsAvailable()
                 // We use the thread base because I don't want a dialog to pop up.
                 CHTTPDownloadCoroutine* version_check =
                         new CHTTPDownloadCoroutine ( wxT ( "http://www.imule.i2p/lastversion" ),
-                                                  theApp->ConfigDir + wxT ( "last_version_check" ), theApp->ConfigDir + wxT ( "last_version_check" ), HTTP_VersionCheck, false, true );
+                                                  thePrefs::GetConfigDir() + wxT ( "last_version_check" ), thePrefs::GetConfigDir() + wxT ( "last_version_check" ), HTTP_VersionCheck, false, true );
                 version_check->Create();
                 version_check->Start();
         }

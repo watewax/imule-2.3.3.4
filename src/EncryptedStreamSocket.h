@@ -37,6 +37,7 @@
 #include <wx/wx.h>
 #include <wx/string.h>
 #include <i2p/wxI2PSocketClient.h>
+#include "LibSocket.h"
 
 // cryptoPP used for DH integer calculations
 #include "CryptoPP_Inc.h"	// Needed for Crypto functions
@@ -110,6 +111,7 @@ protected:
 	virtual void OnError(int /*nErrorCode*/) {};
 	virtual void OnSend(int nErrorCode);
 
+    wxString	DbgGetIPString();
 	void		CryptPrepareSendData(uint8_t* pBuffer, uint32_t nLen);
 	bool		IsEncryptionLayerReady();
 	uint8_t		GetSemiRandomNotProtocolMarker() const;

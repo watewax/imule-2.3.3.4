@@ -604,7 +604,7 @@ static CECPacket *Get_EC_Response_StatRequest(const CECPacket *request, CLoggerA
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_USERS, Kademlia::CKademlia::GetKademliaUsers()));
 				response->AddTag(CECTag(EC_TAG_STATS_ED2K_FILES, totalfile));
 				response->AddTag(CECTag(EC_TAG_STATS_KAD_FILES, Kademlia::CKademlia::GetKademliaFiles()));
-				response->AddTag(CECTag(EC_TAG_STATS_KAD_NODES, CStatistics::GetKadNodes()));
+				//response->AddTag(CECTag(EC_TAG_STATS_KAD_NODES, CStatistics::GetKadNodes()));
 			}
 			// Kad stats
 			if (Kademlia::CKademlia::IsConnected()) {
@@ -1358,12 +1358,12 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 {
 
 	if ( !request ) {
-                AddLogLineC(wxT("External Connection: ProcessRequest2 without request"));
+        AddLogLineC(wxT("External Connection: ProcessRequest2 without request"));
 		return 0;
 	}
 
 	CECPacket *response = NULL;
-        AddLogLineN(CFormat(wxT("External Connection: ProcessRequest2 with opcode %x")) % request->GetOpCode());
+    AddLogLineN(CFormat(wxT("External Connection: ProcessRequest2 with opcode %x")) % request->GetOpCode());
 
 	switch (request->GetOpCode()) {
 		//
@@ -1397,7 +1397,7 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 					category = cattag->GetInt();
 				}
 				AddLogLineC(CFormat(_("ExternalConn: adding link '%s'.")) % link);
-                        if ( theApp->downloadqueue->AddLink(link, (uint8)category) ) {
+                if ( theApp->downloadqueue->AddLink(link, (uint8)category) ) {
 					response = new CECPacket(EC_OP_NOOP);
 				} else {
 					// Error messages are printed by the add function.
@@ -1441,9 +1441,6 @@ CECPacket *CECServerSocket::ProcessRequest2(const CECPacket *request)
 		case EC_OP_GET_ULOAD_QUEUE:
 			response = Get_EC_Response_GetClientQueue(request, m_obj_tagmap, EC_OP_ULOAD_QUEUE);
 			break;
-        case EC_OP_PARTFILE_REMOVE_NO_NEEDED:
-        case EC_OP_PARTFILE_REMOVE_FULL_QUEUE:
-        case EC_OP_PARTFILE_REMOVE_HIGH_QUEUE:
 		case EC_OP_PARTFILE_SWAP_A4AF_THIS:
 		case EC_OP_PARTFILE_SWAP_A4AF_THIS_AUTO:
 		case EC_OP_PARTFILE_SWAP_A4AF_OTHERS:

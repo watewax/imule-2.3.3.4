@@ -117,7 +117,7 @@ private:
 	CKnownFileList*	filelist;
 
 	CKnownFileMap		m_Files_map;
-	mutable wxMutex		list_mut;
+	mutable wiMutex		list_mut;
 
 	StringPathMap m_PublicSharedDirNames;  //! used for mapping strings to shared directories
 

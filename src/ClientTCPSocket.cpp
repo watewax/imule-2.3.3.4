@@ -94,7 +94,7 @@ void CClientTCPSocket::OnSocketEvent(CI2PSocketEvent& event)
 			break;
 		case wxSOCKET_CONNECTION:
 			// connection stablished, nothing to do about it?
-			socket->OnConnect(socket->LastError());
+			OnConnect(Error() ? LastError() : 0);
 			break;
 		default:
 			// Nothing should arrive here...

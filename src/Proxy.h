@@ -30,7 +30,7 @@
 
 #include "amuleIPV4Address.h"	// For amuleIPV4address
 #include "StateMachine.h"	// For CStateMachine
-#include "LibSocket.h"
+#include "LibSocket.h"    // imule: for now we won't use LibSocket
 #include "MuleThread.h"
 
 /******************************************************************************/
@@ -256,8 +256,8 @@ public:
 	bool		IsEndState() const			{ return GetState() == PROXY_STATE_END; }
 
 protected:
-	uint32		ProxyWrite(CLibSocket &socket, const void *buffer, wxUint32 nbytes);
-	uint32		ProxyRead(CLibSocket &socket, void *buffer);
+    uint32		ProxyWrite(CLibSocket &socket, const void *buffer, wxUint32 nbytes);
+    uint32		ProxyRead(CLibSocket &socket, void *buffer);
 	bool		CanReceive() const;
 	bool		CanSend() const;
 	//
@@ -275,13 +275,14 @@ protected:
 	bool			m_canSend;
 	bool			m_ok;
 	unsigned int	m_lastRead;
-	int				m_lastError;
+    unsigned int	m_lastWritten;
+    int				m_lastError;
 	//
 	// Will be initialized at Start()
 	//
-	amuleIPV4Address	*m_peerAddress;
-	CLibSocket			*m_proxyClientSocket;
-	amuleIPV4Address	*m_proxyBoundAddress;
+    amuleIPV4Address	*m_peerAddress;
+    CLibSocket			*m_proxyClientSocket;
+    amuleIPV4Address	*m_proxyBoundAddress;
 	amuleIPV4Address	m_proxyBoundAddressIPV4;
 	//wxIPV6address		m_proxyBoundAddressIPV6;
 	//
@@ -476,9 +477,9 @@ public:
 	void		SetProxyData(const CProxyData *proxyData);
 	bool		GetUseProxy() const	{ return m_useProxy; }
 	char		*GetBuffer()		{ return m_proxyStateMachine->GetBuffer(); }
-	amuleIPV4Address	&GetProxyBoundAddress(void) const
+    amuleIPV4Address	&GetProxyBoundAddress(void) const
 						{ return m_proxyStateMachine->GetProxyBoundAddress(); }
-	bool Start(const amuleIPV4Address &peerAddress);
+    bool Start(const amuleIPV4Address &peerAddress);
 	bool ProxyIsCapableOf(CProxyCommand proxyCommand) const;
 	bool ProxyNegotiationIsOver() const	{ return m_proxyStateMachine->IsEndState(); }
 	CDatagramSocketProxy *GetUDPSocket() const { return m_udpSocket; }
@@ -506,13 +507,13 @@ class CSocketClientProxy : public CProxySocket
 public:
 	/* Constructor */
 	CSocketClientProxy(
-		muleSocketFlags flags = MULE_SOCKET_NONE,
+        muleSocketFlags flags = MULE_SOCKET_NONE,
 		const CProxyData *proxyData = NULL);
 
 	/* Interface */
-	bool Connect(amuleIPV4Address &address, bool wait);
-	uint32 Read(void *buffer, wxUint32 nbytes);
-	uint32 Write(const void *buffer, wxUint32 nbytes);
+        bool Connect(amuleIPV4Address &address, bool wait);
+        uint32 Read(void *buffer, wxUint32 nbytes);
+        uint32 Write(const void *buffer, wxUint32 nbytes);
 
 private:
         wiMutex			m_socketLocker;
@@ -527,12 +528,12 @@ class CSocketServerProxy : public CLibSocketServer
 public:
 	/* Constructor */
 	CSocketServerProxy(
-		amuleIPV4Address &address,
-		muleSocketFlags flags = MULE_SOCKET_NONE,
+        amuleIPV4Address &address,
+        muleSocketFlags flags = MULE_SOCKET_NONE,
 		const CProxyData *proxyData = NULL);
 
 private:
-	wxMutex			m_socketLocker;
+        wiMutex			m_socketLocker;
 };
 
 //------------------------------------------------------------------------------
@@ -555,8 +556,8 @@ class CDatagramSocketProxy : public CLibUDPSocket
 public:
 	/* Constructor */
 	CDatagramSocketProxy(
-		amuleIPV4Address &address,
-		muleSocketFlags flags = MULE_SOCKET_NONE,
+        amuleIPV4Address &address,
+        muleSocketFlags flags = MULE_SOCKET_NONE,
 		const CProxyData *proxyData = NULL);
 
 	/* Destructor */
@@ -574,7 +575,7 @@ private:
 	CProxySocket		m_proxyTCPSocket;
 	enum UDPOperation	m_lastUDPOperation;
 	unsigned int		m_lastUDPOverhead;
-        wiMutex			m_socketLocker;
+    wiMutex			m_socketLocker;
 };
 
 /******************************************************************************/

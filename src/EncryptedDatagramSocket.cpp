@@ -267,7 +267,7 @@ int CEncryptedDatagramSocket::DecryptReceivedClient(uint8_t *bufIn, int bufLen, 
 // else								-> ASSERT
 int CEncryptedDatagramSocket::EncryptSendClient(std::unique_ptr<uint8_t[]> & buf, int bufLen, const uint8_t *clientHashOrKadID, bool kad, uint32_t receiverVerifyKey, uint32_t senderVerifyKey)
 {
-        wxASSERT(theApp->GetPublicDest().isValid() || kad);
+    wxASSERT(theApp->GetPublicDest().isValid() || kad);
 	wxASSERT(thePrefs::IsClientCryptLayerSupported());
 	wxASSERT(clientHashOrKadID != NULL || receiverVerifyKey != 0);
 	wxASSERT((receiverVerifyKey == 0 && senderVerifyKey == 0) || kad);
@@ -275,7 +275,7 @@ int CEncryptedDatagramSocket::EncryptSendClient(std::unique_ptr<uint8_t[]> & buf
 	uint8_t padLen = 0;			// padding disabled for UDP currently
 	const uint32_t cryptHeaderLen = padLen + CRYPT_HEADER_WITHOUTPADDING + (kad ? 8 : 0);
 	uint32_t cryptedLen = bufLen + cryptHeaderLen;
-        std::unique_ptr<uint8_t[]> cryptedBuffer(new uint8_t[cryptedLen]);
+    std::unique_ptr<uint8_t[]> cryptedBuffer(new uint8_t[cryptedLen]);
 	bool kadRecvKeyUsed = false;
 
 	uint16_t randomKeyPart = GetRandomUint16();
@@ -289,7 +289,7 @@ int CEncryptedDatagramSocket::EncryptSendClient(std::unique_ptr<uint8_t[]> & buf
 			PokeUInt16(keyData+4, randomKeyPart);
 			md5.Calculate(keyData, sizeof(keyData));
 			//DEBUG_ONLY( DebugLog(_T("Creating obfuscated Kad packet encrypted by ReceiverKey (%u)"), nReceiverVerifyKey) );
-                } else if (clientHashOrKadID != NULL && !CMD4Hash(clientHashOrKadID).IsEmpty()) {
+        } else if (clientHashOrKadID != NULL && !CMD4Hash(clientHashOrKadID).IsEmpty()) {
 			uint8_t keyData[18];
 			md4cpy(keyData, clientHashOrKadID);
 			PokeUInt16(keyData+16, randomKeyPart);
@@ -297,7 +297,6 @@ int CEncryptedDatagramSocket::EncryptSendClient(std::unique_ptr<uint8_t[]> & buf
 			//DEBUG_ONLY( DebugLog(_T("Creating obfuscated Kad packet encrypted by Hash/NodeID %s"), md4str(pachClientHashOrKadID)) );
 		}
 		else {
-			delete [] cryptedBuffer;
 			wxFAIL;
 			return bufLen;
 		}

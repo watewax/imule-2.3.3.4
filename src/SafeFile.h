@@ -183,6 +183,7 @@ public:
 	virtual void WriteHash(const CMD4Hash& value);
 	virtual void WriteFloat(float value);
 	virtual void WriteBsob( const unsigned char* val, uint8 size);
+    virtual void WriteAddress(const CI2PAddress& value);
 	//@}
 
 	/**

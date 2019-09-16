@@ -679,7 +679,7 @@ void CSearchList::StopSearch ( wxUIntPtr searchID )
                 m_currentSearch = -1;
 }
 
-CSearchList::CMemFilePtr CSearchList::CreateSearchData(CSearchParams& params, SearchType WXUNUSED(type), bool supports64bit, bool& packetUsing64bit)
+CSearchList::CMemFilePtr CSearchList::CreateSearchData(CSearchParams& params, SearchType type, bool supports64bit, bool& packetUsing64bit)
 {
 	// Count the number of used parameters
 	unsigned int parametercount = 0;
@@ -730,12 +730,12 @@ CSearchList::CMemFilePtr CSearchList::CreateSearchData(CSearchParams& params, Se
                 AddLogLineNS(CFormat(wxT("Error : %s\n")) % _astrParserErrors[0]);
                 return CMemFilePtr(nullptr);
 	}
-
+	
 	if (type == KadSearch && s_strCurKadKeyword != params.strKeyword) {
 		AddDebugLogLineN(logSearch, CFormat(wxT("Keyword was rearranged, using '%s' instead of '%s'")) % s_strCurKadKeyword % params.strKeyword);
 		params.strKeyword = s_strCurKadKeyword;
 	}
-
+	
 	parametercount += _SearchExpr.m_aExpr.GetCount();
 
 	/* Leave the unicode comment there, please... */

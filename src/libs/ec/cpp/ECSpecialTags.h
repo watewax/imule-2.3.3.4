@@ -68,7 +68,7 @@ class CValueMap {
 		std::map<ECTagNames, wxString> m_map_string;
 		std::map<ECTagNames, CECTag> m_map_tag;
 		std::map<ECTagNames, CI2PAddress> m_map_address;
-		std::map<ec_tagname_t, CUInt128> m_map_uint128;
+		std::map<ECTagNames, CUInt128> m_map_uint128;
 
 		template <class T>
         void CreateTagT(ECTagNames tagname, T value, std::map<ECTagNames, T> &map, CECTag *parent) {
@@ -109,6 +109,10 @@ class CValueMap {
 
         void CreateTag(ECTagNames tagname, uint64 value, CECTag *parent) {
 			CreateTagT<uint64>(tagname, value, m_map_uint64, parent);
+		}
+
+        void CreateTag(ECTagNames tagname, CUInt128 value, CECTag *parent) {
+			CreateTagT<CUInt128>(tagname, value, m_map_uint128, parent);
 		}
 
         void CreateTag(ECTagNames tagname, CMD4Hash value, CECTag *parent) {

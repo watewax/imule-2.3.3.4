@@ -35,6 +35,7 @@
 #include "RLE.h"	// for RLE
 #include "DownloadQueue.h"
 #include "PartFile.h"			// for SourcenameItemMap
+#include "LibSocket.h"
 
 #ifndef ASIO_SOCKETS
 class wxSocketEvent;

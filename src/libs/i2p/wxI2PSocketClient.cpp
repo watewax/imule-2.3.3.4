@@ -27,7 +27,7 @@ CSamLogger *wxI2PSocketClient::s_log = &CSamLogger::none;
 
 /// Constructor
 
-wxI2PSocketClient::wxI2PSocketClient (muleSocketFlags flags):
+wxI2PSocketClient::wxI2PSocketClient (wxSocketFlags flags):
         wxI2PSocketBase (flags)
 {
         m_sam_server = NULL;
@@ -91,7 +91,7 @@ void wxI2PSocketClient::SetTimeout (long int t)
                 m_socket->SetTimeout (t);
 }
 
-void wxI2PSocketClient::SetFlags (muleSocketFlags flags)
+void wxI2PSocketClient::SetFlags (wxSocketFlags flags)
 {
         wxI2PSocketBase::SetFlags (flags);
         if (m_state == TRANSFERRED)

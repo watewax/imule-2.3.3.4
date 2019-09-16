@@ -153,6 +153,7 @@ EC_OP_STOP_NETWORK                  0x59
 EC_OP_RESTART_NETWORK_IF_STARTED    0x5A
 EC_OP_KAD_GET_CONTACTS_STRING       0x5B
 EC_OP_KAD_CONTACTS_STRING           0x5C
+
 [/Section]
 
 [Section Content]

@@ -32,7 +32,6 @@
 
 
 CAsyncDNS::CAsyncDNS(const wxString& ipName, DnsSolveType type, wxEvtHandler* handler, void* socket)
-	: wxThread(wxTHREAD_DETACHED)
 {
 	m_type = type;
 	m_ipName = ipName.wc_str();		// make a deep copy to to circument the thread-unsafe wxString reference counting
@@ -43,7 +42,7 @@ CAsyncDNS::CAsyncDNS(const wxString& ipName, DnsSolveType type, wxEvtHandler* ha
 
 int CAsyncDNS::Entry()
 {
-       wxASSERT_MSG(false, wxT("CAsyncDNS should not be launched because dns->Run() never destroys dns"));
+   wxASSERT_MSG(false, wxT("CAsyncDNS should not be launched because dns->Run() never destroys dns"));
 	uint32 result = StringHosttoUint32(m_ipName);
 	uint32 event_id = 0;
 	void* event_data = NULL;

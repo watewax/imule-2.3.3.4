@@ -101,6 +101,7 @@ CAbstractFile
               \
                 CSearchFile
 */
+typedef std::list<Kademlia::CEntry> CKadEntriesList;
 class CAbstractFile
 {
 public:
@@ -261,10 +262,10 @@ public:
 	CFileStatistic statistic;
 
 	time_t m_nCompleteSourcesTime;
-		uint32 m_nSourcesCount;
-        uint32 m_nCompleteSourcesCount;
-        uint32 m_nCompleteSourcesCountLo;
-        uint32 m_nCompleteSourcesCountHi;
+	uint32 m_nSourcesCount;
+    uint32 m_nCompleteSourcesCount;
+    uint32 m_nCompleteSourcesCountLo;
+    uint32 m_nCompleteSourcesCountHi;
 
 	// Common for part and known files.
 	typedef std::set<CClientRef> SourceSet;

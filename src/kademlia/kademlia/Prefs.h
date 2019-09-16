@@ -129,6 +129,7 @@ public:
 	float	StatsGetKadV8Ratio();
 
 private:
+    static CPrefs * instance ;
 	wxString	m_filename;
 
 	time_t		m_lastContact;

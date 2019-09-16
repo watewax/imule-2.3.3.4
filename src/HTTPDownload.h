@@ -40,6 +40,7 @@
 class wxEvtHandler;
 class wxHTTP;
 class wxInputStream;
+class CProxyData;
 
 enum HTTPDownloadResult {
 	HTTP_Success = 0,

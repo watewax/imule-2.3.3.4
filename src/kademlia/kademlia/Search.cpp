@@ -918,9 +918,9 @@ void CSearch::SendRequestTo(CContact To)
 				CKademlia::GetUDPListener()->SendPacket( packetdata, KADEMLIA_CALLBACK_REQ, from->GetIPAddress(), from->GetUDPPort(), 0, NULL);
 				wxASSERT(from->GetUDPKey() == CKadUDPKey(0));
 			}
-			m_answers++;*/
+			m_answers++;
 			break;
-		}
+		}*/
 		case NODESPECIAL: {
 			// we are looking for the IP of a given NodeID, so we just check if we 0 distance and if so, report the
 			// tip to the requester

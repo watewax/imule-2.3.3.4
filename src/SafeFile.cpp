@@ -343,7 +343,7 @@ void CFileDataIO::WriteString(const wxString& str, EUtf8Str eEncode, uint8 SizeL
 		case utf8strRaw:
 		case utf8strOptBOM: {
 			Unicode2CharBuf s(unicode2UTF8(str));
-                //                 printf("CFileDataIO::WriteString %s\n", (const char *) s);
+                 printf("CFileDataIO::WriteString %s\n", (const char *) s);
 			if (s.data()) {
 				WriteStringCore(s, eEncode, SizeLen);
 				break;

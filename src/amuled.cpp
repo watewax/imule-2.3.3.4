@@ -400,7 +400,7 @@ wxAppTraits *CamuleDaemonApp::CreateTraits()
 	return new CDaemonAppTraits();
 }
 
-//#endif	// AMULED_APPTRAITS
+#endif	// AMULED_APPTRAITS
 
 //#endif	// !AMULED28_SOCKETS
 

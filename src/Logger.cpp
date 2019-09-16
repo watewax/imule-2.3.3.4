@@ -80,7 +80,7 @@ CDebugCategory g_debugcats[] = {
 	CDebugCategory( logKadEntryTracking,	wxT("Kademlia Entry Tracking") ),
 	CDebugCategory( logEC,			wxT("External Connect") ),
 	CDebugCategory( logHTTP,		wxT("HTTP") ),
-	CDebugCategory( logAsio,		wxT("Asio Sockets") ),
+	CDebugCategory( logAsio,		wxT("Asio Sockets") )
         ,CDebugCategory ( logED2KLink,		wxT ( "ED2KLink" ) ),
         CDebugCategory ( logI2PDatagramSocket,   	wxT ( "I2PDatagramSocket" ) ),
         CDebugCategory ( logI2PEvents,		wxT ( "I2PEvents" ) ),

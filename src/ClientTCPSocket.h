@@ -58,7 +58,9 @@ public:
 	void		Safe_Delete();
 	void		Safe_Delete_Client();
 
-	void            OnSocketEvent(CI2PSocketEvent&);
+    bool		ForDeletion() const { return m_ForDeletion; }
+
+	void        OnSocketEvent(CI2PSocketEvent&);
 
 	void		OnConnect(int nErrorCode);
 	void		OnSend(int nErrorCode);
@@ -87,6 +89,7 @@ private:
 	void	ResetTimeOutTimer();
 	void	SetClient(CUpDownClient* client);
 
+	bool	m_ForDeletion; // 0.30c (Creteil), set as bool
 	uint32	timeout_timer;
         CI2PAddress m_remotedest;
         wxString encodeDirName(const CPath & dirName);

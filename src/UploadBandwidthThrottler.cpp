@@ -39,6 +39,8 @@
 #include <wx/timer.h>
 #include <functional>
 
+#ifndef _MSC_VER
+
 #ifdef _UI32_MAX // added by mkvore for imule
 #undef _UI32_MAX
 #endif

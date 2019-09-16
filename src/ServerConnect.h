@@ -30,7 +30,7 @@
 #ifndef SERVERCONNECT_H
 #define SERVERCONNECT_H
 
-
+#include "amuleIPV4Address.h"
 #include <i2p/CI2PAddress.h>	// Needed for amuleIPV4Address
 
 #include "NetworkFunctions.h"

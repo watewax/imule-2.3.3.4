@@ -186,16 +186,17 @@ bool CProxyStateMachine::Start(const amuleIPV4Address &peerAddress, CLibSocket *
 {
 	m_proxyClientSocket = proxyClientSocket;
 	m_peerAddress = new amuleIPV4Address(peerAddress);
-	//try {
-	//	const wxIPV4address &peer = dynamic_cast<const wxIPV4address &>(peerAddress);
-	//	m_peerAddress = new amuleIPV4Address(peer);
-	//} catch (const std::bad_cast& WXUNUSED(e)) {
-	//	// Should process other types of wxIPAddres before quitting
-	//	AddDebugLogLineN(logProxy, wxT("(1)bad_cast exception!"));
-	//	wxFAIL;
-	//	return false;
-	//}
-
+	#if 0
+	try {
+		const wxIPV4address &peer = dynamic_cast<const wxIPV4address &>(peerAddress);
+		m_peerAddress = new amuleIPV4Address(peer);
+	} catch (const std::bad_cast& WXUNUSED(e)) {
+		// Should process other types of wxIPAddres before quitting
+		AddDebugLogLineN(logProxy, wxT("(1)bad_cast exception!"));
+		wxFAIL;
+		return false;
+	}
+	#endif
 	// To run the state machine, return and just let the events start to happen.
 	return true;
 }
@@ -1181,16 +1182,16 @@ CProxySocket::CProxySocket(
 	const CProxyData *proxyData,
 	CProxyCommand proxyCommand,
 	CDatagramSocketProxy *udpSocket)
-:
-CLibSocket(flags),
-m_proxyStateMachine(NULL),
-m_udpSocket(udpSocket)
-#ifndef ASIO_SOCKETS
-,m_socketEventHandler(NULL)
-,m_socketEventHandlerId(0)
-,m_savedSocketEventHandler(NULL)
-,m_savedSocketEventHandlerId(0)
-#endif
+	:
+	CLibSocket(flags),
+	m_proxyStateMachine(NULL),
+	m_udpSocket(udpSocket)
+	#ifndef ASIO_SOCKETS
+	,m_socketEventHandler(NULL)
+	,m_socketEventHandlerId(0)
+	,m_savedSocketEventHandler(NULL)
+	,m_savedSocketEventHandlerId(0)
+	#endif
 {
 	SetProxyData(proxyData);
 	if (m_useProxy) {
@@ -1463,6 +1464,7 @@ uint32 CDatagramSocketProxy::SendTo(const amuleIPV4Address& addr, const void* bu
 
 	return sent;
 }
+
 
 #endif // CLIENT_GUI
 

@@ -114,7 +114,7 @@ private:
                 CR_BEGIN;
                 AddDebugLogLineN( logIPFilter, _("Loading IP filters 'ipfilter.dat' and 'ipfilter_static.dat'."));
                 m_file_loaded = false;
-                CR_CALL(LoadFromFile(theApp->ConfigDir + wxT("ipfilter.dat")));
+                CR_CALL(LoadFromFile(thePrefs::GetConfigDir() + wxT("ipfilter.dat")));
                 
                 if ( ! m_file_loaded && thePrefs::UseIPFilterSystem() ) {
 	{

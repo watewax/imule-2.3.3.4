@@ -613,9 +613,11 @@ bool CUpDownClient::ProcessHelloTypePacket(const CMemFile& data)
 		}
 	}
 
+	/*	
 	m_nUserPort = nUserPort;
 	m_dwServerIP = data.ReadUInt32();
 	m_nServerPort = data.ReadUInt16();
+	*/
 	// Hybrid now has an extra uint32.. What is it for?
 	// Also, many clients seem to send an extra 6? These are not eDonkeys or Hybrids..
 	if ( data.GetLength() - data.GetPosition() == sizeof(uint32) ) {

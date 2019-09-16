@@ -121,7 +121,7 @@ void CClientUDPSocket::OnPacketReceived(const CI2PAddress& ip, byte* buffer, siz
 							AddDebugLogLineN(logClientKadUDP, wxT("Correctly uncompressed Kademlia packet"));
 							unpack[0] = OP_KADEMLIAHEADER;
 							unpack[1] = opcode;
-							Kademlia::CKademlia::ProcessPacket(&(unpack[0]), unpackedsize + 2, wxUINT32_SWAP_ALWAYS(ip), port, (Kademlia::CPrefs::GetUDPVerifyKey(ip) == receiverVerifyKey), Kademlia::CKadUDPKey(senderVerifyKey, theApp->GetPublicIP(false)));
+							Kademlia::CKademlia::ProcessPacket(&(unpack[0]), unpackedsize + 2, ip, (Kademlia::CPrefs::GetUDPVerifyKey(ip) == receiverVerifyKey), Kademlia::CKadUDPKey(senderVerifyKey, theApp->GetPublicDest(false)));
 						} else {
 #ifdef __PACKET_RECV_DUMP__
                                                 printf("Failed to uncompress Kademlia packet\n");

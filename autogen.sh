@@ -81,4 +81,4 @@ cd src/pixmaps/flags_xpm
 cd "$OLDPWD"
 
 echo "Running automake --foreign -a -c -f"
-automake --foreign -a -c -f
+automake --foreign -a -c -f 

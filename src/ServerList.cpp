@@ -758,7 +758,7 @@ void CServerList::UpdateServerMetFromURL(const wxString& strURL)
 	}
 	m_URLUpdate = strURL;
 	wxString strTempFilename(thePrefs::GetConfigDir() + wxT("server.met.download"));
-	CHTTPDownloadThread *downloader = new CHTTPDownloadThread(strURL, strTempFilename, thePrefs::GetConfigDir() + wxT("server.met"), HTTP_ServerMet, false, false);
+	CHTTPDownloadCoroutine *downloader = new CHTTPDownloadCoroutine(strURL, strTempFilename, thePrefs::GetConfigDir() + wxT("server.met"), HTTP_ServerMet, false, false);
 	downloader->Create();
         downloader->Start();
 }
@@ -808,7 +808,7 @@ void CServerList::AutoUpdate()
 				thePrefs::GetConfigDir() + wxT("server_auto.met");
 			AddLogLineC(CFormat(
 				_("Start downloading server list from %s")) % URI);
-			CHTTPDownloadThread *downloader = new CHTTPDownloadThread(
+			CHTTPDownloadCoroutine *downloader = new CHTTPDownloadCoroutine(
 				URI, strTempFilename, thePrefs::GetConfigDir() + wxT("server.met"), HTTP_ServerMetAuto, false, false);
 			downloader->Create();
                         downloader->Start();

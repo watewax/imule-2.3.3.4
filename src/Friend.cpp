@@ -115,19 +115,19 @@ void CFriend::LoadFromFile(CFileDataIO* file)
 	wxASSERT( file );
 
 	m_UserHash = file->ReadHash();
-        m_nLastUsedTCPDest = file->ReadAddress();
+    m_nLastUsedTCPDest = file->ReadAddress();
 	m_dwLastSeen = file->ReadUInt32();
 	m_dwLastChatted = file->ReadUInt32();
 
-        TagList tags(*file, true);
-        for ( TagList::const_iterator it = tags.begin(); it!=tags.end(); it++) {
-                CTag newtag = (*it) ;
-                switch ( newtag.GetID() ) {
-			case FF_NAME:
-				if (m_strName.IsEmpty()) {
-					m_strName = newtag.GetStr();
-				}
-				break;
+    TagList tags(*file, true);
+    for ( TagList::const_iterator it = tags.begin(); it!=tags.end(); it++) {
+            CTag newtag = (*it) ;
+    switch ( newtag.GetID() ) {
+		case FF_NAME:
+			if (m_strName.IsEmpty()) {
+				m_strName = newtag.GetStr();
+			}
+			break;
 		}
 	}
 }
@@ -137,17 +137,16 @@ void CFriend::WriteToFile(CFileDataIO* file)
 {
 	wxASSERT( file );
 	file->WriteHash(m_UserHash);
-	file->WriteUInt32(m_dwLastUsedIP);
-	file->WriteUInt16(m_nLastUsedPort);
+    file->WriteAddress(m_nLastUsedTCPDest);
 	file->WriteUInt32(m_dwLastSeen);
 	file->WriteUInt32(m_dwLastChatted);
 
-        TagList tags ;
+    TagList tags ;
 	if ( !m_strName.IsEmpty() ) {
-                tags.push_back( CTag(FF_NAME, m_strName) );
-                tags.push_back( CTag(FF_NAME, m_strName) );
+        tags.push_back( CTag(FF_NAME, m_strName) );
+        tags.push_back( CTag(FF_NAME, m_strName) );
 	}
-        tags.WriteTo(file);
+    tags.WriteTo(file);
 }
 
 

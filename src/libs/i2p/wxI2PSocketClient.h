@@ -14,6 +14,7 @@
 #ifndef __wxI2PSocketClient__
 #define __wxI2PSocketClient__
 
+//#include "LibSocket.h"
 #include "wxI2PSocketBase.h"
 #include "CI2PAddress.h"
 #include "MuleThread.h"
@@ -30,7 +31,7 @@ class wxI2PSocketClient
 public:
         static void createServer();
 
-        wxI2PSocketClient(muleSocketFlags flags = wxSOCKET_NONE);
+        wxI2PSocketClient(wxSocketFlags flags = wxSOCKET_NONE);
 
         ~wxI2PSocketClient();
 
@@ -72,7 +73,7 @@ public:
 
         virtual void Flush();
 
-        virtual void SetFlags(muleSocketFlags);
+        virtual void SetFlags(wxSocketFlags);
 
         CI2PAddress GetPeer();
 
